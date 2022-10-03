@@ -8,6 +8,8 @@
 #include <windows.h>
 #include <string>
 
+//Test
+
 namespace CGH
 {
 	static struct GlobalOptions
