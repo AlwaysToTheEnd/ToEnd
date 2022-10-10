@@ -8,7 +8,7 @@
 #include <windows.h>
 #include <string>
 
-//Test
+#include "../Common/Source/GameTimer.h"
 
 namespace CGH
 {
@@ -47,6 +47,8 @@ public:
 private:
 	HRESULT InitWindow();
 	void	Update(float delta);
+	void	Render();
+	void	CalculateFrame();
 
 private:
 	static App*	 s_App;
@@ -57,4 +59,6 @@ private:
 	bool		m_resizing = false;
 	bool		m_miniMized = false;
 	bool		m_maximized = false;
+
+	GameTimer	m_timer;
 };

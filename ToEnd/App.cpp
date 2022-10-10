@@ -5,9 +5,8 @@
 #include <exception>
 #include <string>
 #include <assert.h>
-#include "DxException.h"
+#include "../Common/Source/DxException.h"
 #include "GraphicDeivceDX12.h"
-
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -20,6 +19,7 @@ HRESULT App::Init()
 {
 	HRESULT result = InitWindow();
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+	m_timer.Start();
 
 	return result;
 }
@@ -27,6 +27,7 @@ HRESULT App::Init()
 int App::Run()
 {
 	MSG msg = {};
+	m_timer.Reset();
 
 	while (msg.message != WM_QUIT)
 	{
@@ -37,9 +38,14 @@ int App::Run()
 		}
 		else
 		{
-			if (m_appPaused)
+			m_timer.Tick();
+
+			if (!m_appPaused)
 			{
-				int Test = 0;
+				CalculateFrame();
+				Update(m_timer.DeltaTime());
+
+				Render();
 			}
 			else
 			{
@@ -72,61 +78,73 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
 	{
+	case WM_ACTIVATE:
+		if (LOWORD(wParam) == WA_INACTIVE)
+		{
+			m_appPaused = true;
+			m_timer.Stop();
+		}
+		else
+		{
+			m_appPaused = false;
+			m_timer.Start();
+		}
+		return 0;
 	case WM_SIZE:
-	{
-		int clientWidth = LOWORD(lParam);
-		int clientHeight = HIWORD(lParam);
+		{
+			int clientWidth = LOWORD(lParam);
+			int clientHeight = HIWORD(lParam);
 
-		CGH::GO.WIN.WindowsizeX = clientWidth;
-		CGH::GO.WIN.WindowsizeY = clientHeight;
+			CGH::GO.WIN.WindowsizeX = clientWidth;
+			CGH::GO.WIN.WindowsizeY = clientHeight;
 
-		if (wParam == SIZE_MINIMIZED)
-		{
-			m_miniMized = true;
-			m_maximized = false;
-		}
-		else if (wParam == SIZE_MAXIMIZED)
-		{
-			m_miniMized = false;
-			m_maximized = true;
-			GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-		}
-		else if (wParam == SIZE_RESTORED)
-		{
-			if (m_miniMized)
+			if (wParam == SIZE_MINIMIZED)
+			{
+				m_miniMized = true;
+				m_maximized = false;
+			}
+			else if (wParam == SIZE_MAXIMIZED)
 			{
 				m_miniMized = false;
+				m_maximized = true;
 				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
 			}
-			else if (m_maximized)
+			else if (wParam == SIZE_RESTORED)
 			{
-				m_maximized = false;
-				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				if (m_miniMized)
+				{
+					m_miniMized = false;
+					GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				}
+				else if (m_maximized)
+				{
+					m_maximized = false;
+					GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				}
+				else if (m_resizing)
+				{
+					GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				}
 			}
-			else if (m_resizing)
-			{
-				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-			}
+			return 0;
 		}
-		return 0;
-	}
 	case WM_ENTERSIZEMOVE:
-	{
-		m_resizing = true;
-		return 0;
-	}
+		{
+			m_resizing = true;
+			return 0;
+		}
 	case WM_EXITSIZEMOVE:
-	{
-		GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-		m_resizing = false;
-		return 0;
-	}
+		{
+			GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+			m_resizing = false;
+			return 0;
+		}
 	case WM_GETMINMAXINFO:
-	{
-		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
-		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
-		return 0;
-	}
+		{
+			((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
+			((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
+			return 0;
+		}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
@@ -135,9 +153,9 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_IME_STARTCOMPOSITION:
 	case WM_SYSKEYDOWN:
 	case WM_SYSKEYUP:
-	{
-		msg = 0;
-	}
+		{
+			msg = 0;
+		}
 	}
 
 	return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -183,6 +201,45 @@ HRESULT App::InitWindow()
 
 void App::Update(float delta)
 {
+
+}
+
+void App::Render()
+{
+	auto graphic = GraphicDeviceDX12::GetGraphic();
+	graphic->RenderBegin();
+	//TODO Objects render
+
+	graphic->LightRenderBegin();
+	//TODO Lights render
+
+	graphic->RenderEnd();
+}
+
+void App::CalculateFrame()
+{
+	static int frameCnt = 0;
+	static float timeElapsed = 0.0f;
+
+	frameCnt++;
+
+	if ((m_timer.TotalTime() - timeElapsed) >= 1.0f)
+	{
+		float fps = (float)frameCnt;
+		float mspf = 1000.0f / fps;
+
+		std::wstring fpsStr = std::to_wstring(fps);
+		std::wstring mspfStr = std::to_wstring(mspf);
+
+		std::wstring windowText = std::wstring(L"누가죽나 해보자") +
+			L"    fps: " + fpsStr +
+			L"   mspf: " + mspfStr;
+
+		SetWindowText(m_hMainWnd, windowText.c_str());
+
+		frameCnt = 0;
+		timeElapsed += 1.0f;
+	}
 }
 
 int wWinMain(

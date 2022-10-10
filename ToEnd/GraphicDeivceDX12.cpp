@@ -1,6 +1,7 @@
 #include "GraphicDeivceDX12.h"
-#include "DxException.h"
-#include "CGHUtil.h"
+#include "../Common/Source/CGHUtil.h"
+#include "../Common/Source/DxException.h"
+#include "../Common/Source/DX12SwapChain.h"
 
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
 
@@ -27,6 +28,7 @@ void GraphicDeviceDX12::DeleteDeivce()
 {
 	if (s_Graphic)
 	{
+		delete s_Graphic->m_swapChain;
 		delete s_Graphic;
 		s_Graphic = nullptr;
 	}
@@ -46,19 +48,15 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 
 	hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_d3dDevice.GetAddressOf()));
 
-	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf())));
-
-	// Fallback to WARP device.
-	if (FAILED(hr))
+	if (m_swapChain)
 	{
-		ComPtr<IDXGIAdapter> pWarpAdapter;
-		ThrowIfFailed(m_dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter)));
-
-		ThrowIfFailed(D3D12CreateDevice(
-			pWarpAdapter.Get(),
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(m_d3dDevice.GetAddressOf())));
+		delete m_swapChain;
+		m_swapChain = nullptr;
 	}
+
+	m_fenceCounts.resize(m_numFrameResource);
+	m_swapChain = new DX12SwapChain;
+	m_swapChain->CreateDXGIFactory(m_d3dDevice.GetAddressOf());
 
 	{
 		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
@@ -68,54 +66,26 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		ThrowIfFailed(m_d3dDevice->CreateCommandQueue(&queueDesc,
 			IID_PPV_ARGS(m_commandQueue.GetAddressOf())));
 
-		ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(m_directCmdListAlloc.GetAddressOf())));
+		m_cmdLists.resize(m_numFrameResource);
+		m_cmdListAllocs.resize(m_numFrameResource);
+		for (size_t i = 0; i < m_numFrameResource; i++)
+		{
+			ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(m_cmdListAllocs[i].GetAddressOf())));
 
-		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-			m_directCmdListAlloc.Get(), nullptr, IID_PPV_ARGS(m_commandList.GetAddressOf())));
+			ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+				m_cmdListAllocs[i].Get(), nullptr, IID_PPV_ARGS(m_cmdLists[i].GetAddressOf())));
 
-		m_commandList->Close();
+			m_cmdLists[i]->Close();
+		}
 
 		ThrowIfFailed(m_d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
 			IID_PPV_ARGS(m_fence.GetAddressOf())));
 	}
 
-	{
-		DXGI_SWAP_CHAIN_DESC sd;
-		sd.BufferDesc.Width = windowWidth;
-		sd.BufferDesc.Height = windowHeight;
-		sd.BufferDesc.RefreshRate.Numerator = 60;
-		sd.BufferDesc.RefreshRate.Denominator = 1;
-		sd.BufferDesc.Format = m_backBufferFormat;
-		sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UPPER_FIELD_FIRST;
-		sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		sd.SampleDesc.Count = 1;
-		sd.SampleDesc.Quality = 0;
-		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.BufferCount = m_numBackBuffer;
-		sd.OutputWindow = hWnd;
-		sd.Windowed = true;
-		sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-		sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 
-		ThrowIfFailed(m_dxgiFactory->CreateSwapChain(m_commandQueue.Get(), &sd, m_swapChain.GetAddressOf()));
-
-		m_backBufferResource.resize(sd.BufferCount);
-	}
-
-	OnResize(windowWidth , windowHeight);
-
-	m_cmdListAllocs.resize(m_numFrameResource);
-	m_cmdLists.resize(m_numFrameResource);
-
-	for (UINT i = 0; i < m_numFrameResource; i++)
-	{
-		ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(m_cmdListAllocs[i].GetAddressOf())));
-
-		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-			m_cmdListAllocs[i].Get(), nullptr, IID_PPV_ARGS(m_cmdLists[i].GetAddressOf())));
-	}
+	OnResize(windowWidth, windowHeight);
 }
 
 void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
@@ -131,70 +101,73 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 
 	m_scissorRect = { 0, 0, windowWidth, windowHeight };
 
-	ThrowIfFailed(m_directCmdListAlloc->Reset());
-	ThrowIfFailed(m_commandList->Reset(m_directCmdListAlloc.Get(), nullptr));
+	auto cmdListAlloc = GetCurrCommandAllocator();
+	auto cmdList = GetCurrCommandList();
+
+	ThrowIfFailed(cmdList->Reset(cmdListAlloc, nullptr));
 	{
-		m_backBufferRtvHeap = nullptr;
-		m_currBackBufferIndex = 0;
-
-		for (size_t i = 0; i < m_backBufferResource.size(); i++)
-		{
-			m_backBufferResource[i] = nullptr;
-		}
-
-		ThrowIfFailed(m_swapChain->ResizeBuffers(m_numBackBuffer,
-			windowWidth, windowHeight, m_backBufferFormat, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
-
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		heapDesc.NumDescriptors = m_numBackBuffer;
-
-		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_backBufferRtvHeap.GetAddressOf())));
-
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_backBufferRtvHeap->GetCPUDescriptorHandleForHeapStart();
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-		UINT rtvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-		rtvDesc.Format = m_backBufferFormat;
-
-		for (size_t i = 0; i < m_numBackBuffer; i++)
-		{
-			size_t currIndex = CGH::SizeTTransUINT(i);
-			ThrowIfFailed(m_swapChain->GetBuffer(currIndex, IID_PPV_ARGS(m_backBufferResource[currIndex].GetAddressOf())));
-
-			m_d3dDevice->CreateRenderTargetView(m_backBufferResource[currIndex].Get(), &rtvDesc, rtvHandle);
-			rtvHandle.ptr += rtvSize;
-		}
+		m_swapChain->ReSize(cmdList, windowWidth, windowHeight);
 	}
-	ThrowIfFailed(m_commandList->Close());
-	ID3D12CommandList* cmdLists[] = { m_commandList.Get() };
+	ThrowIfFailed(cmdList->Close());
+
+	ID3D12CommandList* cmdLists[] = { cmdList };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-	
+
 	FlushCommandQueue();
 
-	ThrowIfFailed(m_directCmdListAlloc->Reset());
+	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
 void GraphicDeviceDX12::RenderBegin()
 {
+	if (m_fence->GetCompletedValue() < m_fenceCounts[m_currFrame])
+	{
+		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
+		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceCounts[m_currFrame], eventHandle));
+
+		if (eventHandle)
+		{
+			WaitForSingleObject(eventHandle, INFINITE);
+			CloseHandle(eventHandle);
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+
+	auto cmdListAlloc = GetCurrCommandAllocator();
+	auto cmdList = GetCurrCommandList();
+
+	ThrowIfFailed(cmdListAlloc->Reset());
+	ThrowIfFailed(cmdList->Reset(cmdListAlloc, nullptr));
+
+	cmdList->RSSetViewports(1, &m_screenViewport);
+	cmdList->RSSetScissorRects(1, &m_scissorRect);
+
+	m_swapChain->GbufferSetting(cmdList);
+}
+
+void GraphicDeviceDX12::LightRenderBegin()
+{
+	float backGroundColor[4] = { 0.0f,0.0f,1.0f };
+	m_swapChain->PresentRenderTargetSetting(GetCurrCommandList(), backGroundColor);
 }
 
 void GraphicDeviceDX12::RenderEnd()
 {
-	auto cmdListAlloc = m_cmdListAllocs[m_currFrame].Get();
+	auto cmdList = GetCurrCommandList();
+	m_swapChain->RenderEnd(cmdList);
 
-	ThrowIfFailed(cmdListAlloc->Reset());
-	ThrowIfFailed(m_commandList->Reset(cmdListAlloc, nullptr));
-
-	m_commandList->RSSetViewports(1, &m_screenViewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
-
-	ThrowIfFailed(m_commandList->Close());
-	ID3D12CommandList* cmdsLists[] = { m_commandList.Get() };
+	ThrowIfFailed(cmdList->Close());
+	ID3D12CommandList* cmdsLists[] = { cmdList };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
-	FlushCommandQueue();
+	m_swapChain->Present();
+
+	m_currentFence++;
+	m_fenceCounts[m_currFrame] = m_currentFence;	
+	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
 }
@@ -208,9 +181,26 @@ void GraphicDeviceDX12::FlushCommandQueue()
 	if (m_fence->GetCompletedValue() < m_currentFence)
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
+		ThrowIfFailed(m_fence->SetEventOnCompletion(m_currentFence, eventHandle));
 
-		assert(false);
-
-		WaitForSingleObject(eventHandle, INFINITE);
+		if (eventHandle)
+		{
+			WaitForSingleObject(eventHandle, INFINITE);
+			CloseHandle(eventHandle);
+		}
+		else
+		{
+			assert(false);
+		}
 	}
+}
+
+ID3D12GraphicsCommandList* GraphicDeviceDX12::GetCurrCommandList()
+{
+	return m_cmdLists[m_currFrame].Get();
+}
+
+ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrCommandAllocator()
+{
+	return m_cmdListAllocs[m_currFrame].Get();
 }

@@ -18,13 +18,22 @@
     <ClInclude Include="App.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DxException.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="GraphicDeivceDX12.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="CGHUtil.h">
+    <ClInclude Include="..\Common\Source\GameTimer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\DX12SwapChain.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\CGHUtil.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\DxException.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\d3dx12.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,10 +41,16 @@
     <ClCompile Include="App.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="DxException.cpp">
+    <ClCompile Include="GraphicDeivceDX12.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="GraphicDeivceDX12.cpp">
+    <ClCompile Include="..\Common\Source\GameTimer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\Source\DX12SwapChain.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\Source\DxException.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

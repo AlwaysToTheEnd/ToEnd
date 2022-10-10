@@ -116,10 +116,12 @@
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectoryNoRoot); ../Common/Include;</AdditionalIncludeDirectories>
       <DiagnosticsFormat>Classic</DiagnosticsFormat>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -146,14 +148,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Common\Source\CGHUtil.h" />
+    <ClInclude Include="..\Common\Source\d3dx12.h" />
+    <ClInclude Include="..\Common\Source\DX12SwapChain.h" />
+    <ClInclude Include="..\Common\Source\DxException.h" />
+    <ClInclude Include="..\Common\Source\GameTimer.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="CGHUtil.h" />
-    <ClInclude Include="DxException.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\Source\DX12SwapChain.cpp" />
+    <ClCompile Include="..\Common\Source\DxException.cpp" />
+    <ClCompile Include="..\Common\Source\GameTimer.cpp" />
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="DxException.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
   </ItemGroup>
   <ItemGroup>
