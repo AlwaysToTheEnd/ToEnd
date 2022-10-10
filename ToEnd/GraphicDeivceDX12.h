@@ -8,15 +8,39 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <DirectXMath.h>
+#include "DX12UploadBuffer.h"
+#include "../Common/Source/CGHUtil.h"
 
 using Microsoft::WRL::ComPtr;
 class DX12SwapChain;
+class Camera;
 
 struct DX12GraphicResource
 {
 	Microsoft::WRL::ComPtr<ID3D12Resource>  resource;
 	D3D12_CPU_DESCRIPTOR_HANDLE				cpuHandle = {};
 };
+
+struct DX12PassConstants
+{
+	DirectX::XMFLOAT4X4		view = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		invView = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		proj = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		invProj = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		viewProj = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		invViewProj = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		rightViewProj = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4		orthoMatrix = CGH::IdentityMatrix;
+	unsigned int			renderTargetSizeX = 0;
+	unsigned int			renderTargetSizeY = 0;
+	DirectX::XMFLOAT2		invRenderTargetSize = { 0.0f, 0.0f };
+	DirectX::XMFLOAT4		ambientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
+	DirectX::XMFLOAT3		eyePosW = { 0.0f, 0.0f, 0.0f };
+	unsigned int			samplerIndex = 0;
+	DirectX::XMFLOAT2		mousePos;
+	DirectX::XMFLOAT2		pad;
+};
+
 
 class GraphicDeviceDX12
 {
@@ -29,10 +53,13 @@ public:
 	GraphicDeviceDX12(const GraphicDeviceDX12& rhs) = delete;
 	GraphicDeviceDX12& operator=(const GraphicDeviceDX12& rhs) = delete;
 
-	void OnResize(int windowWidth, int windowHeight);
+	void Update(float delta, const Camera* camera);
+
 	void RenderBegin();
 	void LightRenderBegin();
 	void RenderEnd();
+
+	void OnResize(int windowWidth, int windowHeight);
 
 private:
 	GraphicDeviceDX12() = default;
@@ -58,12 +85,18 @@ private:
 	ComPtr<ID3D12Fence>				m_fence;
 	std::vector<unsigned long long>	m_fenceCounts;
 
+	DirectX::XMFLOAT4X4				m_projMat;
+	DirectX::XMFLOAT3				m_rayOrigin;
+	DirectX::XMFLOAT3				m_ray;
+
 	DXGI_FORMAT						m_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DX12SwapChain*					m_swapChain = nullptr;
 
-	std::vector<ComPtr<ID3D12GraphicsCommandList>>	m_cmdLists;
-	std::vector<ComPtr<ID3D12CommandAllocator>>		m_cmdListAllocs;
-	ComPtr<ID3D12CommandQueue>						m_commandQueue;
-	std::unordered_map<std::string, 
-		Microsoft::WRL::ComPtr<ID3D12Resource>>		m_dx12resources;
+	std::vector<ComPtr<ID3D12GraphicsCommandList>>						m_cmdLists;
+	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;
+	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
+	std::unordered_map<std::string,
+		Microsoft::WRL::ComPtr<ID3D12Resource>>							m_dx12resources;
+
+	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };

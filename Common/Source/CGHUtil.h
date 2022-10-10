@@ -1,6 +1,7 @@
 #pragma once
 #include <assert.h>
 #include <intsafe.h>
+#include <DirectXMath.h>
 
 namespace CGH
 {
@@ -15,4 +16,10 @@ namespace CGH
 		assert(INT_MAX > size);
 		return static_cast<int>(size);
 	}
+
+	const DirectX::XMFLOAT4X4 IdentityMatrix(1.0f, 0.0f, 0.0f, 0.0f,
+											 0.0f, 1.0f, 0.0f, 0.0f,
+											 0.0f, 0.0f, 1.0f, 0.0f,
+											 0.0f, 0.0f, 0.0f, 1.0f);
 }
+

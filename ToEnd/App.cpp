@@ -76,6 +76,8 @@ App* App::GetApp()
 
 LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	m_camera.WndProc(reinterpret_cast<int*>(hwnd), msg, reinterpret_cast<unsigned int*>(wParam), reinterpret_cast<int*>(lParam));
+
 	switch (msg)
 	{
 	case WM_ACTIVATE:
@@ -91,60 +93,60 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	case WM_SIZE:
+	{
+		int clientWidth = LOWORD(lParam);
+		int clientHeight = HIWORD(lParam);
+
+		CGH::GO.WIN.WindowsizeX = clientWidth;
+		CGH::GO.WIN.WindowsizeY = clientHeight;
+
+		if (wParam == SIZE_MINIMIZED)
 		{
-			int clientWidth = LOWORD(lParam);
-			int clientHeight = HIWORD(lParam);
-
-			CGH::GO.WIN.WindowsizeX = clientWidth;
-			CGH::GO.WIN.WindowsizeY = clientHeight;
-
-			if (wParam == SIZE_MINIMIZED)
-			{
-				m_miniMized = true;
-				m_maximized = false;
-			}
-			else if (wParam == SIZE_MAXIMIZED)
+			m_miniMized = true;
+			m_maximized = false;
+		}
+		else if (wParam == SIZE_MAXIMIZED)
+		{
+			m_miniMized = false;
+			m_maximized = true;
+			GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+		}
+		else if (wParam == SIZE_RESTORED)
+		{
+			if (m_miniMized)
 			{
 				m_miniMized = false;
-				m_maximized = true;
 				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
 			}
-			else if (wParam == SIZE_RESTORED)
+			else if (m_maximized)
 			{
-				if (m_miniMized)
-				{
-					m_miniMized = false;
-					GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-				}
-				else if (m_maximized)
-				{
-					m_maximized = false;
-					GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-				}
-				else if (m_resizing)
-				{
-					GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-				}
+				m_maximized = false;
+				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
 			}
-			return 0;
+			else if (m_resizing)
+			{
+				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+			}
 		}
+		return 0;
+	}
 	case WM_ENTERSIZEMOVE:
-		{
-			m_resizing = true;
-			return 0;
-		}
+	{
+		m_resizing = true;
+		return 0;
+	}
 	case WM_EXITSIZEMOVE:
-		{
-			GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
-			m_resizing = false;
-			return 0;
-		}
+	{
+		GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+		m_resizing = false;
+		return 0;
+	}
 	case WM_GETMINMAXINFO:
-		{
-			((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
-			((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
-			return 0;
-		}
+	{
+		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
+		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
+		return 0;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
@@ -153,9 +155,9 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_IME_STARTCOMPOSITION:
 	case WM_SYSKEYDOWN:
 	case WM_SYSKEYUP:
-		{
-			msg = 0;
-		}
+	{
+		msg = 0;
+	}
 	}
 
 	return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -201,7 +203,9 @@ HRESULT App::InitWindow()
 
 void App::Update(float delta)
 {
-
+	m_camera.Update();
+	
+	GraphicDeviceDX12::GetGraphic()->Update(delta, &m_camera);
 }
 
 void App::Render()

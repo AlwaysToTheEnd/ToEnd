@@ -154,6 +154,9 @@
     <ClInclude Include="..\Common\Source\DxException.h" />
     <ClInclude Include="..\Common\Source\GameTimer.h" />
     <ClInclude Include="App.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="DX12Mesh.h" />
+    <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
   </ItemGroup>
   <ItemGroup>
@@ -161,6 +164,8 @@
     <ClCompile Include="..\Common\Source\DxException.cpp" />
     <ClCompile Include="..\Common\Source\GameTimer.cpp" />
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="DX12Mesh.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
   </ItemGroup>
   <ItemGroup>

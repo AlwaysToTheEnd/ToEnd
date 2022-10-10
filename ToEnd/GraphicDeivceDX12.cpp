@@ -2,7 +2,9 @@
 #include "../Common/Source/CGHUtil.h"
 #include "../Common/Source/DxException.h"
 #include "../Common/Source/DX12SwapChain.h"
+#include "Camera.h"
 
+using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
 
 GraphicDeviceDX12* GraphicDeviceDX12::GetGraphic()
@@ -55,6 +57,13 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	}
 
 	m_fenceCounts.resize(m_numFrameResource);
+	m_passCBs.resize(m_numFrameResource);
+
+	for (size_t i = 0; i < m_passCBs.size(); i++)
+	{
+		m_passCBs[i] = std::make_unique<DX12UploadBuffer<DX12PassConstants>>(m_d3dDevice.Get(), 1, true);
+	}
+
 	m_swapChain = new DX12SwapChain;
 	m_swapChain->CreateDXGIFactory(m_d3dDevice.GetAddressOf());
 
@@ -86,6 +95,45 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 
 	OnResize(windowWidth, windowHeight);
+}
+
+void GraphicDeviceDX12::Update(float delta, const Camera* camera)
+{
+	assert(camera);
+
+	DX12PassConstants passCons;
+
+	XMVECTOR deter;
+	XMMATRIX xmView = XMLoadFloat4x4(camera->GetViewMatrix());
+	XMMATRIX xmProj = XMLoadFloat4x4(&m_projMat);
+	XMMATRIX xmViewProj = XMMatrixMultiply(xmView, xmProj);
+	XMMATRIX xmInvView = XMMatrixInverse(&deter, xmView);
+
+	XMStoreFloat4x4(&passCons.view, XMMatrixTranspose(xmView));
+	XMStoreFloat4x4(&passCons.proj, XMMatrixTranspose(xmProj));
+	XMStoreFloat4x4(&passCons.viewProj, XMMatrixTranspose(xmViewProj));
+	XMStoreFloat4x4(&passCons.invView, XMMatrixTranspose(xmInvView));
+	XMStoreFloat4x4(&passCons.invProj, XMMatrixTranspose(XMMatrixInverse(&deter, xmProj)));
+	XMStoreFloat4x4(&passCons.invViewProj, XMMatrixTranspose(XMMatrixInverse(&deter, xmViewProj)));
+
+	passCons.renderTargetSizeX = m_scissorRect.right;
+	passCons.renderTargetSizeY = m_scissorRect.bottom;
+	passCons.invRenderTargetSize = { 1.0f / m_screenViewport.Width, 1.0f / m_screenViewport.Height };
+	//passCons.samplerIndex = 2;
+	passCons.eyePosW = camera->GetEyePos();
+	passCons.ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f }; //TODO ambientLight
+	passCons.mousePos = camera->GetMousePos();
+
+	m_passCBs[m_currFrame]->CopyData(0, &passCons);
+
+	XMVECTOR rayOrigin = XMVectorZero();
+	XMVECTOR ray = XMLoadFloat3(&camera->GetViewRay(m_projMat, m_screenViewport.Width, m_screenViewport.Height));
+	
+	rayOrigin = XMVector3Transform(rayOrigin, xmInvView);
+	ray = (xmInvView.r[0] * ray.m128_f32[0]) + (xmInvView.r[1] * ray.m128_f32[1]) + (xmInvView.r[2] * ray.m128_f32[2]);
+
+	XMStoreFloat3(&m_ray, ray);
+	XMStoreFloat3(&m_rayOrigin, rayOrigin);
 }
 
 void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
@@ -166,7 +214,7 @@ void GraphicDeviceDX12::RenderEnd()
 	m_swapChain->Present();
 
 	m_currentFence++;
-	m_fenceCounts[m_currFrame] = m_currentFence;	
+	m_fenceCounts[m_currFrame] = m_currentFence;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;

@@ -7,6 +7,7 @@
 #define WIN32_LEAN_AND_MEAN         
 #include <windows.h>
 #include <string>
+#include "Camera.h"
 
 #include "../Common/Source/GameTimer.h"
 
@@ -60,5 +61,6 @@ private:
 	bool		m_miniMized = false;
 	bool		m_maximized = false;
 
+	Camera		m_camera;
 	GameTimer	m_timer;
 };
