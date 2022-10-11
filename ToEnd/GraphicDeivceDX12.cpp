@@ -150,7 +150,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	m_scissorRect = { 0, 0, windowWidth, windowHeight };
 
 	auto cmdListAlloc = GetCurrCommandAllocator();
-	auto cmdList = GetCurrCommandList();
+	auto cmdList = GetCurrGraphicsCommandList();
 
 	ThrowIfFailed(cmdList->Reset(cmdListAlloc, nullptr));
 	{
@@ -161,8 +161,14 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ID3D12CommandList* cmdLists[] = { cmdList };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
-	FlushCommandQueue();
+	float fovAngleY = 0.785398163f;
+	float aspectRatio = (float)windowWidth / windowHeight;
+	float fovAngleX = 2 * atanf(aspectRatio * tanf(fovAngleY));
 
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, 1.0f, 1000.0f);
+	XMStoreFloat4x4(&m_projMat, XMMatrixTranspose(proj));
+
+	FlushCommandQueue();
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
@@ -185,7 +191,7 @@ void GraphicDeviceDX12::RenderBegin()
 	}
 
 	auto cmdListAlloc = GetCurrCommandAllocator();
-	auto cmdList = GetCurrCommandList();
+	auto cmdList = GetCurrGraphicsCommandList();
 
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(cmdList->Reset(cmdListAlloc, nullptr));
@@ -194,17 +200,18 @@ void GraphicDeviceDX12::RenderBegin()
 	cmdList->RSSetScissorRects(1, &m_scissorRect);
 
 	m_swapChain->GbufferSetting(cmdList);
+	m_currPipeline = nullptr;
 }
 
 void GraphicDeviceDX12::LightRenderBegin()
 {
 	float backGroundColor[4] = { 0.0f,0.0f,1.0f };
-	m_swapChain->PresentRenderTargetSetting(GetCurrCommandList(), backGroundColor);
+	m_swapChain->PresentRenderTargetSetting(GetCurrGraphicsCommandList(), backGroundColor);
 }
 
 void GraphicDeviceDX12::RenderEnd()
 {
-	auto cmdList = GetCurrCommandList();
+	auto cmdList = GetCurrGraphicsCommandList();
 	m_swapChain->RenderEnd(cmdList);
 
 	ThrowIfFailed(cmdList->Close());
@@ -243,7 +250,7 @@ void GraphicDeviceDX12::FlushCommandQueue()
 	}
 }
 
-ID3D12GraphicsCommandList* GraphicDeviceDX12::GetCurrCommandList()
+ID3D12GraphicsCommandList* GraphicDeviceDX12::GetCurrGraphicsCommandList()
 {
 	return m_cmdLists[m_currFrame].Get();
 }

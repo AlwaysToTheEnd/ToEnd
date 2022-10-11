@@ -37,10 +37,9 @@ struct DX12PassConstants
 	DirectX::XMFLOAT4		ambientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3		eyePosW = { 0.0f, 0.0f, 0.0f };
 	unsigned int			samplerIndex = 0;
-	DirectX::XMFLOAT2		mousePos;
-	DirectX::XMFLOAT2		pad;
+	DirectX::XMFLOAT2		mousePos = {};
+	DirectX::XMFLOAT2		pad = {};
 };
-
 
 class GraphicDeviceDX12
 {
@@ -61,23 +60,24 @@ public:
 
 	void OnResize(int windowWidth, int windowHeight);
 
+	ID3D12GraphicsCommandList* GetCurrGraphicsCommandList();
+
 private:
 	GraphicDeviceDX12() = default;
 
 	void Init(HWND hWnd, int windowWidth, int windowHeight);
 	void FlushCommandQueue();
 
-	ID3D12GraphicsCommandList*	GetCurrCommandList();
 	ID3D12CommandAllocator*		GetCurrCommandAllocator();
 
 private:
-	static GraphicDeviceDX12*	s_Graphic;
+	static GraphicDeviceDX12*		s_Graphic;
 
-	D3D12_VIEWPORT				m_screenViewport;
-	D3D12_RECT					m_scissorRect;
-	D3D_DRIVER_TYPE				m_d3dDriverType = D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_UNKNOWN;
+	D3D12_VIEWPORT					m_screenViewport = {};
+	D3D12_RECT						m_scissorRect = {};
+	D3D_DRIVER_TYPE					m_d3dDriverType = D3D_DRIVER_TYPE::D3D_DRIVER_TYPE_UNKNOWN;
 
-	ComPtr<ID3D12Device>		m_d3dDevice;
+	ComPtr<ID3D12Device>			m_d3dDevice;
 
 	const unsigned int				m_numFrameResource = 3;
 	unsigned int					m_currFrame = 0;
@@ -85,12 +85,14 @@ private:
 	ComPtr<ID3D12Fence>				m_fence;
 	std::vector<unsigned long long>	m_fenceCounts;
 
-	DirectX::XMFLOAT4X4				m_projMat;
-	DirectX::XMFLOAT3				m_rayOrigin;
-	DirectX::XMFLOAT3				m_ray;
+	DirectX::XMFLOAT4X4				m_projMat = CGH::IdentityMatrix;
+	DirectX::XMFLOAT3				m_rayOrigin = { 0,0,0 };
+	DirectX::XMFLOAT3				m_ray = { 0,0,0 };
 
 	DXGI_FORMAT						m_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DX12SwapChain*					m_swapChain = nullptr;
+
+	ID3D12PipelineState*			m_currPipeline = nullptr;
 
 	std::vector<ComPtr<ID3D12GraphicsCommandList>>						m_cmdLists;
 	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;

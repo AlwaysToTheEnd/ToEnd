@@ -156,6 +156,7 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="DX12Mesh.h" />
+    <ClInclude Include="DX12PipelineMG.h" />
     <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
   </ItemGroup>
@@ -166,6 +167,7 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DX12Mesh.cpp" />
+    <ClCompile Include="DX12PipelineMG.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
   </ItemGroup>
   <ItemGroup>

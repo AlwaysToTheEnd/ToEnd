@@ -6,6 +6,7 @@
 
 class GraphicDeviceDX12;
 class ID3D12Resource;
+class ID3D12CommandSignature;
 
 struct Material
 {
@@ -21,14 +22,17 @@ class DX12Mesh
 public:
 	DX12Mesh();
 	virtual ~DX12Mesh();
+	static void DX12MeshBaseDataInit();
 
-	virtual void CreateMesh(const wchar_t* filePath, const wchar_t* meshName);
 	virtual void Render();
 
 private:
+	static void* s_meshPipelinestate;
+	static void* s_commandSignature;
+
+protected:
 	ID3D12Resource* m_vertexBuffer;
 	ID3D12Resource* m_indexBuffer;
 	void*			m_InputElementDescs;
-
 };
 
