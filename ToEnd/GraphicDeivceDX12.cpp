@@ -2,6 +2,7 @@
 #include "../Common/Source/CGHUtil.h"
 #include "../Common/Source/DxException.h"
 #include "../Common/Source/DX12SwapChain.h"
+
 #include "Camera.h"
 
 using namespace DirectX;
@@ -49,7 +50,7 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	HRESULT hr = S_OK;
 
 	hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_d3dDevice.GetAddressOf()));
-
+	
 	if (m_swapChain)
 	{
 		delete m_swapChain;
@@ -127,7 +128,7 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 	m_passCBs[m_currFrame]->CopyData(0, &passCons);
 
 	XMVECTOR rayOrigin = XMVectorZero();
-	XMVECTOR ray = XMLoadFloat3(&camera->GetViewRay(m_projMat, m_screenViewport.Width, m_screenViewport.Height));
+	XMVECTOR ray = XMLoadFloat3(&camera->GetViewRay(m_projMat, static_cast<unsigned int>(m_screenViewport.Width), static_cast<unsigned int>(m_screenViewport.Height)));
 	
 	rayOrigin = XMVector3Transform(rayOrigin, xmInvView);
 	ray = (xmInvView.r[0] * ray.m128_f32[0]) + (xmInvView.r[1] * ray.m128_f32[1]) + (xmInvView.r[2] * ray.m128_f32[2]);
@@ -225,6 +226,8 @@ void GraphicDeviceDX12::RenderEnd()
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
+
+	FlushCommandQueue();
 }
 
 void GraphicDeviceDX12::FlushCommandQueue()

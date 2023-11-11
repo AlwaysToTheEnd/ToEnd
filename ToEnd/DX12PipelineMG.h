@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <string>
 #include <unordered_map>
+#include "d3dx12.h"
 
 #pragma pack(push, 4)
 struct DX12NormalMeshIndirectCommand

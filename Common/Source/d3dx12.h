@@ -6,6 +6,7 @@
 //  Content:    D3DX12 utility library
 //
 //////////////////////////////////////////////////////////////////////////////
+#pragma warning(disable : 26451)
 
 #ifndef __D3DX12_H__
 #define __D3DX12_H__

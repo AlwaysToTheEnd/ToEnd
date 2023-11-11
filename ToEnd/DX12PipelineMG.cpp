@@ -99,6 +99,8 @@ ID3D12CommandSignature* DX12PipelineMG::CreateCommandSignature(const char* name,
 	return m_commandSignatures[name].Get();
 }
 
+
+
 D3D12_SHADER_BYTECODE DX12PipelineMG::GetShader(DX12_SHADER_TYPE type, const char* shaderName)
 {
 	D3D12_SHADER_BYTECODE result = {};
