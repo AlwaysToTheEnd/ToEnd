@@ -82,7 +82,7 @@ private:
 	const unsigned int				m_numFrameResource = 3;
 	unsigned int					m_currFrame = 0;
 	unsigned long long				m_currentFence = 0;
-	ComPtr<ID3D12Fence>				m_fence;
+	ComPtr<ID3D12Fence1>			m_fence;
 	std::vector<unsigned long long>	m_fenceCounts;
 
 	DirectX::XMFLOAT4X4				m_projMat = CGH::IdentityMatrix;

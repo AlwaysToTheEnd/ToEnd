@@ -3,6 +3,7 @@
 #include "../Common/Source/DxException.h"
 #include "../Common/Source/DX12SwapChain.h"
 
+#include "GraphicResourceLoader.h"
 #include "Camera.h"
 
 using namespace DirectX;
@@ -96,6 +97,10 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 
 	OnResize(windowWidth, windowHeight);
+
+
+	DX12GraphicResourceLoader loader;
+	loader.LoadAllData("./../Common/MeshData/meshes0.fbx", nullptr);
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
