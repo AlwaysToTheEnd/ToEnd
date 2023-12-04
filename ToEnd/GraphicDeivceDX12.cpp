@@ -98,9 +98,22 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 
 	OnResize(windowWidth, windowHeight);
 
-
 	DX12GraphicResourceLoader loader;
-	loader.LoadAllData("./../Common/MeshData/meshes0.fbx", nullptr);
+	CGHMeshDataSet meshDataset;
+	CGHMaterialSet materialSet;
+	std::vector<ComPtr<ID3D12Resource>> upBuffers;
+
+	m_cmdLists.front()->Reset(m_cmdListAllocs[0].Get(), nullptr);
+	loader.LoadAllData("./../Common/MeshData/pants.fbx", aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS, m_cmdLists.front().Get(), 
+		meshDataset, materialSet, upBuffers);
+
+	m_cmdLists.front()->Close();
+
+	ID3D12CommandList* cmdLists[2] = { m_cmdLists.front().Get(), nullptr };
+	m_commandQueue->ExecuteCommandLists(1, cmdLists);
+
+	FlushCommandQueue();
+
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
