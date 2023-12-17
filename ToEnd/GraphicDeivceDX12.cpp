@@ -77,18 +77,25 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		ThrowIfFailed(m_d3dDevice->CreateCommandQueue(&queueDesc,
 			IID_PPV_ARGS(m_commandQueue.GetAddressOf())));
 
-		m_cmdLists.resize(m_numFrameResource);
-		m_cmdListAllocs.resize(m_numFrameResource);
-		for (size_t i = 0; i < m_numFrameResource; i++)
+		m_cmdListAllocs.resize(m_numFrameResource*2);
+		for (size_t i = 0; i < m_numFrameResource*2; i++)
 		{
 			ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(m_cmdListAllocs[i].GetAddressOf())));
-
-			ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-				m_cmdListAllocs[i].Get(), nullptr, IID_PPV_ARGS(m_cmdLists[i].GetAddressOf())));
-
-			m_cmdLists[i]->Close();
 		}
+
+		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+			m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_cmdList.GetAddressOf())));
+		
+		ThrowIfFailed(m_cmdList->Close());
+
+		ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(m_dataLoaderCmdAlloc.GetAddressOf())));
+
+		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+			m_dataLoaderCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_dataLoaderCmdList.GetAddressOf())));
+
+		ThrowIfFailed(m_dataLoaderCmdList->Close());
 
 		ThrowIfFailed(m_d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
 			IID_PPV_ARGS(m_fence.GetAddressOf())));
@@ -97,23 +104,6 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 
 	OnResize(windowWidth, windowHeight);
-
-	DX12GraphicResourceLoader loader;
-	CGHMeshDataSet meshDataset;
-	CGHMaterialSet materialSet;
-	std::vector<ComPtr<ID3D12Resource>> upBuffers;
-
-	m_cmdLists.front()->Reset(m_cmdListAllocs[0].Get(), nullptr);
-	loader.LoadAllData("./../Common/MeshData/pants.fbx", aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS, m_cmdLists.front().Get(), 
-		meshDataset, materialSet, upBuffers);
-
-	m_cmdLists.front()->Close();
-
-	ID3D12CommandList* cmdLists[2] = { m_cmdLists.front().Get(), nullptr };
-	m_commandQueue->ExecuteCommandLists(1, cmdLists);
-
-	FlushCommandQueue();
-
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -168,16 +158,15 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 
 	m_scissorRect = { 0, 0, windowWidth, windowHeight };
 
-	auto cmdListAlloc = GetCurrCommandAllocator();
-	auto cmdList = GetCurrGraphicsCommandList();
+	auto cmdListAlloc = GetCurrRenderBeginCommandAllocator();
 
-	ThrowIfFailed(cmdList->Reset(cmdListAlloc, nullptr));
+	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
 	{
-		m_swapChain->ReSize(cmdList, windowWidth, windowHeight);
+		m_swapChain->ReSize(m_cmdList.Get(), windowWidth, windowHeight);
 	}
-	ThrowIfFailed(cmdList->Close());
+	ThrowIfFailed(m_cmdList->Close());
 
-	ID3D12CommandList* cmdLists[] = { cmdList };
+	ID3D12CommandList* cmdLists[] = { m_cmdList.Get()};
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 	float fovAngleY = 0.785398163f;
@@ -191,8 +180,62 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
+void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, CGHMaterialSet* outMaterialSet)
+{
+	DX12GraphicResourceLoader loader;
+	std::vector<ComPtr<ID3D12Resource>> upBuffers;
+
+	ThrowIfFailed(m_dataLoaderCmdAlloc->Reset());
+	ThrowIfFailed(m_dataLoaderCmdList->Reset(m_dataLoaderCmdAlloc.Get(), nullptr));
+	loader.LoadAllData(filePath, aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS,
+		m_dataLoaderCmdList.Get(), outMeshSet, outMaterialSet, &upBuffers);
+
+	ThrowIfFailed(m_dataLoaderCmdList->Close());
+
+	ID3D12CommandList* cmdLists[] = { m_dataLoaderCmdList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+	FlushCommandQueue();
+}
+
 void GraphicDeviceDX12::RenderBegin()
 {
+	auto cmdListAlloc = GetCurrRenderBeginCommandAllocator();
+
+	ThrowIfFailed(cmdListAlloc->Reset());
+	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
+
+	m_swapChain->RenderBegin(m_cmdList.Get(), DirectX::Colors::Gray);
+
+	m_cmdList->RSSetViewports(1, &m_screenViewport);
+	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
+
+	ThrowIfFailed(m_cmdList->Close());
+	ID3D12CommandList* cmdsLists[] = { m_cmdList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+}
+
+void GraphicDeviceDX12::RenderEnd()
+{
+	auto cmdListAlloc = GetCurrRenderEndCommandAllocator();
+
+	ThrowIfFailed(cmdListAlloc->Reset());
+	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
+
+	m_swapChain->RenderEnd(m_cmdList.Get());
+
+	ThrowIfFailed(m_cmdList->Close());
+	ID3D12CommandList* cmdsLists[] = { m_cmdList.Get()};
+	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+	m_swapChain->Present();
+
+	m_currentFence++;
+	m_fenceCounts[m_currFrame] = m_currentFence;
+	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
+
+	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
+	
 	if (m_fence->GetCompletedValue() < m_fenceCounts[m_currFrame])
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
@@ -208,44 +251,6 @@ void GraphicDeviceDX12::RenderBegin()
 			assert(false);
 		}
 	}
-
-	auto cmdListAlloc = GetCurrCommandAllocator();
-	auto cmdList = GetCurrGraphicsCommandList();
-
-	ThrowIfFailed(cmdListAlloc->Reset());
-	ThrowIfFailed(cmdList->Reset(cmdListAlloc, nullptr));
-
-	cmdList->RSSetViewports(1, &m_screenViewport);
-	cmdList->RSSetScissorRects(1, &m_scissorRect);
-
-	m_swapChain->GbufferSetting(cmdList);
-	m_currPipeline = nullptr;
-}
-
-void GraphicDeviceDX12::LightRenderBegin()
-{
-	float backGroundColor[4] = { 0.0f,0.0f,1.0f };
-	m_swapChain->PresentRenderTargetSetting(GetCurrGraphicsCommandList(), backGroundColor);
-}
-
-void GraphicDeviceDX12::RenderEnd()
-{
-	auto cmdList = GetCurrGraphicsCommandList();
-	m_swapChain->RenderEnd(cmdList);
-
-	ThrowIfFailed(cmdList->Close());
-	ID3D12CommandList* cmdsLists[] = { cmdList };
-	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
-
-	m_swapChain->Present();
-
-	m_currentFence++;
-	m_fenceCounts[m_currFrame] = m_currentFence;
-	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
-
-	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
-
-	FlushCommandQueue();
 }
 
 void GraphicDeviceDX12::FlushCommandQueue()
@@ -271,12 +276,12 @@ void GraphicDeviceDX12::FlushCommandQueue()
 	}
 }
 
-ID3D12GraphicsCommandList* GraphicDeviceDX12::GetCurrGraphicsCommandList()
-{
-	return m_cmdLists[m_currFrame].Get();
-}
-
-ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrCommandAllocator()
+ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderBeginCommandAllocator()
 {
 	return m_cmdListAllocs[m_currFrame].Get();
+}
+
+ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderEndCommandAllocator()
+{
+	return m_cmdListAllocs[m_currFrame+m_numFrameResource].Get();
 }

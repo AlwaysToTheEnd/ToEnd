@@ -8,27 +8,10 @@
 #include <windows.h>
 #include <string>
 #include "Camera.h"
+#include "TestScene.h"
 
 #include "../Common/Source/GameTimer.h"
 
-namespace CGH
-{
-	static struct GlobalOptions
-	{
-		struct WindowOption
-		{
-			int WindowsizeX = 900;
-			int WindowsizeY = 900;
-		}WIN;
-
-		struct GraphicOption
-		{
-			const std::wstring	TextureFolderPath = L"./../Common/Texture";
-			const std::wstring	FontFolderPath = L"./../Common/Fonts";
-			const std::wstring	SpriteTextureSuffix = L"sp_";
-		}GRAPHIC;
-	}GO;
-}
 
 class App final
 {
@@ -53,6 +36,8 @@ private:
 
 private:
 	static App*	 s_App;
+
+	TestScene	m_testScene;
 
 	HINSTANCE	m_hAppInst = nullptr;
 	HWND		m_hMainWnd = nullptr;

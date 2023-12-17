@@ -9,22 +9,15 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="리소스 파일">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Graphic">
+      <UniqueIdentifier>{7d41255b-3e47-4292-aee6-8e85e9d43d22}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="GraphicDeivceDX12.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="..\Common\Source\GameTimer.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Source\DX12SwapChain.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Source\CGHUtil.h">
@@ -33,31 +26,37 @@
     <ClInclude Include="..\Common\Source\DxException.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Source\d3dx12.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="DX12Mesh.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DX12UploadBuffer.h">
+    <ClInclude Include="Component.h">
       <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\DX12SwapChain.h">
+      <Filter>Graphic</Filter>
     </ClInclude>
     <ClInclude Include="DX12PipelineMG.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Graphic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\d3dx12.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12UploadBuffer.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicDeivceDX12.h">
+      <Filter>Graphic</Filter>
     </ClInclude>
     <ClInclude Include="GraphicResourceLoader.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Graphic</Filter>
     </ClInclude>
     <ClInclude Include="CGHGraphicResource.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Graphic</Filter>
     </ClInclude>
     <ClInclude Include="CGHBaseClass.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Component.h">
+    <ClInclude Include="TestScene.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -65,28 +64,13 @@
     <ClCompile Include="App.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="GraphicDeivceDX12.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="..\Common\Source\GameTimer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Common\Source\DX12SwapChain.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\Source\DxException.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="DX12Mesh.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="DX12PipelineMG.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="GraphicResourceLoader.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CGHBaseClass.cpp">
@@ -95,8 +79,24 @@
     <ClCompile Include="Component.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="..\Common\Source\DX12SwapChain.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12PipelineMG.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicDeivceDX12.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicResourceLoader.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="TestScene.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="baseHeader.hlsli" />
   </ItemGroup>
 </Project>

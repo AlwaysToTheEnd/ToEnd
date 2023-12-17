@@ -5,6 +5,7 @@
 #include <exception>
 #include <string>
 #include <assert.h>
+#include "CGHBaseClass.h"
 #include "../Common/Source/DxException.h"
 #include "GraphicDeivceDX12.h"
 
@@ -18,8 +19,10 @@ App* App::s_App = nullptr;
 HRESULT App::Init()
 {
 	HRESULT result = InitWindow();
-	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 	m_timer.Start();
+
+	m_testScene.Init();
 
 	return result;
 }
@@ -97,8 +100,8 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		int clientWidth = LOWORD(lParam);
 		int clientHeight = HIWORD(lParam);
 
-		CGH::GO.WIN.WindowsizeX = clientWidth;
-		CGH::GO.WIN.WindowsizeY = clientHeight;
+		GO.WIN.WindowsizeX = clientWidth;
+		GO.WIN.WindowsizeY = clientHeight;
 
 		if (wParam == SIZE_MINIMIZED)
 		{
@@ -109,23 +112,23 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			m_miniMized = false;
 			m_maximized = true;
-			GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+			GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 		}
 		else if (wParam == SIZE_RESTORED)
 		{
 			if (m_miniMized)
 			{
 				m_miniMized = false;
-				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 			}
 			else if (m_maximized)
 			{
 				m_maximized = false;
-				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 			}
 			else if (m_resizing)
 			{
-				GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+				GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 			}
 		}
 		return 0;
@@ -137,7 +140,7 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_EXITSIZEMOVE:
 	{
-		GraphicDeviceDX12::GetGraphic()->OnResize(CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY);
+		GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 		m_resizing = false;
 		return 0;
 	}
@@ -183,7 +186,7 @@ HRESULT App::InitWindow()
 		return S_FALSE;
 	}
 
-	RECT R = { 0,0,CGH::GO.WIN.WindowsizeX, CGH::GO.WIN.WindowsizeY };
+	RECT R = { 0,0,GO.WIN.WindowsizeX, GO.WIN.WindowsizeY };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;
@@ -204,18 +207,17 @@ HRESULT App::InitWindow()
 void App::Update(float delta)
 {
 	m_camera.Update();
-	
 	GraphicDeviceDX12::GetGraphic()->Update(delta, &m_camera);
+
+	m_testScene.Update(delta);
 }
 
 void App::Render()
 {
 	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderBegin();
-	//TODO Objects render
 
-	graphic->LightRenderBegin();
-	//TODO Lights render
+	m_testScene.Render();
 
 	graphic->RenderEnd();
 }

@@ -3,11 +3,38 @@
 #include "GraphicDeivceDX12.h"
 #include "assimp\scene.h"
 #include "assimp\Importer.hpp"
+#include "CGHBaseClass.h"
 
 using namespace Assimp;
 
+struct CopyDataSet
+{
+	CopyDataSet(size_t size, ComPtr<ID3D12Resource> _dst, ComPtr<ID3D12Resource> _src)
+	{
+		dataSize = size;
+		dst = _dst;
+		src = _src;
+	}
+
+	size_t dataSize = 0;
+	ComPtr<ID3D12Resource> dst;
+	ComPtr<ID3D12Resource> src;
+};
+
+struct BoneWeightInfo
+{
+	unsigned int numWeight = 0;
+	unsigned int offsetIndex = 0;
+};
+
+struct BoneWeight
+{
+	int boneIndex = 0;
+	float weight = 0.0f;
+};
+
 void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags, ID3D12GraphicsCommandList* cmd,
-	CGHMeshDataSet& meshDataOut, CGHMaterialSet& materialSetOut, std::vector<ComPtr<ID3D12Resource>>& uploadbuffersOut)
+	CGHMeshDataSet* meshDataOut, CGHMaterialSet* materialSetOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut)
 {
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
@@ -19,17 +46,60 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 	assert(scene != nullptr);
 
+	if (scene->mRootNode)
+	{
+		std::vector<aiNode*> nodes;
+		unsigned int numNodeLastLevel = 1;
+
+		nodes.push_back(scene->mRootNode);
+		meshDataOut->nodeParentIndexList.push_back(-1);
+
+		while (numNodeLastLevel)
+		{
+			unsigned numNodeCurrLevel = 0;
+			size_t numNodes = nodes.size();
+			for (unsigned int i = 0; i < numNodeLastLevel; i++)
+			{
+				size_t parentNodeIndex = numNodes - i - 1;
+				aiNode* currNode = nodes[parentNodeIndex];
+				numNodeCurrLevel += currNode->mNumChildren;
+
+				for (unsigned int j = 0; j < currNode->mNumChildren; j++)
+				{
+					meshDataOut->nodeParentIndexList.push_back(parentNodeIndex);
+					nodes.push_back(currNode->mChildren[j]);
+				}
+			}
+
+			numNodeLastLevel = numNodeCurrLevel;
+		}
+
+		meshDataOut->nodes.resize(nodes.size());
+		for (size_t i = 0; i < nodes.size(); i++)
+		{
+			meshDataOut->nodes[i].SetName(nodes[i]->mName.C_Str());
+			std::memcpy(&meshDataOut->nodes[i].m_srt, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
+
+			CGH::FixEpsilonMatrix(meshDataOut->nodes[i].m_srt, 0.000001f);
+
+			if (meshDataOut->nodeParentIndexList[i] != -1)
+			{
+				meshDataOut->nodes[i].SetParent(&meshDataOut->nodes[meshDataOut->nodeParentIndexList[i]]);
+			}
+		}
+	}
+
 	const unsigned int numMaterials = scene->mNumMaterials;
-	materialSetOut.materials.resize(numMaterials);
-	materialSetOut.names.resize(numMaterials);
-	materialSetOut.textureViews.resize(numMaterials);
+	materialSetOut->materials.resize(numMaterials);
+	materialSetOut->names.resize(numMaterials);
+	materialSetOut->textureViews.resize(numMaterials);
 	{
 		for (unsigned int i = 0; i < numMaterials; i++)
 		{
-			CGHMaterial& currDumpMat = materialSetOut.materials[i];
+			CGHMaterial& currDumpMat = materialSetOut->materials[i];
 			const aiMaterial* currMat = scene->mMaterials[i];
 
-			currMat->Get(AI_MATKEY_NAME, materialSetOut.names[i]);
+			currMat->Get(AI_MATKEY_NAME, materialSetOut->names[i]);
 			currMat->Get(AI_MATKEY_TWOSIDED, currDumpMat.twosided);
 			currMat->Get(AI_MATKEY_SHADING_MODEL, currDumpMat.shadingModel);
 			currMat->Get(AI_MATKEY_ENABLE_WIREFRAME, currDumpMat.wireframe);
@@ -61,74 +131,100 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 					if (result == aiReturn_SUCCESS)
 					{
-						materialSetOut.textureViews[i].push_back(texView);
+						materialSetOut->textureViews[i].push_back(texView);
 					}
 				}
 			}
 		}
 	}
 
-	materialSetOut.upMaterials = std::make_shared<DX12UploadBuffer<CGHMaterial>>(d12Device, numMaterials + MAXNUM_ADD_MATERIAL, false);
+	materialSetOut->materialDatas = std::make_unique<DX12UploadBuffer<CGHMaterial>>(d12Device, numMaterials + MAXNUM_ADD_MATERIAL, true);
 	for (unsigned int i = 0; i < numMaterials; i++)
 	{
-		materialSetOut.upMaterials->CopyData(i, materialSetOut.materials[i]);
+		materialSetOut->materialDatas->CopyData(i, materialSetOut->materials[i]);
 	}
 
+	D3D12_HEAP_FLAGS heapFlags;
+	D3D12_HEAP_PROPERTIES uploadHeapPDesc = {};
+	D3D12_HEAP_PROPERTIES defaultHeapPDesc = {};
+	D3D12_RESOURCE_DESC resourceDesc = {};
+
+	heapFlags = D3D12_HEAP_FLAG_NONE;
+
+	uploadHeapPDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapPDesc.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapPDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapPDesc.CreationNodeMask = 0;
+	uploadHeapPDesc.VisibleNodeMask = 0;
+
+	defaultHeapPDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
+	defaultHeapPDesc.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	defaultHeapPDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	defaultHeapPDesc.CreationNodeMask = 0;
+	defaultHeapPDesc.VisibleNodeMask = 0;
+
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resourceDesc.MipLevels = 1;
+	resourceDesc.DepthOrArraySize = 1;
+	resourceDesc.Height = 1;
+	resourceDesc.Alignment = 0;
+	resourceDesc.SampleDesc.Count = 1;
+	resourceDesc.SampleDesc.Quality = 0;
+
+	D3D12_RESOURCE_BARRIER barrier;
+
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+	unsigned int dataStride[MESHDATA_NUM] = {};
+	dataStride[MESHDATA_POSITION] = sizeof(aiVector3D);
+	dataStride[MESHDATA_INDEX] = sizeof(unsigned int);
+	dataStride[MESHDATA_NORMAL] = sizeof(aiVector3D);
+	dataStride[MESHDATA_TAN] = sizeof(aiVector3D);
+	dataStride[MESHDATA_BITAN] = sizeof(aiVector3D);
+
+
+	std::vector<std::vector<BoneWeight>> vertexWeights;
+	std::vector<BoneWeight> sirializedWeights;
+	std::vector<BoneWeightInfo> boneWeightInfos;
+	std::vector<D3D12_RESOURCE_BARRIER> defaultBufferBars;
+	std::vector<CopyDataSet> copyDataset;
 	const unsigned int numMeshes = scene->mNumMeshes;
-	meshDataOut.meshInfos.resize(numMeshes);
+	meshDataOut->meshs.resize(numMeshes);
 	for (unsigned int i = 0; i < numMeshes; i++)
 	{
 		aiMesh* currMesh = scene->mMeshes[i];
+		CGHMesh& targetMesh = meshDataOut->meshs[i];
 
-		meshDataOut.meshInfos[i].meshName = currMesh->mName;
-		meshDataOut.meshInfos[i].materialIndex = currMesh->mMaterialIndex;
-
-		if (currMesh->HasBones())
-		{
-			meshDataOut.meshInfos[i].hasBone = true;
-			meshDataOut.meshInfos[i].boneSetIndex = meshDataOut.boneSets.size();
-
-			meshDataOut.boneSets.emplace_back();
-
-			const int numBone = currMesh->mNumBones;
-			for (int j = 0; j < numBone; j++)
-			{
-				if (currMesh->mBones[j]->mNumWeights)
-				{
-					meshDataOut.boneSets.back().boneNames[currMesh->mBones[j]->mName.C_Str()] = j;
-					meshDataOut.boneSets.back().offsetMatrix.push_back(currMesh->mBones[j]->mOffsetMatrix);
-				}
-			}
-
-			if (meshDataOut.boneSets.back().offsetMatrix.size() == 0)
-			{
-				meshDataOut.boneSets.pop_back();
-				meshDataOut.meshInfos[i].hasBone = false;
-				meshDataOut.meshInfos[i].boneSetIndex = -1;
-			}
-		}
+		targetMesh.meshName = currMesh->mName;
+		targetMesh.materialIndex = currMesh->mMaterialIndex;
 
 		if (currMesh->HasPositions())
 		{
-			meshDataOut.meshInfos[i].numData[MESHDATA_POSITION] = currMesh->mNumVertices;
+			targetMesh.numData[MESHDATA_POSITION] = currMesh->mNumVertices;
 		}
 
 		if (currMesh->HasNormals())
 		{
-			meshDataOut.meshInfos[i].numData[MESHDATA_NORMAL] = currMesh->mNumVertices;
+			targetMesh.numData[MESHDATA_NORMAL] = currMesh->mNumVertices;
 		}
 
 		if (currMesh->HasFaces())
 		{
-			meshDataOut.meshInfos[i].primitiveType = static_cast<aiPrimitiveType>(currMesh->mPrimitiveTypes);
+			targetMesh.primitiveType = static_cast<aiPrimitiveType>(currMesh->mPrimitiveTypes);
 
-			switch (meshDataOut.meshInfos[i].primitiveType)
+			switch (targetMesh.primitiveType)
 			{
 			case aiPrimitiveType_POINT:
 				break;
 			case aiPrimitiveType_TRIANGLE:
 			{
-				meshDataOut.meshInfos[i].numData[MESHDATA_INDEX] = currMesh->mNumFaces * 3;
+				targetMesh.numData[MESHDATA_INDEX] = currMesh->mNumFaces * 3;
 			}
 			break;
 			case aiPrimitiveType_LINE:
@@ -136,7 +232,7 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 			{
 				for (unsigned int j = 0; j < currMesh->mNumFaces; j++)
 				{
-					meshDataOut.meshInfos[i].numData[MESHDATA_INDEX] += currMesh->mFaces[j].mNumIndices;
+					targetMesh.numData[MESHDATA_INDEX] += currMesh->mFaces[j].mNumIndices;
 				}
 			}
 			break;
@@ -148,343 +244,231 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 		if (currMesh->HasTangentsAndBitangents())
 		{
-			meshDataOut.meshInfos[i].numData[MESHDATA_TAN] = currMesh->mNumVertices;
-			meshDataOut.meshInfos[i].numData[MESHDATA_BITAN] = currMesh->mNumVertices;
+			targetMesh.numData[MESHDATA_TAN] = currMesh->mNumVertices;
+			targetMesh.numData[MESHDATA_BITAN] = currMesh->mNumVertices;
 		}
 
 		for (int j = 0; j < AI_MAX_NUMBER_OF_TEXTURECOORDS; j++)
 		{
 			if (currMesh->HasTextureCoords(j))
 			{
-				meshDataOut.meshInfos[i].numUVData[j] = currMesh->mNumVertices;
-				meshDataOut.meshInfos[i].numUVComponent[j] = currMesh->mNumUVComponents[j];
+				targetMesh.numUVData[j] = currMesh->mNumVertices;
+				targetMesh.numUVComponent[j] = currMesh->mNumUVComponents[j];
 			}
 		}
 
-		const MeshInfo& prevMeshInfo = meshDataOut.meshInfos[(i - 1) >= 0 ? i : 1];
+		if (currMesh->HasBones())
+		{
+			const int numBone = currMesh->mNumBones;
+			targetMesh.bones.resize(numBone);
+
+			boneWeightInfos.clear();
+			vertexWeights.clear();
+			sirializedWeights.clear();
+			boneWeightInfos.resize(currMesh->mNumVertices);
+			vertexWeights.resize(currMesh->mNumVertices);
+
+			unsigned int numAllWeights = 0;
+
+			for (int j = 0; j < numBone; j++)
+			{
+				const aiBone* currBone = currMesh->mBones[j];
+
+				targetMesh.bones[j].name = currBone->mName.C_Str();
+				std::memcpy(&targetMesh.bones[j].offsetMatrix, &currBone->mOffsetMatrix, sizeof(aiMatrix4x4));
+				CGH::FixEpsilonMatrix(targetMesh.bones[j].offsetMatrix, 0.000001f);
+
+				for (unsigned int k = 0; k < currBone->mNumWeights; k++)
+				{
+					vertexWeights[currBone->mWeights[k].mVertexId].push_back({ j, currBone->mWeights[k].mWeight });
+				}
+
+				numAllWeights += currBone->mNumWeights;
+			}
+
+			sirializedWeights.reserve(numAllWeights);
+			size_t currOffsetWeight = 0;
+			for (unsigned int j = 0; j < currMesh->mNumVertices; j++)
+			{
+				const auto& currVertexWeights = vertexWeights[j];
+				unsigned currVertexWeightNum = static_cast<unsigned int>(currVertexWeights.size());
+				boneWeightInfos[j].numWeight = currVertexWeightNum;
+				boneWeightInfos[j].offsetIndex = currOffsetWeight;
+				
+				sirializedWeights.insert(sirializedWeights.end(), currVertexWeights.begin(), currVertexWeights.end());
+
+				currOffsetWeight += currVertexWeightNum;
+			}
+
+			resourceDesc.Width = boneWeightInfos.size() * sizeof(BoneWeightInfo);
+			{
+				ComPtr<ID3D12Resource> uploadBuffer;
+
+				ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.boneWeightInfos.GetAddressOf())));
+
+				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+
+				if (uploadBuffer != nullptr)
+				{
+					D3D12_RANGE range;
+					range.Begin = 0;
+					range.End = 0;
+
+					BYTE* dataStart = nullptr;
+					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
+
+					std::memcpy(dataStart, boneWeightInfos.data(), resourceDesc.Width);
+
+					uploadBuffer->Unmap(0, &range);
+				}
+
+				barrier.Transition.pResource = targetMesh.boneWeightInfos.Get();
+				defaultBufferBars.push_back(barrier);
+				uploadbuffersOut->push_back(uploadBuffer);
+				copyDataset.emplace_back(resourceDesc.Width, targetMesh.boneWeightInfos, uploadBuffer);
+			}
+
+			resourceDesc.Width = sirializedWeights.size() * sizeof(BoneWeight);
+			{
+				ComPtr<ID3D12Resource> uploadBuffer;
+
+				ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.boneWeights.GetAddressOf())));
+
+				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+
+				if (uploadBuffer != nullptr)
+				{
+					D3D12_RANGE range;
+					range.Begin = 0;
+					range.End = 0;
+
+					BYTE* dataStart = nullptr;
+					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
+
+					std::memcpy(dataStart, sirializedWeights.data(), resourceDesc.Width);
+
+					uploadBuffer->Unmap(0, &range);
+				}
+
+				barrier.Transition.pResource = targetMesh.boneWeights.Get();
+				defaultBufferBars.push_back(barrier);
+				uploadbuffersOut->push_back(uploadBuffer);
+				copyDataset.emplace_back(resourceDesc.Width, targetMesh.boneWeights, uploadBuffer);
+			}
+		}
+
 		for (int j = 0; j < MESHDATA_NUM; j++)
 		{
-			meshDataOut.meshInfos[i].offsetData[j] = prevMeshInfo.offsetData[j] + prevMeshInfo.numData[j];
+			ComPtr<ID3D12Resource> uploadBuffer;
+
+			resourceDesc.Width = dataStride[j] * targetMesh.numData[j];
+			if (resourceDesc.Width)
+			{
+				ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshData[j].GetAddressOf())));
+
+				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+
+				if (uploadBuffer != nullptr)
+				{
+					D3D12_RANGE range;
+					range.Begin = 0;
+					range.End = 0;
+
+					BYTE* dataStart = nullptr;
+					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
+
+					switch (j)
+					{
+					case MESHDATA_POSITION:
+					{
+						std::memcpy(dataStart, currMesh->mVertices, resourceDesc.Width);
+					}
+					break;
+					case MESHDATA_INDEX:
+					{
+						for (unsigned int faceIndex = 0; faceIndex < currMesh->mNumFaces; faceIndex++)
+						{
+							unsigned int faceDataSize = sizeof(unsigned int) * currMesh->mFaces[faceIndex].mNumIndices;
+							std::memcpy(dataStart, currMesh->mFaces[faceIndex].mIndices, sizeof(unsigned int) * currMesh->mFaces[faceIndex].mNumIndices);
+
+							dataStart += faceDataSize;
+						}
+					}
+					break;
+					case MESHDATA_NORMAL:
+					{
+						std::memcpy(dataStart, currMesh->mNormals, resourceDesc.Width);
+					}
+					break;
+					case MESHDATA_TAN:
+					{
+						std::memcpy(dataStart, currMesh->mTangents, resourceDesc.Width);
+					}
+					break;
+					case MESHDATA_BITAN:
+					{
+						std::memcpy(dataStart, currMesh->mBitangents, resourceDesc.Width);
+					}
+					break;
+					}
+
+					uploadBuffer->Unmap(0, &range);
+				}
+
+				barrier.Transition.pResource = targetMesh.meshData[j].Get();
+				defaultBufferBars.push_back(barrier);
+				uploadbuffersOut->push_back(uploadBuffer);
+				copyDataset.emplace_back(resourceDesc.Width, targetMesh.meshData[j], uploadBuffer);
+			}
 		}
 
 		for (int j = 0; j < AI_MAX_NUMBER_OF_TEXTURECOORDS; j++)
 		{
-			meshDataOut.meshInfos[i].offsetUVData[j] = prevMeshInfo.offsetUVData[j] + prevMeshInfo.numUVData[j];
+			ComPtr<ID3D12Resource> uploadBuffer;
+
+			resourceDesc.Width = targetMesh.numUVComponent[j] * targetMesh.numUVData[j] * sizeof(float);
+			if (resourceDesc.Width)
+			{
+				ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshDataUV[j].GetAddressOf())));
+
+				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
+					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+
+				if (uploadBuffer != nullptr)
+				{
+					D3D12_RANGE range;
+					range.Begin = 0;
+					range.End = 0;
+
+					BYTE* dataStart = nullptr;
+					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
+
+					std::memcpy(dataStart, currMesh->mTextureCoords[j], resourceDesc.Width);
+
+					uploadBuffer->Unmap(0, &range);
+				}
+
+				barrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
+				defaultBufferBars.push_back(barrier);
+				uploadbuffersOut->push_back(uploadBuffer);
+				copyDataset.emplace_back(resourceDesc.Width, targetMesh.meshDataUV[j], uploadBuffer);
+			}
 		}
 	}
 
-	std::vector<ComPtr<ID3D12Resource>> meshDataUploadBuffers(MESHDATA_NUM);
-	std::vector<ComPtr<ID3D12Resource>> meshDataUVUploadBuffers(AI_MAX_NUMBER_OF_TEXTURECOORDS);
-	std::vector<ComPtr<ID3D12Resource>> boneSetWeightUpladBuffers(meshDataOut.boneSets.size());
-	std::vector<ComPtr<ID3D12Resource>> boneImpactUpladBuffers(meshDataOut.boneSets.size());
+	cmd->ResourceBarrier(defaultBufferBars.size(), &defaultBufferBars.front());
+
+	for (auto& iter : copyDataset)
 	{
-		int allDataByteSize[MESHDATA_NUM] = {};
-		int allUVDataByteSize[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
-
-		const MeshInfo& lastMeshInfo = meshDataOut.meshInfos.back();
-
-		allDataByteSize[MESHDATA_POSITION] = (lastMeshInfo.numData[MESHDATA_POSITION] + lastMeshInfo.offsetData[MESHDATA_POSITION]) * sizeof(aiVector3D);
-		allDataByteSize[MESHDATA_INDEX] = (lastMeshInfo.numData[MESHDATA_INDEX] + lastMeshInfo.offsetData[MESHDATA_INDEX]) * sizeof(unsigned int);
-		allDataByteSize[MESHDATA_NORMAL] = (lastMeshInfo.numData[MESHDATA_NORMAL] + lastMeshInfo.offsetData[MESHDATA_NORMAL]) * sizeof(aiVector3D);
-		allDataByteSize[MESHDATA_TAN] = (lastMeshInfo.numData[MESHDATA_TAN] + lastMeshInfo.offsetData[MESHDATA_TAN]) * sizeof(aiVector3D);
-		allDataByteSize[MESHDATA_BITAN] = (lastMeshInfo.numData[MESHDATA_BITAN] + lastMeshInfo.offsetData[MESHDATA_BITAN]) * sizeof(aiVector3D);
-
-		for (int i = 0; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; i++)
-		{
-			allUVDataByteSize[i] = (lastMeshInfo.numUVData[i] + lastMeshInfo.offsetUVData[i]) * sizeof(aiVector3D);
-		}
-
-		D3D12_HEAP_FLAGS heapFlags;
-		D3D12_HEAP_PROPERTIES uploadHeapPDesc = {};
-		D3D12_HEAP_PROPERTIES defaultHeapPDesc = {};
-		D3D12_RESOURCE_DESC resourceDesc = {};
-
-		heapFlags = D3D12_HEAP_FLAG_NONE;
-
-		uploadHeapPDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
-		uploadHeapPDesc.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		uploadHeapPDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		uploadHeapPDesc.CreationNodeMask = 0;
-		uploadHeapPDesc.VisibleNodeMask = 0;
-
-		defaultHeapPDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
-		defaultHeapPDesc.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		defaultHeapPDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		defaultHeapPDesc.CreationNodeMask = 0;
-		defaultHeapPDesc.VisibleNodeMask = 0;
-
-		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		resourceDesc.MipLevels = 1;
-		resourceDesc.DepthOrArraySize = 1;
-		resourceDesc.Height = 1;
-		resourceDesc.Alignment = 0;
-		resourceDesc.SampleDesc.Count = 1;
-		resourceDesc.SampleDesc.Quality = 0;
-
-		std::vector<D3D12_RESOURCE_BARRIER> defaultBufferBars;
-		D3D12_RESOURCE_BARRIER barrier;
-
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-		for (int i = 0; i < MESHDATA_NUM; i++)
-		{
-			resourceDesc.Width = allDataByteSize[i];
-
-			if (resourceDesc.Width)
-			{
-				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(meshDataUploadBuffers[i].GetAddressOf())));
-
-				ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(meshDataOut.meshData[i].GetAddressOf())));
-
-				barrier.Transition.pResource = meshDataOut.meshData[i].Get();
-				defaultBufferBars.push_back(barrier);
-			}
-		}
-
-		for (int i = 0; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; i++)
-		{
-			resourceDesc.Width = allUVDataByteSize[i];
-
-			if (resourceDesc.Width)
-			{
-				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(meshDataUVUploadBuffers[i].GetAddressOf())));
-
-				ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(meshDataOut.meshDataUV[i].GetAddressOf())));
-
-				barrier.Transition.pResource = meshDataOut.meshDataUV[i].Get();
-				defaultBufferBars.push_back(barrier);
-			}
-		}
-
-		unsigned int numMeshInfos = static_cast<unsigned int>(meshDataOut.meshInfos.size());
-		for (unsigned int i = 0; i < numMeshInfos; i++)
-		{
-			const MeshInfo& currMeshInfo = meshDataOut.meshInfos[i];
-			const aiMesh* currMesh = scene->mMeshes[i];
-
-			if (currMeshInfo.hasBone)
-			{
-				CGHBoneSet& currBoneSet = meshDataOut.boneSets[currMeshInfo.boneSetIndex];
-				int allNumBoneWeights = 0;
-
-				for (unsigned int boneIndex = 0; boneIndex < currMesh->mNumBones; boneIndex++)
-				{
-					const aiBone* currBone = currMesh->mBones[boneIndex];
-					const int numWeight = currBone->mNumWeights;
-
-					if (numWeight)
-					{
-						BoneImpact temp;
-						temp.numImpact = numWeight;
-						temp.offset = allNumBoneWeights;
-						currBoneSet.boneImpactInfos.push_back(temp);
-
-						allNumBoneWeights += numWeight;
-					}
-				}
-
-				resourceDesc.Width = currBoneSet.boneImpactInfos.size() * sizeof(BoneImpact);
-				if (resourceDesc.Width)
-				{
-					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(boneImpactUpladBuffers[currMeshInfo.boneSetIndex].GetAddressOf())));
-
-					ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(currBoneSet.boneImpacts.GetAddressOf())));
-
-					barrier.Transition.pResource = currBoneSet.boneImpacts.Get();
-					defaultBufferBars.push_back(barrier);
-
-					D3D12_RANGE range;
-					range.Begin = 0;
-					range.End = 0;
-
-					BoneImpact* dataStart = nullptr;
-					boneImpactUpladBuffers[currMeshInfo.boneSetIndex]->Map(0, &range, reinterpret_cast<void**>(&dataStart));
-					if (currBoneSet.boneImpactInfos.size())
-					{
-						std::memcpy(dataStart, currBoneSet.boneImpactInfos.data(), currBoneSet.boneImpactInfos.size() * sizeof(BoneImpact));
-
-					}
-					boneImpactUpladBuffers[currMeshInfo.boneSetIndex]->Unmap(0, &range);
-				}
-
-				resourceDesc.Width = allNumBoneWeights * sizeof(aiVertexWeight);
-				if (resourceDesc.Width)
-				{
-					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(boneSetWeightUpladBuffers[currMeshInfo.boneSetIndex].GetAddressOf())));
-
-					ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(currBoneSet.weightList.GetAddressOf())));
-
-					barrier.Transition.pResource = currBoneSet.weightList.Get();
-					defaultBufferBars.push_back(barrier);
-
-					D3D12_RANGE range;
-					range.Begin = 0;
-					range.End = 0;
-
-					aiVertexWeight* dataStart = nullptr;
-					boneSetWeightUpladBuffers[currMeshInfo.boneSetIndex]->Map(0, &range, reinterpret_cast<void**>(&dataStart));
-					for (unsigned int boneIndex = 0; boneIndex < currMesh->mNumBones; boneIndex++)
-					{
-						const aiBone* currBone = currMesh->mBones[boneIndex];
-
-						if (currBone->mNumWeights)
-						{
-							std::memcpy(dataStart, currBone->mWeights, currBone->mNumWeights * sizeof(aiVertexWeight));
-
-							dataStart += currBone->mNumWeights;
-						}
-					}
-					boneSetWeightUpladBuffers[currMeshInfo.boneSetIndex]->Unmap(0, &range);
-				}
-			}
-		}
-
-		unsigned int dataStride[MESHDATA_NUM] = {};
-		dataStride[MESHDATA_POSITION] = sizeof(aiVector3D);
-		dataStride[MESHDATA_INDEX] = sizeof(unsigned int);
-		dataStride[MESHDATA_NORMAL] = sizeof(aiVector3D);
-		dataStride[MESHDATA_TAN] = sizeof(aiVector3D);
-		dataStride[MESHDATA_BITAN] = sizeof(aiVector3D);
-
-		for (int i = 0; i < MESHDATA_NUM; i++)
-		{
-			ID3D12Resource* currData = meshDataUploadBuffers[i].Get();
-			if (currData != nullptr)
-			{
-				D3D12_RANGE range;
-				range.Begin = 0;
-				range.End = 0;
-
-				BYTE* dataStart = nullptr;
-				ThrowIfFailed(currData->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-				for (unsigned int j = 0; j < numMeshes; j++)
-				{
-					const aiMesh* currMesh = scene->mMeshes[j];
-					const MeshInfo& currMeshInfo = meshDataOut.meshInfos[j];
-
-					BYTE* currBegin = dataStart + currMeshInfo.offsetData[i];
-					int dataSize = currMeshInfo.numData[i] * dataStride[i];
-
-					if (dataSize)
-					{
-						switch (i)
-						{
-						case MESHDATA_POSITION:
-						{
-							std::memcpy(currBegin, currMesh->mVertices, dataSize);
-						}
-						break;
-						case MESHDATA_INDEX:
-						{
-							for (unsigned int faceIndex = 0; faceIndex < currMesh->mNumFaces; faceIndex++)
-							{
-								unsigned int faceDataSize = sizeof(unsigned int) * currMesh->mFaces[faceIndex].mNumIndices;
-								std::memcpy(currBegin, currMesh->mFaces[faceIndex].mIndices, sizeof(unsigned int) * currMesh->mFaces[faceIndex].mNumIndices);
-
-								currBegin += faceDataSize;
-							}
-						}
-						break;
-						case MESHDATA_NORMAL:
-						{
-							std::memcpy(currBegin, currMesh->mNormals, dataSize);
-						}
-						break;
-						case MESHDATA_TAN:
-						{
-							std::memcpy(currBegin, currMesh->mTangents, dataSize);
-						}
-						break;
-						case MESHDATA_BITAN:
-						{
-							std::memcpy(currBegin, currMesh->mBitangents, dataSize);
-						}
-						break;
-						}
-					}
-				}
-
-				currData->Unmap(0, &range);
-			}
-		}
-
-		for (int i = 0; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; i++)
-		{
-			ID3D12Resource* currData = meshDataUVUploadBuffers[i].Get();
-
-			if (currData != nullptr)
-			{
-				D3D12_RANGE range;
-				range.Begin = 0;
-				range.End = 0;
-
-				BYTE* dataStart = nullptr;
-				ThrowIfFailed(currData->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-				for (unsigned int j = 0; j < numMeshes; j++)
-				{
-					const aiMesh* currMesh = scene->mMeshes[j];
-					const MeshInfo& currMeshInfo = meshDataOut.meshInfos[j];
-
-					BYTE* currBegin = dataStart + currMeshInfo.offsetUVData[i] * sizeof(aiVector3D);
-					int dataSize = currMeshInfo.numUVData[i] * sizeof(aiVector3D);
-
-					if (dataSize)
-					{
-						std::memcpy(currBegin, currMesh->mTextureCoords[i], dataSize);
-					}
-				}
-
-				currData->Unmap(0, &range);
-			}
-		}
-
-		cmd->ResourceBarrier(defaultBufferBars.size(), &defaultBufferBars.front());
-
-		for (int i = 0; i < MESHDATA_NUM; i++)
-		{
-			if (meshDataUploadBuffers[i].Get())
-			{
-				cmd->CopyBufferRegion(meshDataOut.meshData[i].Get(), 0, meshDataUploadBuffers[i].Get(), 0, allDataByteSize[i]);
-			}
-		}
-
-		for (int i = 0; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; i++)
-		{
-			if (meshDataUVUploadBuffers[i].Get())
-			{
-				cmd->CopyBufferRegion(meshDataOut.meshDataUV[i].Get(), 0, meshDataUVUploadBuffers[i].Get(), 0, allUVDataByteSize[i]);
-			}
-		}
-
-		for (size_t i = 0; i < meshDataOut.boneSets.size(); i++)
-		{
-			cmd->CopyBufferRegion(meshDataOut.boneSets[i].boneImpacts.Get(), 0, boneImpactUpladBuffers[i].Get(), 0,
-				meshDataOut.boneSets[i].boneImpactInfos.size() * sizeof(BoneImpact));
-			cmd->CopyBufferRegion(meshDataOut.boneSets[i].weightList.Get(), 0, boneSetWeightUpladBuffers[i].Get(), 0,
-				(meshDataOut.boneSets[i].boneImpactInfos.back().offset + meshDataOut.boneSets[i].boneImpactInfos.back().numImpact) * sizeof(aiVertexWeight));
-		}
+		cmd->CopyBufferRegion(iter.dst.Get(), 0, iter.src.Get(), 0, iter.dataSize);
 	}
-
-	uploadbuffersOut.insert(uploadbuffersOut.end(), meshDataUploadBuffers.begin(), meshDataUploadBuffers.end());
-	uploadbuffersOut.insert(uploadbuffersOut.end(), meshDataUVUploadBuffers.begin(), meshDataUVUploadBuffers.end());
-	uploadbuffersOut.insert(uploadbuffersOut.end(), boneSetWeightUpladBuffers.begin(), boneSetWeightUpladBuffers.end());
-	uploadbuffersOut.insert(uploadbuffersOut.end(), boneImpactUpladBuffers.begin(), boneImpactUpladBuffers.end());
 
 	importer.FreeScene();
 }

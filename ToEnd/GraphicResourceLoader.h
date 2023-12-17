@@ -6,12 +6,13 @@
 #define MAXNUM_ADD_MATERIAL 15
 
 struct ID3D12GraphicsCommandList;
+class CGHNode;
 
 class DX12GraphicResourceLoader
 {
 public:
 	void LoadAllData(const std::string& filePath, int removeComponentFlags, ID3D12GraphicsCommandList* cmd,
-		CGHMeshDataSet& meshDataOut, CGHMaterialSet& materialSetOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& uploadbuffersOUt);
+		CGHMeshDataSet* meshDataOut, CGHMaterialSet* materialSetOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOUt);
 
 private:
 

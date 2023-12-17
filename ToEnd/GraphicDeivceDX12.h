@@ -9,6 +9,8 @@
 #include <dxgi1_4.h>
 #include <DirectXMath.h>
 #include "DX12UploadBuffer.h"
+#include "CGHGraphicResource.h"
+
 #include "../Common/Source/CGHUtil.h"
 
 using Microsoft::WRL::ComPtr;
@@ -55,12 +57,10 @@ public:
 	void Update(float delta, const Camera* camera);
 
 	void RenderBegin();
-	void LightRenderBegin();
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
-
-	ID3D12GraphicsCommandList* GetCurrGraphicsCommandList();
+	void LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, CGHMaterialSet* outMaterialSet);
 
 private:
 	GraphicDeviceDX12() = default;
@@ -68,7 +68,8 @@ private:
 	void Init(HWND hWnd, int windowWidth, int windowHeight);
 	void FlushCommandQueue();
 
-	ID3D12CommandAllocator*		GetCurrCommandAllocator();
+	ID3D12CommandAllocator*		GetCurrRenderBeginCommandAllocator();
+	ID3D12CommandAllocator*		GetCurrRenderEndCommandAllocator();
 
 private:
 	static GraphicDeviceDX12*		s_Graphic;
@@ -94,8 +95,11 @@ private:
 
 	ID3D12PipelineState*			m_currPipeline = nullptr;
 
-	std::vector<ComPtr<ID3D12GraphicsCommandList>>						m_cmdLists;
+
+	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
+	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
 	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;
+	ComPtr<ID3D12CommandAllocator>										m_dataLoaderCmdAlloc;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
 	std::unordered_map<std::string,
 		Microsoft::WRL::ComPtr<ID3D12Resource>>							m_dx12resources;

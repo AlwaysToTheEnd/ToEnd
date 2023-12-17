@@ -6,24 +6,6 @@
 #include <unordered_map>
 #include "d3dx12.h"
 
-#pragma pack(push, 4)
-struct DX12NormalMeshIndirectCommand
-{
-	D3D12_VERTEX_BUFFER_VIEW		vbView;
-	D3D12_INDEX_BUFFER_VIEW			ibView;
-	D3D12_GPU_VIRTUAL_ADDRESS		cbv;
-	D3D12_DRAW_INDEXED_ARGUMENTS	draw;
-	int								pad;
-};
-#pragma pack(pop)
-
-static D3D12_INDIRECT_ARGUMENT_DESC s_normalMeshIndArgDesc[4] = { 
-	{D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW, 0}, 
-	{D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW, 0},
-	{D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW, 1},
-	{D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, 0}
-};
-
 static D3D12_STATIC_SAMPLER_DESC s_StaticSamplers[7] =
 {
 	CD3DX12_STATIC_SAMPLER_DESC(
@@ -104,18 +86,21 @@ public:
 	D3D12_SHADER_BYTECODE	CreateShader(DX12_SHADER_TYPE type, const char* shaderName, const wchar_t* filename,
 										const std::string& entrypoint, const D3D_SHADER_MACRO* defines=nullptr);
 	ID3D12PipelineState*	CreateGraphicPipeline(const char* name, const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc);
+	ID3D12RootSignature*	CreateRootSignature(const char* name, const D3D12_ROOT_SIGNATURE_DESC* desc);
 	ID3D12CommandSignature* CreateCommandSignature(const char* name, ID3D12RootSignature* rootsignature, const D3D12_COMMAND_SIGNATURE_DESC* desc);
 
 	D3D12_SHADER_BYTECODE	GetShader(DX12_SHADER_TYPE type, const char* shaderName);
 	ID3D12PipelineState*	GetGraphicPipeline(const char* name);
+	ID3D12RootSignature*	GetRootSignature(const char* name);
 	ID3D12CommandSignature* GetCommandSignature(const char* name);
 
 private:
 	const char* m_shaderVersion = "_5_1";
 
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>>	m_pipeLines;
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12RootSignature>>	m_rootSignatures;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12CommandSignature>>	m_commandSignatures;
-	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>>				m_shaders[DX12_SHADER_TYPE_COUNT];//
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>>				m_shaders[DX12_SHADER_TYPE_COUNT];
 
 }s_pipelineMG;
 

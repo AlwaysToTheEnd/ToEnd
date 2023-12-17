@@ -8,6 +8,7 @@
 #include "assimp\material.h"
 #include "assimp\mesh.h"
 #include "DX12UploadBuffer.h"
+#include "CGHBaseClass.h"
 
 struct TextureView
 {
@@ -48,14 +49,8 @@ struct CGHMaterialSet
 	std::vector<CGHMaterial> materials;
 	std::vector<std::vector<TextureView>> textureViews;
 
-	std::shared_ptr<DX12UploadBuffer<CGHMaterial>> upMaterials;
+	std::unique_ptr<DX12UploadBuffer<CGHMaterial>> materialDatas;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> textures;
-};
-
-struct BoneImpact
-{
-	unsigned int offset = 0;
-	unsigned int numImpact = 0;
 };
 
 enum MESHDATA_TYPE
@@ -68,35 +63,32 @@ enum MESHDATA_TYPE
 	MESHDATA_NUM
 };
 
-struct MeshInfo
+struct CGHBone
+{
+	std::string name;
+	DirectX::XMFLOAT4X4 offsetMatrix;
+};
+
+struct CGHMesh
 {
 	aiString meshName;
 	aiPrimitiveType primitiveType = aiPrimitiveType_POINT;
-	bool hasBone = false;
-	int boneSetIndex = -1;
 	int materialIndex = -1;
 	int numData[MESHDATA_NUM] = {};
 	int numUVData[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
 	int numUVComponent[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
-	int offsetData[MESHDATA_NUM] = {};
-	int offsetUVData[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
-};
 
-struct CGHBoneSet
-{
-	std::unordered_map<std::string, int> boneNames;
-	std::vector<aiMatrix4x4> offsetMatrix;
-	std::vector<BoneImpact> boneImpactInfos;
+	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
+	Microsoft::WRL::ComPtr<ID3D12Resource> meshDataUV[AI_MAX_NUMBER_OF_TEXTURECOORDS];
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> weightList;
-	Microsoft::WRL::ComPtr<ID3D12Resource> boneImpacts;
+	std::vector<CGHBone> bones;
+	Microsoft::WRL::ComPtr<ID3D12Resource> boneWeightInfos;
+	Microsoft::WRL::ComPtr<ID3D12Resource> boneWeights;
 };
 
 struct CGHMeshDataSet
 {
-	std::vector<MeshInfo> meshInfos;
-	std::vector<CGHBoneSet> boneSets;
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
-	Microsoft::WRL::ComPtr<ID3D12Resource> meshDataUV[AI_MAX_NUMBER_OF_TEXTURECOORDS];
+	std::vector<CGHMesh> meshs;
+	std::vector<CGHNode> nodes;
+	std::vector<int> nodeParentIndexList;
 };

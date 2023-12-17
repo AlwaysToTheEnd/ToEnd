@@ -159,11 +159,11 @@
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
     <ClInclude Include="Component.h" />
-    <ClInclude Include="DX12Mesh.h" />
     <ClInclude Include="DX12PipelineMG.h" />
     <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
     <ClInclude Include="GraphicResourceLoader.h" />
+    <ClInclude Include="TestScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp" />
@@ -173,12 +173,15 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="Component.cpp" />
-    <ClCompile Include="DX12Mesh.cpp" />
     <ClCompile Include="DX12PipelineMG.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
     <ClCompile Include="GraphicResourceLoader.cpp" />
+    <ClCompile Include="TestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="baseHeader.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

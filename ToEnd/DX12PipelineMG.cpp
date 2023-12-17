@@ -87,6 +87,30 @@ ID3D12PipelineState* DX12PipelineMG::CreateGraphicPipeline(const char* name, con
 	return m_pipeLines[name].Get();
 }
 
+ID3D12RootSignature* DX12PipelineMG::CreateRootSignature(const char* name, const D3D12_ROOT_SIGNATURE_DESC* desc)
+{
+	auto GraphicDevice = GraphicDeviceDX12::GetDevice();
+
+	auto iter = m_rootSignatures.find(name);
+	assert(iter == m_rootSignatures.end());
+
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> error = nullptr;
+	
+	HRESULT hr = D3D12SerializeRootSignature(desc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), error.GetAddressOf());
+	
+	if (error != nullptr)
+	{
+		::OutputDebugStringA((char*)error->GetBufferPointer());
+	}
+	ThrowIfFailed(hr);
+
+	ThrowIfFailed(GraphicDevice->CreateRootSignature(0, serializedRootSig->GetBufferPointer(), 
+		serializedRootSig->GetBufferSize(), IID_PPV_ARGS(m_rootSignatures[name].GetAddressOf())));
+
+	return m_rootSignatures[name].Get();
+}
+
 ID3D12CommandSignature* DX12PipelineMG::CreateCommandSignature(const char* name, ID3D12RootSignature* rootsignature, const D3D12_COMMAND_SIGNATURE_DESC* desc)
 {
 	auto GraphicDevice = GraphicDeviceDX12::GetDevice();
@@ -98,8 +122,6 @@ ID3D12CommandSignature* DX12PipelineMG::CreateCommandSignature(const char* name,
 
 	return m_commandSignatures[name].Get();
 }
-
-
 
 D3D12_SHADER_BYTECODE DX12PipelineMG::GetShader(DX12_SHADER_TYPE type, const char* shaderName)
 {
@@ -124,6 +146,11 @@ ID3D12PipelineState* DX12PipelineMG::GetGraphicPipeline(const char* name)
 	result = iter->second.Get();
 
 	return result;
+}
+
+ID3D12RootSignature* DX12PipelineMG::GetRootSignature(const char* name)
+{
+	return nullptr;
 }
 
 ID3D12CommandSignature* DX12PipelineMG::GetCommandSignature(const char* name)
