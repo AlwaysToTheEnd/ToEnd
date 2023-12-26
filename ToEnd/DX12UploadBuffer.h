@@ -37,7 +37,7 @@ public:
 		ThrowIfFailed(m_UploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_MappedData)));
 	}
 
-	DX12UploadBuffer(const DX12UploadBuffer& rhs) = delete;
+	DX12UploadBuffer(const DX12UploadBuffer& rhs);
 	DX12UploadBuffer& operator=(const DX12UploadBuffer& rhs) = delete;
 
 	~DX12UploadBuffer()
@@ -55,17 +55,17 @@ public:
 		return m_UploadBuffer.Get();
 	}
 
-	void CopyData(int elementIndex, const T& data)
+	void CopyData(unsigned int elementIndex, const T& data)
 	{
 		std::memcpy(&m_MappedData[elementIndex * m_ElementByteSize], &data, sizeof(T));
 	}
 
-	void CopyData(int elementIndex, const T* data)
+	void CopyData(unsigned int elementIndex, const T* data)
 	{
 		std::memcpy(&m_MappedData[elementIndex * m_ElementByteSize], data, sizeof(T));
 	}
 
-	void CopyData(int numElement, int offsetIndex, const T* data)
+	void CopyData(unsigned int numElement, int offsetIndex, const T* data)
 	{
 		assert(!m_IsConstantBuffer);
 		std::memcpy(&m_MappedData[offsetIndex * m_ElementByteSize], data, sizeof(T) * numElement);
@@ -84,3 +84,13 @@ private:
 	unsigned int							m_ElementByteSize = 0;
 	bool									m_IsConstantBuffer = false;
 };
+
+template<typename T>
+inline DX12UploadBuffer<T>::DX12UploadBuffer(const DX12UploadBuffer& rhs)
+{
+	m_UploadBuffer = rhs.m_UploadBuffer;
+	m_MappedData = rhs.m_MappedData;
+	m_NumElement = rhs.m_NumElement;
+	m_ElementByteSize = rhs.m_ElementByteSize;
+	m_IsConstantBuffer = rhs.m_IsConstantBuffer;
+}

@@ -47,9 +47,17 @@ class GraphicDeviceDX12
 {
 public:
 	static GraphicDeviceDX12* GetGraphic();
-	static ID3D12Device* GetDevice();
 	static void CreateDeivce(HWND hWnd, int windowWidth, int windowHeight);
 	static void DeleteDeivce();
+	static ID3D12Device* GetDevice();
+
+	ID3D12CommandQueue* GetCommandQueue() { return m_commandQueue.Get(); }
+	unsigned int GetNumFrameResource() { return m_numFrameResource; }
+	unsigned int GetCurrFrameIndex() { return m_currFrame; }
+
+	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrPresentRTV();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetPresentDSV();
+	D3D12_GPU_VIRTUAL_ADDRESS GetCurrMainPassCBV();
 
 	GraphicDeviceDX12(const GraphicDeviceDX12& rhs) = delete;
 	GraphicDeviceDX12& operator=(const GraphicDeviceDX12& rhs) = delete;
@@ -80,7 +88,7 @@ private:
 
 	ComPtr<ID3D12Device>			m_d3dDevice;
 
-	const unsigned int				m_numFrameResource = 3;
+	const unsigned int				m_numFrameResource = 2;
 	unsigned int					m_currFrame = 0;
 	unsigned long long				m_currentFence = 0;
 	ComPtr<ID3D12Fence1>			m_fence;

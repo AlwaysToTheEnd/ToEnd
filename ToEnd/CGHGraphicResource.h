@@ -40,6 +40,8 @@ struct CGHMaterial
 	float shinpercent = 1.0f;
 	aiColor3D reflective;
 	float reflectivity = 0.0f;
+	unsigned int numTexture = 0;
+	float pad0[3] = {};
 };
 #pragma pack(pop)
 
@@ -51,6 +53,42 @@ struct CGHMaterialSet
 
 	std::unique_ptr<DX12UploadBuffer<CGHMaterial>> materialDatas;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> textures;
+};
+
+template <typename T>
+struct TimeValue
+{
+	double time = 0;
+	T value;
+};
+
+struct AnimBone
+{
+	std::string name;
+	std::vector<TimeValue<DirectX::XMFLOAT3>> posKeys;
+	std::vector<TimeValue<DirectX::XMFLOAT3>> scaleKeys;
+	std::vector<TimeValue<DirectX::XMFLOAT4>> rotKeys;
+	std::vector<TimeValue<DirectX::XMFLOAT4X4>> trafoKeys;
+};
+
+struct AnimMesh
+{
+
+};
+
+struct AnimMorph
+{
+
+};
+
+
+struct CGHAnimation
+{
+	double					tickPerSecond = 0.0l;
+	double					duration = 0.0;
+	std::vector<AnimBone>	animBones;
+	std::vector<AnimMesh>	animMeshs;
+	std::vector<AnimMorph>	animMorphs;
 };
 
 enum MESHDATA_TYPE
@@ -75,10 +113,13 @@ struct CGHMesh
 	aiPrimitiveType primitiveType = aiPrimitiveType_POINT;
 	int materialIndex = -1;
 	int numData[MESHDATA_NUM] = {};
-	int numUVData[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
-	int numUVComponent[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
+	bool isUVSingleChannel = false;
+	unsigned int uvSingleChannelIndex = 0;
+	unsigned int numUVData[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
+	unsigned int numUVComponent[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
+	Microsoft::WRL::ComPtr<ID3D12Resource> UVdataInfos;
 	Microsoft::WRL::ComPtr<ID3D12Resource> meshDataUV[AI_MAX_NUMBER_OF_TEXTURECOORDS];
 
 	std::vector<CGHBone> bones;
@@ -90,5 +131,6 @@ struct CGHMeshDataSet
 {
 	std::vector<CGHMesh> meshs;
 	std::vector<CGHNode> nodes;
+	std::vector<CGHAnimation> animations;
 	std::vector<int> nodeParentIndexList;
 };

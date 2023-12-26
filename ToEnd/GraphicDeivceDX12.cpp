@@ -19,6 +19,21 @@ ID3D12Device* GraphicDeviceDX12::GetDevice()
 	return s_Graphic->m_d3dDevice.Get();
 }
 
+D3D12_CPU_DESCRIPTOR_HANDLE GraphicDeviceDX12::GetCurrPresentRTV()
+{
+	return m_swapChain->CurrRTV();
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE GraphicDeviceDX12::GetPresentDSV()
+{
+	return m_swapChain->GetDSV();
+}
+
+D3D12_GPU_VIRTUAL_ADDRESS GraphicDeviceDX12::GetCurrMainPassCBV()
+{
+	return m_passCBs[m_currFrame]->Resource()->GetGPUVirtualAddress();
+}
+
 void GraphicDeviceDX12::CreateDeivce(HWND hWnd, int windowWidth, int windowHeight)
 {
 	if (s_Graphic == nullptr)
@@ -229,7 +244,6 @@ void GraphicDeviceDX12::RenderEnd()
 	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
 	m_swapChain->Present();
-
 	m_currentFence++;
 	m_fenceCounts[m_currFrame] = m_currentFence;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));

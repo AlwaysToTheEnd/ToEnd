@@ -106,6 +106,7 @@ void DX12SwapChain::RenderBegin(ID3D12GraphicsCommandList* cmd, const float clea
 {
 	auto present = CurrRTV();
 
+	cmd->ClearDepthStencilView(GetDSV(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[static_cast<size_t>(m_currBackBufferIndex)].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 

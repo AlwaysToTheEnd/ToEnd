@@ -150,7 +150,14 @@ ID3D12PipelineState* DX12PipelineMG::GetGraphicPipeline(const char* name)
 
 ID3D12RootSignature* DX12PipelineMG::GetRootSignature(const char* name)
 {
-	return nullptr;
+	ID3D12RootSignature* result = nullptr;
+
+	auto iter = m_rootSignatures.find(name);
+	assert(iter != m_rootSignatures.end());
+
+	result = iter->second.Get();
+
+	return result;
 }
 
 ID3D12CommandSignature* DX12PipelineMG::GetCommandSignature(const char* name)

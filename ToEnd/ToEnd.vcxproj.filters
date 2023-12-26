@@ -97,6 +97,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="baseHeader.hlsli" />
+    <None Include="baseShader.hlsl" />
   </ItemGroup>
 </Project>
