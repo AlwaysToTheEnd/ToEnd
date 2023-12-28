@@ -58,6 +58,8 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrPresentRTV();
 	D3D12_CPU_DESCRIPTOR_HANDLE GetPresentDSV();
 	D3D12_GPU_VIRTUAL_ADDRESS GetCurrMainPassCBV();
+	const D3D12_RECT& GetBaseScissorRect() { return m_scissorRect; }
+	const D3D12_VIEWPORT& GetBaseViewport() { return m_screenViewport; }
 
 	GraphicDeviceDX12(const GraphicDeviceDX12& rhs) = delete;
 	GraphicDeviceDX12& operator=(const GraphicDeviceDX12& rhs) = delete;

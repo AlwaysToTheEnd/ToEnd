@@ -1,4 +1,5 @@
 #include <assert.h>
+#include "d3dx12.h"
 #include "GraphicResourceLoader.h"
 #include "GraphicDeivceDX12.h"
 #include "assimp\scene.h"
@@ -6,20 +7,6 @@
 #include "CGHBaseClass.h"
 
 using namespace Assimp;
-
-struct CopyDataSet
-{
-	CopyDataSet(size_t size, ComPtr<ID3D12Resource> _dst, ComPtr<ID3D12Resource> _src)
-	{
-		dataSize = size;
-		dst = _dst;
-		src = _src;
-	}
-
-	size_t dataSize = 0;
-	ComPtr<ID3D12Resource> dst;
-	ComPtr<ID3D12Resource> src;
-};
 
 struct BoneWeightInfo
 {
@@ -203,12 +190,20 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 	resourceDesc.SampleDesc.Count = 1;
 	resourceDesc.SampleDesc.Quality = 0;
 
+	D3D12_RESOURCE_BARRIER defaultBarrier;
+
+	defaultBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	defaultBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	defaultBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+	defaultBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	defaultBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
 	D3D12_RESOURCE_BARRIER barrier;
 
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
 	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 	unsigned int dataStride[MESHDATA_NUM] = {};
@@ -222,7 +217,7 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 	std::vector<BoneWeight> sirializedWeights;
 	std::vector<BoneWeightInfo> boneWeightInfos;
 	std::vector<D3D12_RESOURCE_BARRIER> defaultBufferBars;
-	std::vector<CopyDataSet> copyDataset;
+	std::vector<unsigned int> indices;
 	const unsigned int numMeshes = scene->mNumMeshes;
 	meshDataOut->meshs.resize(numMeshes);
 	for (unsigned int i = 0; i < numMeshes; i++)
@@ -337,26 +332,20 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.boneWeightInfos.GetAddressOf())));
 
 				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+					D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-				if (uploadBuffer != nullptr)
-				{
-					D3D12_RANGE range;
-					range.Begin = 0;
-					range.End = 0;
+				D3D12_SUBRESOURCE_DATA subResourceData = {};
+				subResourceData.pData = boneWeightInfos.data();
+				subResourceData.RowPitch = resourceDesc.Width;
+				subResourceData.SlicePitch = subResourceData.RowPitch;
 
-					BYTE* dataStart = nullptr;
-					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-					std::memcpy(dataStart, boneWeightInfos.data(), resourceDesc.Width);
-
-					uploadBuffer->Unmap(0, &range);
-				}
+				defaultBarrier.Transition.pResource = targetMesh.boneWeightInfos.Get();
+				cmd->ResourceBarrier(1, &defaultBarrier);
+				UpdateSubresources<1>(cmd, targetMesh.boneWeightInfos.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 				barrier.Transition.pResource = targetMesh.boneWeightInfos.Get();
 				defaultBufferBars.push_back(barrier);
 				uploadbuffersOut->push_back(uploadBuffer);
-				copyDataset.emplace_back(resourceDesc.Width, targetMesh.boneWeightInfos, uploadBuffer);
 			}
 
 			resourceDesc.Width = sirializedWeights.size() * sizeof(BoneWeight);
@@ -367,26 +356,20 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.boneWeights.GetAddressOf())));
 
 				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+					D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-				if (uploadBuffer != nullptr)
-				{
-					D3D12_RANGE range;
-					range.Begin = 0;
-					range.End = 0;
+				D3D12_SUBRESOURCE_DATA subResourceData = {};
+				subResourceData.pData = sirializedWeights.data();
+				subResourceData.RowPitch = resourceDesc.Width;
+				subResourceData.SlicePitch = subResourceData.RowPitch;
 
-					BYTE* dataStart = nullptr;
-					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-					std::memcpy(dataStart, sirializedWeights.data(), resourceDesc.Width);
-
-					uploadBuffer->Unmap(0, &range);
-				}
+				defaultBarrier.Transition.pResource = targetMesh.boneWeights.Get();
+				cmd->ResourceBarrier(1, &defaultBarrier);
+				UpdateSubresources<1>(cmd, targetMesh.boneWeights.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 				barrier.Transition.pResource = targetMesh.boneWeights.Get();
 				defaultBufferBars.push_back(barrier);
 				uploadbuffersOut->push_back(uploadBuffer);
-				copyDataset.emplace_back(resourceDesc.Width, targetMesh.boneWeights, uploadBuffer);
 			}
 		}
 
@@ -401,59 +384,58 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshData[j].GetAddressOf())));
 
 				ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-					D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+					D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-				if (uploadBuffer != nullptr)
+				D3D12_SUBRESOURCE_DATA subResourceData = {};
+				subResourceData.RowPitch = resourceDesc.Width;
+				subResourceData.SlicePitch = subResourceData.RowPitch;
+
+				switch (j)
 				{
-					D3D12_RANGE range;
-					range.Begin = 0;
-					range.End = 0;
-
-					BYTE* dataStart = nullptr;
-					ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-					switch (j)
+				case MESHDATA_POSITION:
+				{
+					subResourceData.pData = currMesh->mVertices;
+				}
+				break;
+				case MESHDATA_INDEX:
+				{
+					indices.clear();
+					indices.reserve(currMesh->mNumFaces * 3);
+					for (unsigned int faceIndex = 0; faceIndex < currMesh->mNumFaces; faceIndex++)
 					{
-					case MESHDATA_POSITION:
-					{
-						std::memcpy(dataStart, currMesh->mVertices, resourceDesc.Width);
-					}
-					break;
-					case MESHDATA_INDEX:
-					{
-						for (unsigned int faceIndex = 0; faceIndex < currMesh->mNumFaces; faceIndex++)
+						for (unsigned int z = 0; z < currMesh->mFaces[faceIndex].mNumIndices; z++)
 						{
-							unsigned int faceDataSize = sizeof(unsigned int) * currMesh->mFaces[faceIndex].mNumIndices;
-							std::memcpy(dataStart, currMesh->mFaces[faceIndex].mIndices, faceDataSize);
-
-							dataStart += faceDataSize;
+							indices.push_back(currMesh->mFaces[faceIndex].mIndices[z]);
 						}
 					}
-					break;
-					case MESHDATA_NORMAL:
-					{
-						std::memcpy(dataStart, currMesh->mNormals, resourceDesc.Width);
-					}
-					break;
-					case MESHDATA_TAN:
-					{
-						std::memcpy(dataStart, currMesh->mTangents, resourceDesc.Width);
-					}
-					break;
-					case MESHDATA_BITAN:
-					{
-						std::memcpy(dataStart, currMesh->mBitangents, resourceDesc.Width);
-					}
-					break;
-					}
 
-					uploadBuffer->Unmap(0, &range);
+					subResourceData.pData = indices.data();
 				}
+				break;
+				case MESHDATA_NORMAL:
+				{
+					subResourceData.pData = currMesh->mNormals;
+				}
+				break;
+				case MESHDATA_TAN:
+				{
+					subResourceData.pData = currMesh->mTangents;
+				}
+				break;
+				case MESHDATA_BITAN:
+				{
+					subResourceData.pData = currMesh->mBitangents;
+				}
+				break;
+				}
+
+				defaultBarrier.Transition.pResource = targetMesh.meshData[j].Get();
+				cmd->ResourceBarrier(1, &defaultBarrier);
+				UpdateSubresources<1>(cmd, targetMesh.meshData[j].Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 				barrier.Transition.pResource = targetMesh.meshData[j].Get();
 				defaultBufferBars.push_back(barrier);
 				uploadbuffersOut->push_back(uploadBuffer);
-				copyDataset.emplace_back(resourceDesc.Width, targetMesh.meshData[j], uploadBuffer);
 			}
 		}
 
@@ -472,28 +454,20 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshDataUV[j].GetAddressOf())));
 
 					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+						D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
+					D3D12_SUBRESOURCE_DATA subResourceData = {};
+					subResourceData.pData = currMesh->mTextureCoords[j];
+					subResourceData.RowPitch = resourceDesc.Width;
+					subResourceData.SlicePitch = subResourceData.RowPitch;
 
-					if (uploadBuffer != nullptr)
-					{
-						D3D12_RANGE range;
-						range.Begin = 0;
-						range.End = 0;
+					defaultBarrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
+					cmd->ResourceBarrier(1, &defaultBarrier);
+					UpdateSubresources<1>(cmd, targetMesh.meshDataUV[j].Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
-						BYTE* dataStart = nullptr;
-						ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-						std::memcpy(dataStart, currMesh->mTextureCoords[j], resourceDesc.Width);
-
-						uploadBuffer->Unmap(0, &range);
-					}
-					
 					barrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
 					defaultBufferBars.push_back(barrier);
 					uploadbuffersOut->push_back(uploadBuffer);
-					copyDataset.emplace_back(resourceDesc.Width, targetMesh.meshDataUV[j], uploadBuffer);
-
 					targetMesh.uvSingleChannelIndex = j;
 					break;
 				}
@@ -552,26 +526,20 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshDataUV[j].GetAddressOf())));
 
 					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+						D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-					if (uploadBuffer != nullptr)
-					{
-						D3D12_RANGE range;
-						range.Begin = 0;
-						range.End = 0;
+					D3D12_SUBRESOURCE_DATA subResourceData = {};
+					subResourceData.pData = currUVDatas.data();
+					subResourceData.RowPitch = resourceDesc.Width;
+					subResourceData.SlicePitch = subResourceData.RowPitch;
 
-						BYTE* dataStart = nullptr;
-						ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-						std::memcpy(dataStart, currUVDatas.data(), resourceDesc.Width);
-
-						uploadBuffer->Unmap(0, &range);
-					}
+					defaultBarrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
+					cmd->ResourceBarrier(1, &defaultBarrier);
+					UpdateSubresources<1>(cmd, targetMesh.meshDataUV[j].Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 					barrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
 					defaultBufferBars.push_back(barrier);
 					uploadbuffersOut->push_back(uploadBuffer);
-					copyDataset.emplace_back(resourceDesc.Width, targetMesh.meshDataUV[j], uploadBuffer);
 				}
 			}
 
@@ -585,43 +553,24 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.UVdataInfos.GetAddressOf())));
 
 					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+						D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-					if (uploadBuffer != nullptr)
-					{
-						D3D12_RANGE range;
-						range.Begin = 0;
-						range.End = 0;
+					D3D12_SUBRESOURCE_DATA subResourceData = {};
+					subResourceData.pData = uvInfos.data();
+					subResourceData.RowPitch = resourceDesc.Width;
+					subResourceData.SlicePitch = subResourceData.RowPitch;
 
-						BYTE* dataStart = nullptr;
-						ThrowIfFailed(uploadBuffer->Map(0, &range, reinterpret_cast<void**>(&dataStart)));
-
-						std::memcpy(dataStart, uvInfos.data(), resourceDesc.Width);
-
-						uploadBuffer->Unmap(0, &range);
-					}
+					defaultBarrier.Transition.pResource = targetMesh.UVdataInfos.Get();
+					cmd->ResourceBarrier(1, &defaultBarrier);
+					UpdateSubresources<1>(cmd, targetMesh.UVdataInfos.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 					barrier.Transition.pResource = targetMesh.UVdataInfos.Get();
 					defaultBufferBars.push_back(barrier);
 					uploadbuffersOut->push_back(uploadBuffer);
-					copyDataset.emplace_back(resourceDesc.Width, targetMesh.UVdataInfos, uploadBuffer);
 				}
 			}
 		}
 	}
 
-	cmd->ResourceBarrier(defaultBufferBars.size(), &defaultBufferBars.front());
-
-	for (auto& iter : copyDataset)
-	{
-		cmd->CopyBufferRegion(iter.dst.Get(), 0, iter.src.Get(), 0, iter.dataSize);
-	}
-
-	for (auto& iter : defaultBufferBars)
-	{
-		iter.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		iter.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	}
-
-	cmd->ResourceBarrier(defaultBufferBars.size(), &defaultBufferBars.front());
+	cmd->ResourceBarrier(defaultBufferBars.size(), defaultBufferBars.data());
 }

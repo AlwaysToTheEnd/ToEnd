@@ -3,14 +3,13 @@
 #include "DX12PipelineMG.h"
 #include "CGHBaseClass.h"
 #include "CGHGraphicResource.h"
+#include "DirectXColors.h"
 
 enum
 {
 	ROOT_MAINPASS_CB = 0,
 	ROOT_MATERIAL_CB,
-	ROOT_WORLDMAT_C,
-	ROOT_NUMUVCOMPONENT_C,
-	ROOT_OBJECTID_C,
+	ROOT_OBJECTINFO_CB,
 	ROOT_BONEDATA_SRV,
 	ROOT_NORMAL_SRV,
 	ROOT_TANGENT_SRV,
@@ -71,23 +70,10 @@ void TestScene::Init()
 		rootParams[ROOT_MATERIAL_CB].Descriptor.ShaderRegister = 1;
 		rootParams[ROOT_MATERIAL_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		rootParams[ROOT_WORLDMAT_C].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_WORLDMAT_C].Constants.Num32BitValues = 16;
-		rootParams[ROOT_WORLDMAT_C].Constants.RegisterSpace = 0;
-		rootParams[ROOT_WORLDMAT_C].Constants.ShaderRegister = 2;
-		rootParams[ROOT_WORLDMAT_C].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		rootParams[ROOT_NUMUVCOMPONENT_C].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_NUMUVCOMPONENT_C].Constants.Num32BitValues = 8;
-		rootParams[ROOT_NUMUVCOMPONENT_C].Constants.RegisterSpace = 0;
-		rootParams[ROOT_NUMUVCOMPONENT_C].Constants.ShaderRegister = 3;
-		rootParams[ROOT_NUMUVCOMPONENT_C].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		rootParams[ROOT_OBJECTID_C].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_OBJECTID_C].Constants.Num32BitValues = 1;
-		rootParams[ROOT_OBJECTID_C].Constants.RegisterSpace = 0;
-		rootParams[ROOT_OBJECTID_C].Constants.ShaderRegister = 4;
-		rootParams[ROOT_OBJECTID_C].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParams[ROOT_OBJECTINFO_CB].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		rootParams[ROOT_OBJECTINFO_CB].Descriptor.RegisterSpace = 0;
+		rootParams[ROOT_OBJECTINFO_CB].Descriptor.ShaderRegister = 2;
+		rootParams[ROOT_OBJECTINFO_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		rootParams[ROOT_BONEDATA_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 		rootParams[ROOT_BONEDATA_SRV].Descriptor.RegisterSpace = 0;
@@ -189,7 +175,6 @@ void TestScene::Init()
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-		psoDesc.DepthStencilState.DepthEnable = false;
 
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		psoDesc.NumRenderTargets = 1;
@@ -294,36 +279,17 @@ void TestScene::Render()
 	m_commandList->SetPipelineState(s_pipelineMG.GetGraphicPipeline("TestScene"));
 	m_commandList->SetGraphicsRootSignature(s_pipelineMG.GetRootSignature("TestScene"));
 
+	m_commandList->RSSetScissorRects(1, &dxGraphic->GetBaseScissorRect());
+	m_commandList->RSSetViewports(1, &dxGraphic->GetBaseViewport());
+
 	D3D12_CPU_DESCRIPTOR_HANDLE presentRTV[] = { dxGraphic->GetCurrPresentRTV() };
 	auto presentDSV = dxGraphic->GetPresentDSV();
 	m_commandList->OMSetRenderTargets(1, presentRTV, false, &presentDSV);
 	m_commandList->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, dxGraphic->GetCurrMainPassCBV());
-	//enum
-	//{
-	//	ROOT_WORLDMAT_C,
-	//	ROOT_NUMUVCOMPONENT_C,
-	//	ROOT_OBJECTID_C,
-	//	ROOT_BONEDATA_SRV,
-	//	ROOT_NORMAL_SRV,
-	//	ROOT_TANGENT_SRV,
-	//	ROOT_BITAN_SRV,
-	//	ROOT_BONEINDEX_SRV,
-	//	ROOT_WEIGHTINFO_SRV,
-	//	ROOT_WEIGHT_SRV,
-	//	ROOT_UVINFO_SRV,
-	//	ROOT_UV0_SRV,
-	//	ROOT_UV1_SRV,
-	//	ROOT_UV2_SRV,
-	//	ROOT_TEXTUREVIEW_SRV,
-	//	ROOT_TEXTURE_TABLE,
-	//	ROOT_NUM,
-	//};
 
 	D3D12_GPU_VIRTUAL_ADDRESS matCB = m_materialSet->materialDatas->Resource()->GetGPUVirtualAddress();
 	unsigned int matStride = m_materialSet->materialDatas->GetElementByteSize();
-	DirectX::XMMATRIX worldMat = DirectX::XMMatrixIdentity();
 
-	unsigned int objectID = 1;
 	for (unsigned int i =0 ;i< m_meshSet->meshs.size(); i++)
 	{
 		auto& currMesh = m_meshSet->meshs[i];
@@ -358,9 +324,7 @@ void TestScene::Render()
 		m_commandList->IASetIndexBuffer(&ibView);
 
 		m_commandList->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB + (matStride * currMesh.materialIndex));
-		m_commandList->SetGraphicsRoot32BitConstants(ROOT_WORLDMAT_C, 16, &worldMat, 0);
-		m_commandList->SetGraphicsRoot32BitConstants(ROOT_NUMUVCOMPONENT_C, 8, currMesh.numUVComponent, 0);
-		m_commandList->SetGraphicsRoot32BitConstants(ROOT_OBJECTID_C, 1, &objectID, 0);
+		m_commandList->SetGraphicsRootConstantBufferView(ROOT_OBJECTINFO_CB, );
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, m_nodeBones->Resource()->GetGPUVirtualAddress());
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh.meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh.meshData[MESHDATA_TAN]->GetGPUVirtualAddress());

@@ -189,7 +189,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	float fovAngleX = 2 * atanf(aspectRatio * tanf(fovAngleY));
 
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, 1.0f, 1000.0f);
-	XMStoreFloat4x4(&m_projMat, XMMatrixTranspose(proj));
+	XMStoreFloat4x4(&m_projMat, proj);
 
 	FlushCommandQueue();
 	ThrowIfFailed(cmdListAlloc->Reset());

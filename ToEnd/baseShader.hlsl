@@ -72,9 +72,12 @@ cbuffer MaterialData : register(b1)
     float3 pad0;
 };
 
-float4x4 gWorldMatrix : register(b2);
-uint4x2 gNumUVComponent : register(b3);
-uint gObjectID : register(b4);
+cbuffer ObejctInfo : register(b2)
+{
+    float4x4 gWorldMat;
+    uint4x2 gNumUVComponent;
+    uint gObejctID;
+};
 
 StructuredBuffer<float4x4> gBoneData : register(t0, space0);
 StructuredBuffer<float3> gVertexNormals : register(t1, space0);
@@ -124,6 +127,7 @@ VSOut VS(VertexIn vin)
     
     BoneWeightInfo weightInfo = gBoneWeightInfos[vin.id];
    
+    
     float3 sumPosL = float3(0.0f, 0.0f, 0.0f);
     float3 sumNormalL = float3(0.0f, 0.0f, 0.0f);
     
@@ -137,30 +141,29 @@ VSOut VS(VertexIn vin)
         sumNormalL += boenWeight.weight * mul(vout.Normal, (float3x3) gBoneData[gBoneIndex[boenWeight.boneIndex]]);
     }
     
-    vout.PosH = mul(float4(sumPosL, 1.0f), gWorldMatrix);
+    vout.PosH = mul(float4(sumPosL, 1.0f), gWorldMat);
     vout.PosH = mul(vout.PosH, gViewProj);
-    vout.PosH.xy *= 1000.0;
-    vout.Normal = mul(sumNormalL, (float3x3) gWorldMatrix);
+    vout.Normal = mul(sumNormalL, (float3x3) gWorldMat);
     
-    UVInfo uvInfo = gUVInfos[vin.id];
+    //UVInfo uvInfo = gUVInfos[vin.id];
     
-    if (uvInfo.channelIndex[0] > -1)
-    {
-        vout.uv0 = gVertexUV0[uvInfo.channelIndex[0]];
-        vout.activeUV0 = 1;
-    }
+    //if (uvInfo.channelIndex[0] > -1)
+    //{
+    //    vout.uv0 = gVertexUV0[uvInfo.channelIndex[0]];
+    //    vout.activeUV0 = 1;
+    //}
     
-    if (uvInfo.channelIndex[1] > -1)
-    {
-        vout.uv1 = gVertexUV1[uvInfo.channelIndex[1]];
-        vout.activeUV1 = 1;
-    }
+    //if (uvInfo.channelIndex[1] > -1)
+    //{
+    //    vout.uv1 = gVertexUV1[uvInfo.channelIndex[1]];
+    //    vout.activeUV1 = 1;
+    //}
     
-    if (uvInfo.channelIndex[2] > -1)
-    {
-        vout.uv2 = gVertexUV2[uvInfo.channelIndex[2]];
-        vout.activeUV2 = 1;
-    }
+    //if (uvInfo.channelIndex[2] > -1)
+    //{
+    //    vout.uv2 = gVertexUV2[uvInfo.channelIndex[2]];
+    //    vout.activeUV2 = 1;
+    //}
     
     return vout;
 }
@@ -174,7 +177,7 @@ struct PSOut
 PSOut PS(VSOut pin)
 {
     PSOut pout;
-    pout.color = float4(1, 1, 1, 1);
+    pout.color = float4(pin.Normal, 1.0f);
 	
     return pout;
 }
