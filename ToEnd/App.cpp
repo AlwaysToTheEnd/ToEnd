@@ -22,7 +22,8 @@ HRESULT App::Init()
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 	m_timer.Start();
 
-	m_testScene.Init();
+	m_testScene = new TestScene();
+	m_testScene->Init();
 
 	return result;
 }
@@ -69,6 +70,7 @@ App::App(HINSTANCE hInstance)
 
 App::~App()
 {
+	delete m_testScene;
 	GraphicDeviceDX12::DeleteDeivce();
 }
 
@@ -209,7 +211,7 @@ void App::Update(float delta)
 	m_camera.Update();
 	GraphicDeviceDX12::GetGraphic()->Update(delta, &m_camera);
 
-	m_testScene.Update(delta);
+	m_testScene->Update(delta);
 }
 
 void App::Render()
@@ -217,7 +219,7 @@ void App::Render()
 	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderBegin();
 
-	m_testScene.Render();
+	m_testScene->Render();
 
 	graphic->RenderEnd();
 }

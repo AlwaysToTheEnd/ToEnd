@@ -37,7 +37,7 @@ private:
 private:
 	static App*	 s_App;
 
-	TestScene	m_testScene;
+	TestScene*	m_testScene;
 
 	HINSTANCE	m_hAppInst = nullptr;
 	HWND		m_hMainWnd = nullptr;

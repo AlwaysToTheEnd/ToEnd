@@ -3,11 +3,20 @@
 #include <DirectXMath.h>
 #include <d3d12.h>
 #include <wrl.h>
+#include <unordered_map>
 #include "DX12UploadBuffer.h"
+#include "CGHGraphicResource.h"	
 
-struct CGHMeshDataSet;
-struct CGHMaterialSet;
+class DX12TextureBuffer;
 
+struct ObjectInfo
+{
+	DirectX::XMFLOAT4X4 worldMat;
+	unsigned int numUVComponent[8] = {};
+	unsigned int numUVChannel = 0;
+	unsigned int hasTanBitan = 0;
+	unsigned int objectID = 0;
+};
 
 class TestScene
 {
@@ -20,11 +29,14 @@ public:
 	void Render();
 
 private:
+	unsigned int m_srvSize = 0;
 	CGHMeshDataSet* m_meshSet;
 	CGHMaterialSet* m_materialSet;
-	std::vector<DX12UploadBuffer<unsigned int>> m_boneIndices;
+	DX12TextureBuffer* m_textureBuffer;
+	std::unordered_map<std::string, unsigned int> m_nodeKeys;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_commadAllocs;
-	std::unique_ptr<DX12UploadBuffer<DirectX::XMFLOAT4X4>> m_nodeBones;
-	std::vector<DirectX::XMFLOAT4X4> m_updatedBones;
+	std::vector<std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>> m_nodeBones;
+	std::unique_ptr<DX12UploadBuffer<ObjectInfo>> m_objectInfos;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> m_descHeaps;
 };

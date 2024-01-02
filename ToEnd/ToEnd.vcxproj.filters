@@ -59,6 +59,9 @@
     <ClInclude Include="TestScene.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="DX12TextureBuffer.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -94,9 +97,14 @@
     <ClCompile Include="TestScene.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="DX12TextureBuffer.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="baseShader.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shader\baseShader.hlsl" />
   </ItemGroup>
 </Project>

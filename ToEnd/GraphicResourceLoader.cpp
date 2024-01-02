@@ -16,7 +16,7 @@ struct BoneWeightInfo
 
 struct BoneWeight
 {
-	int boneIndex = 0;
+	unsigned int boneIndex = 0;
 	float weight = 0.0f;
 };
 
@@ -74,10 +74,19 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSe
 		meshDataOut->nodes.resize(nodes.size());
 		for (size_t i = 0; i < nodes.size(); i++)
 		{
-			meshDataOut->nodes[i].SetName(nodes[i]->mName.C_Str());
-			std::memcpy(&meshDataOut->nodes[i].m_srt, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
+			DirectX::XMMATRIX transMat = {};
+			DirectX::XMVECTOR scale;
+			DirectX::XMVECTOR rotQuter;
+			DirectX::XMVECTOR pos;
+			Transform* transform = meshDataOut->nodes[i].CreateComponent<Transform>();
 
-			CGH::FixEpsilonMatrix(meshDataOut->nodes[i].m_srt, 0.000001f);
+			std::memcpy(&transMat, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
+			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);
+			transform->SetPos(pos);
+			transform->SetScale(scale);
+			transform->SetRotateQuter(rotQuter);
+
+			meshDataOut->nodes[i].SetName(nodes[i]->mName.C_Str());
 
 			if (meshDataOut->nodeParentIndexList[i] != -1)
 			{
@@ -92,7 +101,7 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 	const unsigned int numMaterials = scene->mNumMaterials;
 	materialSetOut->materials.resize(numMaterials);
 	materialSetOut->names.resize(numMaterials);
-	materialSetOut->textureViews.resize(numMaterials);
+	materialSetOut->textureInfos.resize(numMaterials);
 	{
 		for (unsigned int i = 0; i < numMaterials; i++)
 		{
@@ -119,31 +128,27 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 
 			for (int textureType = aiTextureType_NONE; textureType < aiTextureType_UNKNOWN; textureType++)
 			{
-				TextureView texView;
+				TextureInfo texView;
 				texView.type = static_cast<aiTextureType>(textureType);
 
 				const unsigned int numTextureCurrType = currMat->GetTextureCount(static_cast<aiTextureType>(textureType));
 				for (unsigned int currTextureIndex = 0; currTextureIndex < numTextureCurrType; currTextureIndex++)
 				{
+					aiString filePath;
 					aiReturn result = currMat->GetTexture(texView.type, currTextureIndex,
-						&texView.texFilePath, &texView.mapping, &texView.uvIndex, &texView.blend, &texView.textureOp, texView.mapMode);
+						&filePath, &texView.mapping, &texView.uvIndex, &texView.blend, &texView.textureOp, texView.mapMode);
+					texView.texFilePath = filePath.C_Str();
 					assert(result == aiReturn_SUCCESS);
 
 					if (result == aiReturn_SUCCESS)
 					{
-						materialSetOut->textureViews[i].push_back(texView);
+						materialSetOut->textureInfos[i].push_back(texView);
 					}
 				}
 			}
 
-			currDumpMat.numTexture = materialSetOut->textureViews[i].size();
+			currDumpMat.numTexture = materialSetOut->textureInfos[i].size();
 		}
-	}
-
-	materialSetOut->materialDatas = std::make_unique<DX12UploadBuffer<CGHMaterial>>(d12Device, numMaterials + MAXNUM_ADD_MATERIAL, true);
-	for (unsigned int i = 0; i < numMaterials; i++)
-	{
-		materialSetOut->materialDatas->CopyData(i, materialSetOut->materials[i]);
 	}
 }
 
@@ -219,11 +224,14 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 	std::vector<D3D12_RESOURCE_BARRIER> defaultBufferBars;
 	std::vector<unsigned int> indices;
 	const unsigned int numMeshes = scene->mNumMeshes;
+	const unsigned int srvSize = d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
 	meshDataOut->meshs.resize(numMeshes);
 	for (unsigned int i = 0; i < numMeshes; i++)
 	{
 		aiMesh* currMesh = scene->mMeshes[i];
 		CGHMesh& targetMesh = meshDataOut->meshs[i];
+		unsigned int numUVChannel = currMesh->GetNumUVChannels();
 
 		targetMesh.meshName = currMesh->mName;
 		targetMesh.materialIndex = currMesh->mMaterialIndex;
@@ -272,19 +280,15 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 			targetMesh.numData[MESHDATA_BITAN] = currMesh->mNumVertices;
 		}
 
-		for (int j = 0; j < AI_MAX_NUMBER_OF_TEXTURECOORDS; j++)
+		targetMesh.numUVComponent.resize(numUVChannel);
+		for (unsigned int j = 0; j < numUVChannel; j++)
 		{
-			if (currMesh->HasTextureCoords(j))
-			{
-				targetMesh.numUVData[j] = currMesh->mNumVertices;
-				targetMesh.numUVComponent[j] = currMesh->mNumUVComponents[j];
-			}
+			targetMesh.numUVComponent[j] = currMesh->mNumUVComponents[j];
 		}
 
 		if (currMesh->HasBones())
 		{
 			const int numBone = currMesh->mNumBones;
-			targetMesh.bones.resize(numBone);
 
 			boneWeightInfos.clear();
 			vertexWeights.clear();
@@ -297,17 +301,21 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 			for (int j = 0; j < numBone; j++)
 			{
 				const aiBone* currBone = currMesh->mBones[j];
-
-				targetMesh.bones[j].name = currBone->mName.C_Str();
-				std::memcpy(&targetMesh.bones[j].offsetMatrix, &currBone->mOffsetMatrix, sizeof(aiMatrix4x4));
-				CGH::FixEpsilonMatrix(targetMesh.bones[j].offsetMatrix, 0.000001f);
-
-				for (unsigned int k = 0; k < currBone->mNumWeights; k++)
+				if (currBone->mNumWeights > 0)
 				{
-					vertexWeights[currBone->mWeights[k].mVertexId].push_back({ j, currBone->mWeights[k].mWeight });
-				}
+					unsigned int currTargetBoneIndex = targetMesh.bones.size();
+					targetMesh.bones.emplace_back();
+					targetMesh.bones.back().name = currBone->mName.C_Str();
+					std::memcpy(&targetMesh.bones.back().offsetMatrix, &currBone->mOffsetMatrix, sizeof(aiMatrix4x4));
+					CGH::FixEpsilonMatrix(targetMesh.bones.back().offsetMatrix, 0.000001f);
 
-				numAllWeights += currBone->mNumWeights;
+					for (unsigned int k = 0; k < currBone->mNumWeights; k++)
+					{
+						vertexWeights[currBone->mWeights[k].mVertexId].push_back({ currTargetBoneIndex, currBone->mWeights[k].mWeight });
+					}
+
+					numAllWeights += currBone->mNumWeights;
+				}
 			}
 
 			sirializedWeights.reserve(numAllWeights);
@@ -439,19 +447,18 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 			}
 		}
 
-		targetMesh.isUVSingleChannel = currMesh->GetNumUVChannels() == 1;
-
-		if (targetMesh.isUVSingleChannel)
+		if (numUVChannel)
 		{
-			for (int j = 0; j < AI_MAX_NUMBER_OF_TEXTURECOORDS; j++)
+			targetMesh.meshDataUVs.resize(numUVChannel);
+			for (unsigned int j = 0; j < numUVChannel; j++)
 			{
 				ComPtr<ID3D12Resource> uploadBuffer;
 
-				resourceDesc.Width = targetMesh.numUVData[j] * sizeof(aiVector3D);
+				resourceDesc.Width = currMesh->mNumVertices * sizeof(aiVector3D);
 				if (resourceDesc.Width)
 				{
 					ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshDataUV[j].GetAddressOf())));
+						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshDataUVs[j].GetAddressOf())));
 
 					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
 						D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
@@ -461,114 +468,16 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 					subResourceData.RowPitch = resourceDesc.Width;
 					subResourceData.SlicePitch = subResourceData.RowPitch;
 
-					defaultBarrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
+					defaultBarrier.Transition.pResource = targetMesh.meshDataUVs[j].Get();
 					cmd->ResourceBarrier(1, &defaultBarrier);
-					UpdateSubresources<1>(cmd, targetMesh.meshDataUV[j].Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
+					UpdateSubresources<1>(cmd, targetMesh.meshDataUVs[j].Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
-					barrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
-					defaultBufferBars.push_back(barrier);
-					uploadbuffersOut->push_back(uploadBuffer);
-					targetMesh.uvSingleChannelIndex = j;
-					break;
-				}
-			}
-		}
-		else
-		{
-			struct UVInfo
-			{
-				int ChannelIndex[8] = { -1, -1, -1, -1,
-										-1, -1, -1, -1 };
-			};
-
-			unsigned int numChannel = currMesh->GetNumUVChannels();
-			std::vector<UVInfo> uvInfos(currMesh->mNumVertices);
-			std::vector<aiVector3D> currUVDatas;
-			currUVDatas.reserve(currMesh->mNumVertices);
-
-			for (int j = 0; j < AI_MAX_NUMBER_OF_TEXTURECOORDS; j++)
-			{
-				ComPtr<ID3D12Resource> uploadBuffer;
-
-				unsigned int currUVChannelComponentNum = targetMesh.numUVComponent[j];
-				currUVDatas.clear();
-				for (unsigned int k = 0; k < targetMesh.numUVData[j]; k++)
-				{
-					const aiVector3D* currUV = currMesh->mTextureCoords[j] + k;
-
-					bool isUsedUV = true;
-					const ai_real* currUVCom = &currUV->x;
-
-					for (unsigned int uvComponentIndex = 0; uvComponentIndex < currUVChannelComponentNum; uvComponentIndex++)
-					{
-						if (std::abs(*currUVCom) > 5.0f)
-						{
-							isUsedUV = false;
-							break;
-						}
-
-						currUVCom++;
-					}
-
-					if (isUsedUV)
-					{
-						uvInfos[k].ChannelIndex[j] = currUVDatas.size();
-						currUVDatas.push_back(*currUV);
-					}
-				}
-
-				targetMesh.numUVData[j] = currUVDatas.size();
-
-				resourceDesc.Width = targetMesh.numUVData[j] * sizeof(aiVector3D);
-				if (resourceDesc.Width)
-				{
-					ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.meshDataUV[j].GetAddressOf())));
-
-					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
-
-					D3D12_SUBRESOURCE_DATA subResourceData = {};
-					subResourceData.pData = currUVDatas.data();
-					subResourceData.RowPitch = resourceDesc.Width;
-					subResourceData.SlicePitch = subResourceData.RowPitch;
-
-					defaultBarrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
-					cmd->ResourceBarrier(1, &defaultBarrier);
-					UpdateSubresources<1>(cmd, targetMesh.meshDataUV[j].Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
-
-					barrier.Transition.pResource = targetMesh.meshDataUV[j].Get();
+					barrier.Transition.pResource = targetMesh.meshDataUVs[j].Get();
 					defaultBufferBars.push_back(barrier);
 					uploadbuffersOut->push_back(uploadBuffer);
 				}
 			}
 
-			{
-				ComPtr<ID3D12Resource> uploadBuffer;
-
-				resourceDesc.Width = uvInfos.size() * sizeof(UVInfo);
-				if (resourceDesc.Width)
-				{
-					ThrowIfFailed(d12Device->CreateCommittedResource(&defaultHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(targetMesh.UVdataInfos.GetAddressOf())));
-
-					ThrowIfFailed(d12Device->CreateCommittedResource(&uploadHeapPDesc, heapFlags, &resourceDesc,
-						D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
-
-					D3D12_SUBRESOURCE_DATA subResourceData = {};
-					subResourceData.pData = uvInfos.data();
-					subResourceData.RowPitch = resourceDesc.Width;
-					subResourceData.SlicePitch = subResourceData.RowPitch;
-
-					defaultBarrier.Transition.pResource = targetMesh.UVdataInfos.Get();
-					cmd->ResourceBarrier(1, &defaultBarrier);
-					UpdateSubresources<1>(cmd, targetMesh.UVdataInfos.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
-
-					barrier.Transition.pResource = targetMesh.UVdataInfos.Get();
-					defaultBufferBars.push_back(barrier);
-					uploadbuffersOut->push_back(uploadBuffer);
-				}
-			}
 		}
 	}
 

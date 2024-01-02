@@ -10,9 +10,9 @@
 #include "DX12UploadBuffer.h"
 #include "CGHBaseClass.h"
 
-struct TextureView
+struct TextureInfo
 {
-	aiString texFilePath;
+	std::string texFilePath;
 	aiTextureType type = aiTextureType_NONE;
 	aiTextureMapping mapping = aiTextureMapping_UV;
 	unsigned int uvIndex = 0;
@@ -49,10 +49,7 @@ struct CGHMaterialSet
 {
 	std::vector<std::string> names;
 	std::vector<CGHMaterial> materials;
-	std::vector<std::vector<TextureView>> textureViews;
-
-	std::unique_ptr<DX12UploadBuffer<CGHMaterial>> materialDatas;
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> textures;
+	std::vector<std::vector<TextureInfo>> textureInfos;
 };
 
 template <typename T>
@@ -113,14 +110,10 @@ struct CGHMesh
 	aiPrimitiveType primitiveType = aiPrimitiveType_POINT;
 	int materialIndex = -1;
 	int numData[MESHDATA_NUM] = {};
-	bool isUVSingleChannel = false;
-	unsigned int uvSingleChannelIndex = 0;
-	unsigned int numUVData[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
-	unsigned int numUVComponent[AI_MAX_NUMBER_OF_TEXTURECOORDS] = {};
+	std::vector<unsigned int> numUVComponent;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
-	Microsoft::WRL::ComPtr<ID3D12Resource> UVdataInfos;
-	Microsoft::WRL::ComPtr<ID3D12Resource> meshDataUV[AI_MAX_NUMBER_OF_TEXTURECOORDS];
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> meshDataUVs;
 
 	std::vector<CGHBone> bones;
 	Microsoft::WRL::ComPtr<ID3D12Resource> boneWeightInfos;

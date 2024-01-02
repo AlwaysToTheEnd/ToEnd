@@ -3,8 +3,6 @@
 #include "assimp\postprocess.h"
 #include "CGHGraphicResource.h"
 
-#define MAXNUM_ADD_MATERIAL 15
-
 struct ID3D12GraphicsCommandList;
 class CGHNode;
 struct aiScene;

@@ -132,7 +132,7 @@ namespace CGH
 			{
 				if (std::abs(std::abs(currFloat[j]) - 1.0f) < epsilon)
 				{
-					currFloat[j] = 0;
+					currFloat[j] = 1.0f;
 				}
 			}
 			else
