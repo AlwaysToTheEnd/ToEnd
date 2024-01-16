@@ -4,6 +4,7 @@
 #include "CGHBaseClass.h"
 #include "DirectXColors.h"
 #include "DX12TextureBuffer.h"
+#include "CGHFontLoader.h"
 
 enum
 {
@@ -26,8 +27,8 @@ TestScene::TestScene()
 	: m_meshSet(nullptr)
 	, m_materialSet(nullptr)
 	, m_textureBuffer(nullptr)
+	, m_fontLoader(nullptr)
 {
-
 }
 
 TestScene::~TestScene()
@@ -46,6 +47,11 @@ TestScene::~TestScene()
 	{
 		delete m_materialSet;
 	}
+
+	if (m_fontLoader)
+	{
+		delete m_fontLoader;
+	}
 }
 
 void TestScene::Init()
@@ -57,7 +63,7 @@ void TestScene::Init()
 	m_materialSet = new CGHMaterialSet;
 
 	dxGraphic->LoadMeshDataFile("MeshData/meshes0.fbx", m_meshSet, m_materialSet);
-
+	
 	//rootsig
 	{
 		D3D12_ROOT_PARAMETER rootParams[ROOT_NUM] = {};
@@ -150,7 +156,7 @@ void TestScene::Init()
 
 	{
 		D3D12_INPUT_ELEMENT_DESC inputElementdesc = { "POSITION" ,0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 };
-
+		
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.NodeMask = 0;
 		psoDesc.pRootSignature = s_pipelineMG.GetRootSignature("TestScene");
@@ -164,7 +170,7 @@ void TestScene::Init()
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-
+	
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -172,7 +178,7 @@ void TestScene::Init()
 		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
-
+		
 		s_pipelineMG.CreateGraphicPipeline("TestScene", &psoDesc);
 	}
 
@@ -208,6 +214,7 @@ void TestScene::Init()
 
 	{
 		m_objectInfos = std::make_unique<DX12UploadBuffer<ObjectInfo>>(dxDevice, m_meshSet->meshs.size(), true);
+		m_material = std::make_unique<DX12UploadBuffer<CGHMaterial>>(dxDevice, m_materialSet->materials.size(), true);
 		for (unsigned int i = 0; i < m_meshSet->nodes.size(); i++)
 		{
 			const char* name = m_meshSet->nodes[i].GetaName();
@@ -216,6 +223,11 @@ void TestScene::Init()
 			assert(iter == m_nodeKeys.end());
 
 			m_nodeKeys[name] = i;
+		}
+
+		for (unsigned int i = 0; i < m_materialSet->materials.size(); i++)
+		{
+			m_material->CopyData(i, &m_materialSet->materials[i]);
 		}
 
 		m_textureBuffer = new DX12TextureBuffer();
@@ -300,6 +312,11 @@ void TestScene::Init()
 	dxDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commadAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_commandList.GetAddressOf()));
 	
 	ThrowIfFailed(m_commandList->Close());
+
+	m_fontLoader = new CGHFontLoader;
+
+	CGHFontData fontdata;
+	m_fontLoader->CreateFontData("Font/arial.ttf", 10, &fontdata);
 }
 
 void TestScene::Update(float delta)
@@ -348,9 +365,9 @@ void TestScene::Render()
 	m_commandList->OMSetRenderTargets(1, presentRTV, false, &presentDSV);
 	m_commandList->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, dxGraphic->GetCurrMainPassCBV());
 
-	D3D12_GPU_VIRTUAL_ADDRESS matCB = m_materialSet->materialDatas->Resource()->GetGPUVirtualAddress();
+	D3D12_GPU_VIRTUAL_ADDRESS matCB = m_material->Resource()->GetGPUVirtualAddress();
 	D3D12_GPU_VIRTUAL_ADDRESS objectInfoCB = m_objectInfos->Resource()->GetGPUVirtualAddress();
-	unsigned int matStride = m_materialSet->materialDatas->GetElementByteSize();
+	unsigned int matStride = m_material->GetElementByteSize();
 	unsigned int objectInfoStride = m_objectInfos->GetElementByteSize();
 
 	for (unsigned int i =0 ;i< m_meshSet->meshs.size(); i++)

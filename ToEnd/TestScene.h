@@ -8,6 +8,7 @@
 #include "CGHGraphicResource.h"	
 
 class DX12TextureBuffer;
+class CGHFontLoader;
 
 struct ObjectInfo
 {
@@ -32,11 +33,13 @@ private:
 	unsigned int m_srvSize = 0;
 	CGHMeshDataSet* m_meshSet;
 	CGHMaterialSet* m_materialSet;
+	CGHFontLoader* m_fontLoader;
 	DX12TextureBuffer* m_textureBuffer;
 	std::unordered_map<std::string, unsigned int> m_nodeKeys;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_commadAllocs;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>> m_nodeBones;
 	std::unique_ptr<DX12UploadBuffer<ObjectInfo>> m_objectInfos;
+	std::unique_ptr<DX12UploadBuffer<CGHMaterial>> m_material;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> m_descHeaps;
 };

@@ -12,6 +12,9 @@
     <Filter Include="Graphic">
       <UniqueIdentifier>{7d41255b-3e47-4292-aee6-8e85e9d43d22}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FontLoad">
+      <UniqueIdentifier>{cdc5fdbb-5ef9-4eb5-b303-363c1f77ff75}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -62,6 +65,12 @@
     <ClInclude Include="DX12TextureBuffer.h">
       <Filter>Graphic</Filter>
     </ClInclude>
+    <ClInclude Include="ttfParser.h">
+      <Filter>FontLoad</Filter>
+    </ClInclude>
+    <ClInclude Include="CGHFontLoader.h">
+      <Filter>FontLoad</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -99,6 +108,9 @@
     </ClCompile>
     <ClCompile Include="DX12TextureBuffer.cpp">
       <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="CGHFontLoader.cpp">
+      <Filter>FontLoad</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

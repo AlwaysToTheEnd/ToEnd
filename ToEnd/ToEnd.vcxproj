@@ -160,12 +160,14 @@
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
     <ClInclude Include="Component.h" />
+    <ClInclude Include="CGHFontLoader.h" />
     <ClInclude Include="DX12PipelineMG.h" />
     <ClInclude Include="DX12TextureBuffer.h" />
     <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
     <ClInclude Include="GraphicResourceLoader.h" />
     <ClInclude Include="TestScene.h" />
+    <ClInclude Include="ttfParser.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp" />
@@ -175,6 +177,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="Component.cpp" />
+    <ClCompile Include="CGHFontLoader.cpp" />
     <ClCompile Include="DX12PipelineMG.cpp" />
     <ClCompile Include="DX12TextureBuffer.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
