@@ -21,5 +21,6 @@ namespace CGH
 											 0.0f, 1.0f, 0.0f, 0.0f,
 											 0.0f, 0.0f, 1.0f, 0.0f,
 											 0.0f, 0.0f, 0.0f, 1.0f);
+	const unsigned int NumFrameresource = 3;
 }
 

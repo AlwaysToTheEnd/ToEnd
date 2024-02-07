@@ -90,7 +90,7 @@ private:
 
 	ComPtr<ID3D12Device>			m_d3dDevice;
 
-	const unsigned int				m_numFrameResource = 2;
+	const unsigned int				m_numFrameResource = CGH::NumFrameresource;
 	unsigned int					m_currFrame = 0;
 	unsigned long long				m_currentFence = 0;
 	ComPtr<ID3D12Fence1>			m_fence;

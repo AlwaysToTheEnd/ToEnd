@@ -7,7 +7,8 @@
 
 //https://github.com/artem-ogre/CDT
 
-void CGHFontLoader::CreateFontData(const char* filePath, unsigned int curveDetail, CGHFontData* out)
+void CGHFontLoader::CreateFontData(const char* filePath, unsigned int curveDetail,
+	void* cdtsOut, std::unordered_map<unsigned int, CGHFontGlyphInfo>* glyphInfoOut)
 {
 	uint8_t condition_variable = 0;
 	TTFFontParser::FontData font_data;
@@ -15,15 +16,8 @@ void CGHFontLoader::CreateFontData(const char* filePath, unsigned int curveDetai
 	int8_t error = TTFFontParser::parse_file(filePath, &font_data, &Font_parsed, &condition_variable);
 	assert(condition_variable == 1);
 
-	for (auto& iter : font_data.font_names)
-	{
-		if (iter.languageID)
-		{
-			out->languageIDs.push_back(iter.languageID);
-		}
-	}
+	 auto cdts = static_cast<std::unordered_map<unsigned int, CDT::Triangulation<float>>*>(cdtsOut);
 
-	std::unordered_map<unsigned int, CDT::Triangulation<float>> cdts;
 	std::vector<CDT::V2d<float>> vertices;
 	CDT::EdgeVec edges;
 	for (auto& GlyphIter : font_data.glyphs)
@@ -32,8 +26,15 @@ void CGHFontLoader::CreateFontData(const char* filePath, unsigned int curveDetai
 		if (currGlyph.character >= '!' && currGlyph.character < 128)
 		{
 			assert(currGlyph.num_contours > 0);
-			cdts.insert({ currGlyph.character, CDT::Triangulation<float>(CDT::VertexInsertionOrder::Auto, CDT::IntersectingConstraintEdges::TryResolve, 0) });
-			CDT::Triangulation<float>& currCdt = cdts[currGlyph.character];
+
+			(*glyphInfoOut)[currGlyph.character].advance_width = currGlyph.advance_width;
+			(*glyphInfoOut)[currGlyph.character].left_side_bearing = currGlyph.left_side_bearing;
+			(*glyphInfoOut)[currGlyph.character].glyph_center.x = currGlyph.glyph_center.x;
+			(*glyphInfoOut)[currGlyph.character].glyph_center.y = currGlyph.glyph_center.y;
+			std::memcpy((*glyphInfoOut)[GlyphIter.first].bounding_box, currGlyph.bounding_box, sizeof(currGlyph.bounding_box));
+
+			cdts->insert({ currGlyph.character, CDT::Triangulation<float>(CDT::VertexInsertionOrder::Auto, CDT::IntersectingConstraintEdges::TryResolve, 0) });
+			CDT::Triangulation<float>& currCdt = (*cdts)[currGlyph.character];
 			size_t indexOffset = 0;
 			vertices.clear();
 			edges.clear();
@@ -92,51 +93,6 @@ void CGHFontLoader::CreateFontData(const char* filePath, unsigned int curveDetai
 			currCdt.insertVertices(vertices);
 			currCdt.insertEdges(edges);
 			currCdt.eraseOuterTrianglesAndHoles();
-		}
-	}
-
-	unsigned int allNumVertex = 0;
-	unsigned int allNumIndex = 0;
-	for (auto& iter : cdts)
-	{
-		auto& currData = iter.second;
-		auto& currOutData = out->fontTriangleDatas[iter.first];
-		auto& currFontAttribute = font_data.glyphs[iter.first];
-
-		currOutData.advance_width = currFontAttribute.advance_width;
-		currOutData.left_side_bearing = currFontAttribute.left_side_bearing;
-		std::memcpy(currOutData.bounding_box, currFontAttribute.bounding_box, sizeof(currOutData.bounding_box));
-		currOutData.glyph_center.x = currFontAttribute.glyph_center.x;
-		currOutData.glyph_center.y = currFontAttribute.glyph_center.y;
-		currOutData.numVertex = currData.vertices.size();
-		currOutData.numIndex = currData.triangles.size()*3;
-		currOutData.vertexOffset = allNumVertex;
-		currOutData.indexOffset = allNumIndex;
-
-		allNumVertex += currOutData.numVertex;
-		allNumIndex += currOutData.numIndex;
-	}
-
-	out->vertices.clear();
-	out->indices.clear();
-	out->vertices.reserve(allNumVertex);
-	out->indices.reserve(allNumIndex);
-	for (auto& iter : cdts)
-	{
-		auto& currData = iter.second;
-		auto& currOutData = out->fontTriangleDatas[iter.first];
-		auto& currFontAttribute = font_data.glyphs[iter.first];
-
-		for (size_t i = 0; i < currData.vertices.size(); i++)
-		{
-			out->vertices.push_back({ currData.vertices[i].x , currData.vertices[i].y });
-		}
-
-		for (size_t i = 0; i < currData.triangles.size(); i++)
-		{
-			out->indices.push_back(currData.triangles[i].vertices[0] + currOutData.vertexOffset);
-			out->indices.push_back(currData.triangles[i].vertices[1] + currOutData.vertexOffset);
-			out->indices.push_back(currData.triangles[i].vertices[2] + currOutData.vertexOffset);
 		}
 	}
 }

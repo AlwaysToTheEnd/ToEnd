@@ -71,6 +71,9 @@
     <ClInclude Include="CGHFontLoader.h">
       <Filter>FontLoad</Filter>
     </ClInclude>
+    <ClInclude Include="DX12FontManager.h">
+      <Filter>FontLoad</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -110,6 +113,9 @@
       <Filter>Graphic</Filter>
     </ClCompile>
     <ClCompile Include="CGHFontLoader.cpp">
+      <Filter>FontLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12FontManager.cpp">
       <Filter>FontLoad</Filter>
     </ClCompile>
   </ItemGroup>

@@ -4,7 +4,6 @@
 #include "CGHBaseClass.h"
 #include "DirectXColors.h"
 #include "DX12TextureBuffer.h"
-#include "CGHFontLoader.h"
 
 enum
 {
@@ -27,7 +26,6 @@ TestScene::TestScene()
 	: m_meshSet(nullptr)
 	, m_materialSet(nullptr)
 	, m_textureBuffer(nullptr)
-	, m_fontLoader(nullptr)
 {
 }
 
@@ -46,11 +44,6 @@ TestScene::~TestScene()
 	if (m_materialSet)
 	{
 		delete m_materialSet;
-	}
-
-	if (m_fontLoader)
-	{
-		delete m_fontLoader;
 	}
 }
 
@@ -312,11 +305,6 @@ void TestScene::Init()
 	dxDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commadAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_commandList.GetAddressOf()));
 	
 	ThrowIfFailed(m_commandList->Close());
-
-	m_fontLoader = new CGHFontLoader;
-
-	CGHFontData fontdata;
-	m_fontLoader->CreateFontData("Font/arial.ttf", 10, &fontdata);
 }
 
 void TestScene::Update(float delta)
