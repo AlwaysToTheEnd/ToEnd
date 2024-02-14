@@ -79,9 +79,11 @@ enum DX12_SHADER_TYPE
 
 static class DX12PipelineMG
 {
-public:
-	DX12PipelineMG();
+private:
 	~DX12PipelineMG();
+	DX12PipelineMG();
+public:
+	static DX12PipelineMG instance;
 
 	D3D12_SHADER_BYTECODE	CreateShader(DX12_SHADER_TYPE type, const char* shaderName, const wchar_t* filename,
 										const std::string& entrypoint, const D3D_SHADER_MACRO* defines=nullptr);
@@ -102,5 +104,5 @@ private:
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12CommandSignature>>	m_commandSignatures;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>>				m_shaders[DX12_SHADER_TYPE_COUNT];
 
-}s_pipelineMG;
+};
 

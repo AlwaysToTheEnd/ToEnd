@@ -4,6 +4,7 @@
 #include "CGHBaseClass.h"
 #include "DirectXColors.h"
 #include "DX12TextureBuffer.h"
+#include "DX12FontManager.h"
 
 enum
 {
@@ -57,6 +58,7 @@ void TestScene::Init()
 
 	dxGraphic->LoadMeshDataFile("MeshData/meshes0.fbx", m_meshSet, m_materialSet);
 	
+	auto font = DX12FontManager::instance.GetFont("font/arial.ttf");
 	//rootsig
 	{
 		D3D12_ROOT_PARAMETER rootParams[ROOT_NUM] = {};
@@ -144,7 +146,7 @@ void TestScene::Init()
 		rootsigDesc.NumParameters = ROOT_NUM;
 		rootsigDesc.pParameters = rootParams;
 
-		s_pipelineMG.CreateRootSignature("TestScene", &rootsigDesc);
+		DX12PipelineMG::instance.CreateRootSignature("TestScene", &rootsigDesc);
 	}
 
 	{
@@ -152,9 +154,9 @@ void TestScene::Init()
 		
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.NodeMask = 0;
-		psoDesc.pRootSignature = s_pipelineMG.GetRootSignature("TestScene");
-		psoDesc.VS = s_pipelineMG.CreateShader(DX12_SHADER_VERTEX, "TestSceneVS", L"Shader/baseShader.hlsl", "VS");
-		psoDesc.PS = s_pipelineMG.CreateShader(DX12_SHADER_PIXEL, "TestScenePS", L"Shader/baseShader.hlsl", "PS");
+		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("TestScene");
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "TestSceneVS", L"Shader/baseShader.hlsl", "VS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "TestScenePS", L"Shader/baseShader.hlsl", "PS");
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDesc.InputLayout.NumElements = 1;
 		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
@@ -172,7 +174,7 @@ void TestScene::Init()
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
 		
-		s_pipelineMG.CreateGraphicPipeline("TestScene", &psoDesc);
+		DX12PipelineMG::instance.CreateGraphicPipeline("TestScene", &psoDesc);
 	}
 
 	/*{
@@ -342,8 +344,8 @@ void TestScene::Render()
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(m_commandList->Reset(cmdListAlloc, nullptr));
 
-	m_commandList->SetPipelineState(s_pipelineMG.GetGraphicPipeline("TestScene"));
-	m_commandList->SetGraphicsRootSignature(s_pipelineMG.GetRootSignature("TestScene"));
+	m_commandList->SetPipelineState(DX12PipelineMG::instance.GetGraphicPipeline("TestScene"));
+	m_commandList->SetGraphicsRootSignature(DX12PipelineMG::instance.GetRootSignature("TestScene"));
 
 	m_commandList->RSSetScissorRects(1, &dxGraphic->GetBaseScissorRect());
 	m_commandList->RSSetViewports(1, &dxGraphic->GetBaseViewport());

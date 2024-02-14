@@ -7,6 +7,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+DX12PipelineMG DX12PipelineMG::instance;
+
 DX12PipelineMG::DX12PipelineMG()
 {
 }

@@ -161,6 +161,7 @@
     <ClInclude Include="CGHGraphicResource.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="CGHFontLoader.h" />
+    <ClInclude Include="DX12DefaultBufferCreator.h" />
     <ClInclude Include="DX12FontManager.h" />
     <ClInclude Include="DX12PipelineMG.h" />
     <ClInclude Include="DX12TextureBuffer.h" />
@@ -179,6 +180,7 @@
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="Component.cpp" />
     <ClCompile Include="CGHFontLoader.cpp" />
+    <ClCompile Include="DX12DefaultBufferCreator.cpp" />
     <ClCompile Include="DX12FontManager.cpp" />
     <ClCompile Include="DX12PipelineMG.cpp" />
     <ClCompile Include="DX12TextureBuffer.cpp" />
@@ -190,6 +192,13 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="fontShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Shader\baseShader.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </FxCompile>

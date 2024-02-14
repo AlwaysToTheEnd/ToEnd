@@ -74,6 +74,9 @@
     <ClInclude Include="DX12FontManager.h">
       <Filter>FontLoad</Filter>
     </ClInclude>
+    <ClInclude Include="DX12DefaultBufferCreator.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -118,11 +121,15 @@
     <ClCompile Include="DX12FontManager.cpp">
       <Filter>FontLoad</Filter>
     </ClCompile>
+    <ClCompile Include="DX12DefaultBufferCreator.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\baseShader.hlsl" />
+    <FxCompile Include="fontShader.hlsl" />
   </ItemGroup>
 </Project>

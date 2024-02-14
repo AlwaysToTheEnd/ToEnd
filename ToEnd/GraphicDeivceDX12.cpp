@@ -66,7 +66,7 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	HRESULT hr = S_OK;
 
 	hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_d3dDevice.GetAddressOf()));
-	
+
 	if (m_swapChain)
 	{
 		delete m_swapChain;

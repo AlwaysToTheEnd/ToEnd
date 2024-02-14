@@ -8,6 +8,8 @@
 #include "CGHBaseClass.h"
 #include "../Common/Source/DxException.h"
 #include "GraphicDeivceDX12.h"
+#include "DX12DefaultBufferCreator.h"
+#include "DX12FontManager.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -21,6 +23,7 @@ HRESULT App::Init()
 	HRESULT result = InitWindow();
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 	m_timer.Start();
+	DX12DefaultBufferCreator::instance.Init();
 
 	m_testScene = new TestScene();
 	m_testScene->Init();
@@ -210,6 +213,7 @@ void App::Update(float delta)
 {
 	m_camera.Update();
 	GraphicDeviceDX12::GetGraphic()->Update(delta, &m_camera);
+	DX12DefaultBufferCreator::instance.TryClearJunkUploadBuffers();
 
 	m_testScene->Update(delta);
 }
