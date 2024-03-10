@@ -77,6 +77,15 @@
     <ClInclude Include="DX12DefaultBufferCreator.h">
       <Filter>Graphic</Filter>
     </ClInclude>
+    <ClInclude Include="DX12GarbageFrameResourceMG.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12PSODefine.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12SkinnedMeshRenderer.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -122,6 +131,12 @@
       <Filter>FontLoad</Filter>
     </ClCompile>
     <ClCompile Include="DX12DefaultBufferCreator.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12GarbageFrameResourceMG.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12SkinnedMeshRenderer.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
   </ItemGroup>

@@ -163,7 +163,10 @@
     <ClInclude Include="CGHFontLoader.h" />
     <ClInclude Include="DX12DefaultBufferCreator.h" />
     <ClInclude Include="DX12FontManager.h" />
+    <ClInclude Include="DX12GarbageFrameResourceMG.h" />
+    <ClInclude Include="DX12SkinnedMeshRenderer.h" />
     <ClInclude Include="DX12PipelineMG.h" />
+    <ClInclude Include="DX12PSODefine.h" />
     <ClInclude Include="DX12TextureBuffer.h" />
     <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
@@ -182,6 +185,8 @@
     <ClCompile Include="CGHFontLoader.cpp" />
     <ClCompile Include="DX12DefaultBufferCreator.cpp" />
     <ClCompile Include="DX12FontManager.cpp" />
+    <ClCompile Include="DX12GarbageFrameResourceMG.cpp" />
+    <ClCompile Include="DX12SkinnedMeshRenderer.cpp" />
     <ClCompile Include="DX12PipelineMG.cpp" />
     <ClCompile Include="DX12TextureBuffer.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />

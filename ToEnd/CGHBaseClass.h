@@ -7,7 +7,6 @@
 #include <algorithm>
 #include "Component.h"
 
-
 static struct GlobalOptions
 {
 	struct WindowOption
@@ -24,7 +23,6 @@ static struct GlobalOptions
 	}GRAPHIC;
 }GO;
 
-
 class CGHNode
 {
 public:
@@ -35,7 +33,6 @@ public:
 	virtual void Update(float delta);
 	virtual void RateUpdate(float delta);
 
-	virtual void Render();
 	virtual void OnClcked();
 	virtual void OnMouseOvered();
 
@@ -57,7 +54,7 @@ protected:
 	std::string m_name;
 
 	CGHNode* m_parent = nullptr;
-	std::unique_ptr<Transform> m_transformComponent;
+	std::unique_ptr<COMTransform> m_transformComponent;
 	std::vector<CGHNode*> m_childs;
 	std::vector<std::unique_ptr<Component>> m_components;
 
@@ -88,10 +85,10 @@ inline T* CGHNode::CreateComponent()
 }
 
 template<>
-inline Transform* CGHNode::CreateComponent()
+inline COMTransform* CGHNode::CreateComponent()
 {
-	Transform* result = new Transform(this);
-	std::unique_ptr<Transform> uniqueTemp(result);
+	COMTransform* result = new COMTransform();
+	std::unique_ptr<COMTransform> uniqueTemp(result);
 
 	m_transformComponent = std::move(uniqueTemp);
 
@@ -108,6 +105,7 @@ inline T* CGHNode::GetComponent()
 		if (iter->GetTypeHashCode() == typeid(T).hash_code())
 		{
 			result = iter.get();
+			break;
 		}
 	}
 
@@ -115,7 +113,7 @@ inline T* CGHNode::GetComponent()
 }
 
 template<>
-inline Transform* CGHNode::GetComponent()
+inline COMTransform* CGHNode::GetComponent()
 {
 	return m_transformComponent.get();
 }

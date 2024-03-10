@@ -78,7 +78,7 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSe
 			DirectX::XMVECTOR scale;
 			DirectX::XMVECTOR rotQuter;
 			DirectX::XMVECTOR pos;
-			Transform* transform = meshDataOut->nodes[i].CreateComponent<Transform>();
+			COMTransform* transform = meshDataOut->nodes[i].CreateComponent<COMTransform>();
 
 			std::memcpy(&transMat, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
 			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);

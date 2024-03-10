@@ -28,7 +28,7 @@ SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 SamplerComparisonState gsamShadow : register(s6);
 
-cbuffer cbPass : register(b0)
+cbuffer cbPass : register(b0, space0)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -46,7 +46,13 @@ cbuffer cbPass : register(b0)
     float3 gPad0;
 };
 
-cbuffer MaterialData : register(b1)
+cbuffer ObjectInfo : register(b0, space1)
+{
+    float4x4 gWorldMat;
+    uint gObejctID;
+};
+
+cbuffer MaterialData : register(b1, space1)
 {
     int shadingModel;
     int twosided;
@@ -68,25 +74,17 @@ cbuffer MaterialData : register(b1)
     float3 pad0;
 };
 
-cbuffer ObejctInfo : register(b2)
-{
-    float4x4 gWorldMat;
-    uint4x2 gNumUVComponent;
-    uint gNumUVChannel;
-    uint gHasTanBitans;
-    uint gObejctID;
-};
-
-StructuredBuffer<float4x4> gBoneData : register(t0, space0);
-StructuredBuffer<float3> gVertexNormals : register(t1, space0);
-StructuredBuffer<float3> gVertexTangents : register(t2, space0);
-StructuredBuffer<float3> gVertexBitans : register(t3, space0);
-StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t4, space0);
-StructuredBuffer<BoneWeight> gBoneWeights : register(t5, space0);
-StructuredBuffer<float3> gVertexUV[3] : register(t6, space0);
-
 StructuredBuffer<TextureInfo> gTextureInfos : register(t0, space1);
 Texture2D gTextures[10] : register(t1, space1);
+
+StructuredBuffer<float3> gVertexNormals : register(t0, space2);
+StructuredBuffer<float3> gVertexTangents : register(t1, space2);
+StructuredBuffer<float3> gVertexBitans : register(t2, space2);
+StructuredBuffer<float3> gVertexUV : register(t3, space2);
+
+StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t4, space2);
+StructuredBuffer<BoneWeight> gBoneWeights : register(t5, space2);
+StructuredBuffer<float4x4> gBoneData : register(t6, space2);
 
 struct VertexIn
 {
@@ -98,9 +96,9 @@ struct VSOut
 {
     float4 PosH : SV_POSITION;
     float3 Normal : NORMAL0;
+    float3 tangent : NORMAL1;
+    float3 bitangent : NORMAL2;
     float3 uv0 : TEXCOORD0;
-    float3 uv1 : TEXCOORD1;
-    float3 uv2 : TEXCOORD2;
 };
 
 VSOut VS(VertexIn vin)
@@ -109,11 +107,15 @@ VSOut VS(VertexIn vin)
    
     vout.PosH = float4(vin.PosL, 1.0f);
     vout.Normal = gVertexNormals[vin.id];
+    vout.tangent = gVertexTangents[vin.id];
+    vout.bitangent = gVertexBitans[vin.id];
     
     BoneWeightInfo weightInfo = gBoneWeightInfos[vin.id];
    
     float3 sumPosL = float3(0.0f, 0.0f, 0.0f);
     float3 sumNormalL = float3(0.0f, 0.0f, 0.0f);
+    float3 sumTangent = float3(0.0f, 0.0f, 0.0f);
+    float3 sumBitan = float3(0.0f, 0.0f, 0.0f);
     
     BoneWeight boenWeight;
     [loop]
@@ -123,23 +125,16 @@ VSOut VS(VertexIn vin)
         
         sumPosL += boenWeight.weight * mul(vout.PosH, gBoneData[boenWeight.boneIndex]).xyz;
         sumNormalL += boenWeight.weight * mul(vout.Normal, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumTangent += boenWeight.weight * mul(vout.tangent, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumBitan += boenWeight.weight * mul(vout.bitangent, (float3x3) gBoneData[boenWeight.boneIndex]);
     }
     
-    vout.PosH = float4(sumPosL, 1.0f);
-    vout.PosH = mul(vout.PosH, gWorldMat);
+    vout.PosH = mul(float4(sumPosL, 1.0f), gWorldMat);
     vout.PosH = mul(vout.PosH, gViewProj);
-    vout.Normal = mul(vout.Normal, (float3x3) gWorldMat);
-    
-    float3 uvResults[3] = { float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0) };
-    [loop]
-    for (uint uvIndex = 0; uvIndex < gNumUVChannel; uvIndex++)
-    {
-        uvResults[uvIndex] = gVertexUV[uvIndex][vin.id];
-    }
-    
-    vout.uv0 = uvResults[0];
-    vout.uv1 = uvResults[1];
-    vout.uv2 = uvResults[2];
+    vout.Normal = mul(sumNormalL, (float3x3) gWorldMat);
+    vout.tangent = mul(sumTangent, (float3x3) gWorldMat);
+    vout.bitangent = mul(sumBitan, (float3x3) gWorldMat);
+    vout.uv0 = gVertexUV[vin.id];
     
     return vout;
 }
@@ -156,11 +151,5 @@ PSOut PS(VSOut pin)
     
     pout.color = gTextures[0].Sample(gsamPointWrap, pin.uv0.rg);
     
-    if (pin.uv1.r < 0.9f && pin.uv1.r > 0.1f && pin.uv1.g < 0.9f && pin.uv1.g > 0.1f)
-    {
-        float4 baseColor = gTextures[1].Sample(gsamPointWrap, pin.uv1.rg);
-    }
-    
-	
     return pout;
 }

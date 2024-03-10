@@ -23,12 +23,12 @@ void CGHNode::Update(float delta)
 	{
 		if (m_transformComponent != nullptr)
 		{
-			m_transformComponent->Update(delta);
+			m_transformComponent->Update(this, delta);
 		}
 
 		for (auto& iter : m_components)
 		{
-			iter->Update(delta);
+			iter->Update(this, delta);
 		}
 
 		for (auto& iter : m_childs)
@@ -42,30 +42,14 @@ void CGHNode::RateUpdate(float delta)
 {
 	if (m_active)
 	{
-		if (m_transformComponent != nullptr)
-		{
-			m_transformComponent->RateUpdate(delta);
-		}
-
 		for (auto& iter : m_components)
 		{
-			iter->RateUpdate(delta);
+			iter->RateUpdate(this, delta);
 		}
 
 		for (auto& iter : m_childs)
 		{
 			iter->RateUpdate(delta);
-		}
-	}
-}
-
-void CGHNode::Render()
-{
-	if (m_active)
-	{
-		for (auto& iter : m_childs)
-		{
-			iter->Render();
 		}
 	}
 }

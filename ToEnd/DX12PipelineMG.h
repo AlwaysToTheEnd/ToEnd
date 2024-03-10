@@ -77,6 +77,8 @@ enum DX12_SHADER_TYPE
 	DX12_SHADER_TYPE_COUNT
 };
 
+
+
 static class DX12PipelineMG
 {
 private:
@@ -105,4 +107,6 @@ private:
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>>				m_shaders[DX12_SHADER_TYPE_COUNT];
 
 };
+
+
 

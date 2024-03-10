@@ -28,7 +28,7 @@ struct FontMeshInfo
 
 struct VSIn
 {
-    float2 lPos;
+    float2 lPos : POSITION;
     uint instanceID : SV_InstanceID;
 };
 
@@ -60,6 +60,13 @@ VSOut VS(VSIn vin)
     FontMeshInfo meshInfo = gFontMeshInfos[gFontMeshInfoIndex];
     Character currChar = gCharacterStream[gOffsetCharStream + vin.instanceID];
     StringInfo stringInfo = gStringInfos[currChar.stringInfoIndex];
+    
+    float fontSize = float(stringInfo.fontSize) / meshInfo.advance_width;
+    float leftSideBearing = (float(meshInfo.left_side_bearing) / meshInfo.advance_width) * stringInfo.fontSize;
+    result.postion.xy = float4((vin.lPos.xy * fontSize), 0, 1);
+    result.postion.x += fontSize * currChar.index + leftSideBearing;
+    result.postion = mul(result.postion, stringInfo.transform);
+    result.color = stringInfo.color;
     
     return result;
 }

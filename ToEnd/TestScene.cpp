@@ -9,17 +9,20 @@
 enum
 {
 	ROOT_MAINPASS_CB = 0,
-	ROOT_MATERIAL_CB,
+
 	ROOT_OBJECTINFO_CB,
-	ROOT_BONEDATA_SRV,
+	ROOT_MATERIAL_CB,
+	ROOT_TEXTUREINFO_SRV,
+	ROOT_TEXTURE_TABLE,
+
 	ROOT_NORMAL_SRV,
 	ROOT_TANGENT_SRV,
 	ROOT_BITAN_SRV,
+	ROOT_UV,
+
 	ROOT_WEIGHTINFO_SRV,
 	ROOT_WEIGHT_SRV,
-	ROOT_UV_TABLE,
-	ROOT_TEXTUREINFO_SRV,
-	ROOT_TEXTURE_TABLE,
+	ROOT_BONEDATA_SRV,
 	ROOT_NUM,
 };
 
@@ -57,8 +60,7 @@ void TestScene::Init()
 	m_materialSet = new CGHMaterialSet;
 
 	dxGraphic->LoadMeshDataFile("MeshData/meshes0.fbx", m_meshSet, m_materialSet);
-	
-	auto font = DX12FontManager::instance.GetFont("font/arial.ttf");
+
 	//rootsig
 	{
 		D3D12_ROOT_PARAMETER rootParams[ROOT_NUM] = {};
@@ -68,57 +70,15 @@ void TestScene::Init()
 		rootParams[ROOT_MAINPASS_CB].Descriptor.ShaderRegister = 0;
 		rootParams[ROOT_MAINPASS_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		rootParams[ROOT_MATERIAL_CB].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		rootParams[ROOT_MATERIAL_CB].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_MATERIAL_CB].Descriptor.ShaderRegister = 1;
-		rootParams[ROOT_MATERIAL_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
 		rootParams[ROOT_OBJECTINFO_CB].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		rootParams[ROOT_OBJECTINFO_CB].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_OBJECTINFO_CB].Descriptor.ShaderRegister = 2;
+		rootParams[ROOT_OBJECTINFO_CB].Descriptor.RegisterSpace = 1;
+		rootParams[ROOT_OBJECTINFO_CB].Descriptor.ShaderRegister = 0;
 		rootParams[ROOT_OBJECTINFO_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		rootParams[ROOT_BONEDATA_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_BONEDATA_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_BONEDATA_SRV].Descriptor.ShaderRegister = 0;
-		rootParams[ROOT_BONEDATA_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		rootParams[ROOT_NORMAL_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_NORMAL_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_NORMAL_SRV].Descriptor.ShaderRegister = 1;
-		rootParams[ROOT_NORMAL_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		rootParams[ROOT_TANGENT_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_TANGENT_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_TANGENT_SRV].Descriptor.ShaderRegister = 2;
-		rootParams[ROOT_TANGENT_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		rootParams[ROOT_BITAN_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_BITAN_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_BITAN_SRV].Descriptor.ShaderRegister = 3;
-		rootParams[ROOT_BITAN_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		rootParams[ROOT_WEIGHTINFO_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_WEIGHTINFO_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_WEIGHTINFO_SRV].Descriptor.ShaderRegister = 4;
-		rootParams[ROOT_WEIGHTINFO_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		rootParams[ROOT_WEIGHT_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_WEIGHT_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_WEIGHT_SRV].Descriptor.ShaderRegister = 5;
-		rootParams[ROOT_WEIGHT_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		D3D12_DESCRIPTOR_RANGE uvTableRange = {};
-		uvTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		uvTableRange.NumDescriptors = 3;
-		uvTableRange.OffsetInDescriptorsFromTableStart = 0;
-		uvTableRange.RegisterSpace = 0;
-		uvTableRange.BaseShaderRegister = 6;
-
-		rootParams[ROOT_UV_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParams[ROOT_UV_TABLE].DescriptorTable.NumDescriptorRanges = 1;
-		rootParams[ROOT_UV_TABLE].DescriptorTable.pDescriptorRanges = &uvTableRange;
-		rootParams[ROOT_UV_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[ROOT_MATERIAL_CB].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		rootParams[ROOT_MATERIAL_CB].Descriptor.RegisterSpace = 1;
+		rootParams[ROOT_MATERIAL_CB].Descriptor.ShaderRegister = 1;
+		rootParams[ROOT_MATERIAL_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		//gTextureViews
 		rootParams[ROOT_TEXTUREINFO_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
@@ -133,11 +93,46 @@ void TestScene::Init()
 		textureTanbleRange.OffsetInDescriptorsFromTableStart = 0;
 		textureTanbleRange.RegisterSpace = 1;
 		textureTanbleRange.BaseShaderRegister = 1;
-		
+
 		rootParams[ROOT_TEXTURE_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParams[ROOT_TEXTURE_TABLE].DescriptorTable.NumDescriptorRanges = 1;
 		rootParams[ROOT_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = &textureTanbleRange;
 		rootParams[ROOT_TEXTURE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		rootParams[ROOT_NORMAL_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_NORMAL_SRV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_NORMAL_SRV].Descriptor.ShaderRegister = 0;
+		rootParams[ROOT_NORMAL_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParams[ROOT_TANGENT_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_TANGENT_SRV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_TANGENT_SRV].Descriptor.ShaderRegister = 1;
+		rootParams[ROOT_TANGENT_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParams[ROOT_BITAN_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_BITAN_SRV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_BITAN_SRV].Descriptor.ShaderRegister = 2;
+		rootParams[ROOT_BITAN_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParams[ROOT_UV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_UV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_UV].Descriptor.ShaderRegister = 3;
+		rootParams[ROOT_UV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParams[ROOT_WEIGHTINFO_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_WEIGHTINFO_SRV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_WEIGHTINFO_SRV].Descriptor.ShaderRegister = 4;
+		rootParams[ROOT_WEIGHTINFO_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParams[ROOT_WEIGHT_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_WEIGHT_SRV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_WEIGHT_SRV].Descriptor.ShaderRegister = 5;
+		rootParams[ROOT_WEIGHT_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParams[ROOT_BONEDATA_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[ROOT_BONEDATA_SRV].Descriptor.RegisterSpace = 2;
+		rootParams[ROOT_BONEDATA_SRV].Descriptor.ShaderRegister = 6;
+		rootParams[ROOT_BONEDATA_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
 		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -151,12 +146,16 @@ void TestScene::Init()
 
 	{
 		D3D12_INPUT_ELEMENT_DESC inputElementdesc = { "POSITION" ,0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 };
-		
+
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.NodeMask = 0;
+
 		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("TestScene");
+
 		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "TestSceneVS", L"Shader/baseShader.hlsl", "VS");
 		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "TestScenePS", L"Shader/baseShader.hlsl", "PS");
+
+		//IA Set
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDesc.InputLayout.NumElements = 1;
 		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
@@ -164,16 +163,16 @@ void TestScene::Init()
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	
+		psoDesc.SampleMask = UINT_MAX;
+
+		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
-		
+
 		DX12PipelineMG::instance.CreateGraphicPipeline("TestScene", &psoDesc);
 	}
 
@@ -208,12 +207,11 @@ void TestScene::Init()
 	}*/
 
 	{
-		m_objectInfos = std::make_unique<DX12UploadBuffer<ObjectInfo>>(dxDevice, m_meshSet->meshs.size(), true);
 		m_material = std::make_unique<DX12UploadBuffer<CGHMaterial>>(dxDevice, m_materialSet->materials.size(), true);
 		for (unsigned int i = 0; i < m_meshSet->nodes.size(); i++)
 		{
 			const char* name = m_meshSet->nodes[i].GetaName();
-			
+
 			auto iter = m_nodeKeys.find(name);
 			assert(iter == m_nodeKeys.end());
 
@@ -250,7 +248,7 @@ void TestScene::Init()
 		}
 		m_textureBuffer->Close();
 
-		m_nodeBones.resize(m_meshSet->meshs.size());
+	
 		m_descHeaps.resize(m_meshSet->meshs.size());
 
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -260,16 +258,11 @@ void TestScene::Init()
 		heapDesc.NumDescriptors = 13;
 		m_srvSize = dxDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+		m_nodeBones.resize(m_meshSet->meshs.size());
+
 		for (size_t i = 0; i < m_meshSet->meshs.size(); i++)
 		{
 			const CGHMesh& currMesh = m_meshSet->meshs[i];
-			ObjectInfo info;
-			info.objectID = i;
-			DirectX::XMStoreFloat4x4(&info.worldMat, DirectX::XMMatrixIdentity());
-			std::memcpy(&info.numUVComponent, currMesh.numUVComponent.data(), sizeof(int) * currMesh.numUVComponent.size());
-			info.numUVChannel = currMesh.meshDataUVs.size();
-			info.hasTanBitan = currMesh.numData[MESHDATA_TAN];
-			m_objectInfos->CopyData(i, &info);
 
 			m_nodeBones[i] = std::make_unique<DX12UploadBuffer<DirectX::XMMATRIX>>(dxDevice, currMesh.bones.size(), false);
 
@@ -285,14 +278,6 @@ void TestScene::Init()
 			srvDesc.Buffer.StructureByteStride = sizeof(aiVector3D);
 
 			auto descHeapHandle = m_descHeaps[i]->GetCPUDescriptorHandleForHeapStart();
-			for (unsigned int j = 0; j < info.numUVChannel; j++)
-			{
-				dxDevice->CreateShaderResourceView(currMesh.meshDataUVs[j].Get(), &srvDesc, descHeapHandle);
-				descHeapHandle.ptr += m_srvSize;
-			}
-
-			descHeapHandle = m_descHeaps[i]->GetCPUDescriptorHandleForHeapStart();
-			descHeapHandle.ptr += m_srvSize * 3;
 			m_textureBuffer->CreateSRVs(descHeapHandle);
 		}
 	}
@@ -305,7 +290,7 @@ void TestScene::Init()
 	}
 
 	dxDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commadAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_commandList.GetAddressOf()));
-	
+
 	ThrowIfFailed(m_commandList->Close());
 }
 
@@ -317,7 +302,7 @@ void TestScene::Update(float delta)
 	{
 		auto& currMesh = m_meshSet->meshs[i];
 		auto currBoneUploadBuffer = m_nodeBones[i].get();
-		
+
 		unsigned int numBone = currMesh.bones.size();
 
 		for (unsigned int boneIndex = 0; boneIndex < numBone; boneIndex++)
@@ -328,11 +313,10 @@ void TestScene::Update(float delta)
 			DirectX::XMMATRIX offsetMat = DirectX::XMLoadFloat4x4(&currMesh.bones[boneIndex].offsetMatrix);
 			DirectX::XMMATRIX combinedMat = DirectX::XMLoadFloat4x4(&m_meshSet->nodes[iter->second].m_srt);
 			DirectX::XMMATRIX resultMat = offsetMat * combinedMat;
-			
+
 			currBoneUploadBuffer->CopyData(boneIndex, &DirectX::XMMatrixTranspose(resultMat));
 		}
 	}
-
 }
 
 void TestScene::Render()
@@ -340,7 +324,7 @@ void TestScene::Render()
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
 
 	auto cmdListAlloc = m_commadAllocs[dxGraphic->GetCurrFrameIndex()].Get();
-	
+
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(m_commandList->Reset(cmdListAlloc, nullptr));
 
@@ -356,14 +340,13 @@ void TestScene::Render()
 	m_commandList->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, dxGraphic->GetCurrMainPassCBV());
 
 	D3D12_GPU_VIRTUAL_ADDRESS matCB = m_material->Resource()->GetGPUVirtualAddress();
-	D3D12_GPU_VIRTUAL_ADDRESS objectInfoCB = m_objectInfos->Resource()->GetGPUVirtualAddress();
 	unsigned int matStride = m_material->GetElementByteSize();
 	unsigned int objectInfoStride = m_objectInfos->GetElementByteSize();
 
-	for (unsigned int i =0 ;i< m_meshSet->meshs.size(); i++)
+	for (unsigned int i = 0; i < m_meshSet->meshs.size(); i++)
 	{
 		auto& currMesh = m_meshSet->meshs[i];
-		
+
 		switch (currMesh.primitiveType)
 		{
 		case aiPrimitiveType_POINT:
@@ -380,18 +363,7 @@ void TestScene::Render()
 			break;
 		}
 
-		D3D12_VERTEX_BUFFER_VIEW vbView = {};
-		vbView.BufferLocation = currMesh.meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
-		vbView.SizeInBytes = sizeof(aiVector3D) * currMesh.numData[MESHDATA_POSITION];
-		vbView.StrideInBytes = sizeof(aiVector3D);
-
-		D3D12_INDEX_BUFFER_VIEW ibView = {};
-		ibView.BufferLocation= currMesh.meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
-		ibView.Format = DXGI_FORMAT_R32_UINT;
-		ibView.SizeInBytes = sizeof(unsigned int) * currMesh.numData[MESHDATA_INDEX];
-
-		m_commandList->IASetVertexBuffers(0, 1, &vbView);
-		m_commandList->IASetIndexBuffer(&ibView);
+	
 
 		auto descHeapHandle = m_descHeaps[i]->GetGPUDescriptorHandleForHeapStart();
 
@@ -399,18 +371,30 @@ void TestScene::Render()
 		m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
 		m_commandList->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB + (matStride * currMesh.materialIndex));
-		m_commandList->SetGraphicsRootConstantBufferView(ROOT_OBJECTINFO_CB, objectInfoCB + (objectInfoStride* i));
-		m_commandList->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, m_nodeBones[i]->Resource()->GetGPUVirtualAddress());
+		m_commandList->SetGraphicsRootShaderResourceView(ROOT_TEXTUREINFO_SRV, m_textureBuffer->GetTextureInfos());
+		m_commandList->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
+
+		D3D12_VERTEX_BUFFER_VIEW vbView = {};
+		vbView.BufferLocation = currMesh.meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
+		vbView.SizeInBytes = sizeof(aiVector3D) * currMesh.numData[MESHDATA_POSITION];
+		vbView.StrideInBytes = sizeof(aiVector3D);
+
+		D3D12_INDEX_BUFFER_VIEW ibView = {};
+		ibView.BufferLocation = currMesh.meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
+		ibView.Format = DXGI_FORMAT_R32_UINT;
+		ibView.SizeInBytes = sizeof(unsigned int) * currMesh.numData[MESHDATA_INDEX];
+
+		m_commandList->IASetVertexBuffers(0, 1, &vbView);
+		m_commandList->IASetIndexBuffer(&ibView);
+
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh.meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh.meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh.meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
+		m_commandList->SetGraphicsRootShaderResourceView(ROOT_UV, currMesh.meshDataUVs[0]->GetGPUVirtualAddress());
+
+		m_commandList->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, m_nodeBones[i]->Resource()->GetGPUVirtualAddress());
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_WEIGHTINFO_SRV, currMesh.boneWeightInfos->GetGPUVirtualAddress());
 		m_commandList->SetGraphicsRootShaderResourceView(ROOT_WEIGHT_SRV, currMesh.boneWeights->GetGPUVirtualAddress());
-		m_commandList->SetGraphicsRootDescriptorTable(ROOT_UV_TABLE, descHeapHandle);
-		
-		descHeapHandle.ptr += m_srvSize * 3;
-		m_commandList->SetGraphicsRootShaderResourceView(ROOT_TEXTUREINFO_SRV, m_textureBuffer->GetTextureInfos());
-		m_commandList->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
 
 		m_commandList->DrawIndexedInstanced(currMesh.numData[MESHDATA_INDEX], 1, 0, 0, 0);
 	}
@@ -418,4 +402,94 @@ void TestScene::Render()
 	ThrowIfFailed(m_commandList->Close());
 	ID3D12CommandList* cmdsLists[] = { m_commandList.Get() };
 	dxGraphic->GetCommandQueue()->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+}
+
+void TestScene::CreateFontPSO()
+{
+	auto device = GraphicDeviceDX12::GetDevice();
+
+	{
+		enum FONT_ROOTSIG
+		{
+			ORTHOMAT,
+			OFFSET_CHAR,
+			FONT_MESHINFO_INDEX,
+			STRING_INFO_SRV,
+			CHAR_STREAM_SRV,
+			FONT_MESHINFO_SRV,
+			FONT_ROOT_COUNT
+		};
+
+		D3D12_ROOT_PARAMETER rootParams[FONT_ROOT_COUNT] = {};
+		rootParams[ORTHOMAT].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[ORTHOMAT].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[ORTHOMAT].Constants.Num32BitValues = 16;
+		rootParams[ORTHOMAT].Constants.RegisterSpace = 0;
+		rootParams[ORTHOMAT].Constants.ShaderRegister = 0;
+
+		rootParams[OFFSET_CHAR].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[OFFSET_CHAR].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[OFFSET_CHAR].Constants.Num32BitValues = 1;
+		rootParams[OFFSET_CHAR].Constants.RegisterSpace = 0;
+		rootParams[OFFSET_CHAR].Constants.ShaderRegister = 1;
+
+		rootParams[FONT_MESHINFO_INDEX].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[FONT_MESHINFO_INDEX].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[FONT_MESHINFO_INDEX].Constants.Num32BitValues = 1;
+		rootParams[FONT_MESHINFO_INDEX].Constants.RegisterSpace = 0;
+		rootParams[FONT_MESHINFO_INDEX].Constants.ShaderRegister = 2;
+
+		rootParams[STRING_INFO_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[STRING_INFO_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[STRING_INFO_SRV].Descriptor.RegisterSpace = 0;
+		rootParams[STRING_INFO_SRV].Descriptor.ShaderRegister = 0;
+
+		rootParams[CHAR_STREAM_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[CHAR_STREAM_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[CHAR_STREAM_SRV].Descriptor.RegisterSpace = 0;
+		rootParams[CHAR_STREAM_SRV].Descriptor.ShaderRegister = 1;
+
+		rootParams[FONT_MESHINFO_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[FONT_MESHINFO_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams[FONT_MESHINFO_SRV].Descriptor.RegisterSpace = 0;
+		rootParams[FONT_MESHINFO_SRV].Descriptor.ShaderRegister = 2;
+
+		D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
+		rootDesc.NumStaticSamplers = _countof(s_StaticSamplers);
+		rootDesc.pStaticSamplers = s_StaticSamplers;
+		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootDesc.NumParameters = _countof(rootParams);
+		rootDesc.pParameters = rootParams;
+
+		DX12PipelineMG::instance.CreateRootSignature("font", &rootDesc);
+	}
+
+	{
+		D3D12_INPUT_ELEMENT_DESC elementDesc = {};
+		elementDesc.AlignedByteOffset = 0;
+		elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+		elementDesc.InputSlot = 0;
+		elementDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+		elementDesc.InstanceDataStepRate = 0;
+		elementDesc.SemanticIndex = 0;
+		elementDesc.SemanticName = "POSITION";
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = { };
+		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("font");
+
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psoDesc.InputLayout.NumElements = 1;
+		psoDesc.InputLayout.pInputElementDescs = &elementDesc;
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.SampleMask = UINT_MAX;
+		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
+
+		DX12PipelineMG::instance.CreateGraphicPipeline("font", &psoDesc);
+	}
 }

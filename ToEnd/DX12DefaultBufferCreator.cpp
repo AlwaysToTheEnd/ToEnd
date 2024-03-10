@@ -1,5 +1,6 @@
 #include "DX12DefaultBufferCreator.h"
 #include "GraphicDeivceDX12.h"
+#include "DX12GarbageFrameResourceMG.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -21,9 +22,7 @@ void DX12DefaultBufferCreator::Init()
 
 	ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(cmdAlloc.GetAddressOf())));
 	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_cmd.GetAddressOf())));
-	ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_fence.GetAddressOf())));
 	ThrowIfFailed(m_cmd->Close());
-	m_fenceValue = 0;
 }
 
 void DX12DefaultBufferCreator::CreateDefaultBuffer(const void* data, const D3D12_RESOURCE_DESC& desc, D3D12_RESOURCE_STATES endState, ID3D12Resource** out)
@@ -80,10 +79,8 @@ void DX12DefaultBufferCreator::CreateDefaultBuffer(const void* data, const D3D12
 	ThrowIfFailed(m_cmd->Close());
 	ID3D12CommandList* cmdLists[] = { m_cmd.Get() };
 	cmdQueue->ExecuteCommandLists(1, cmdLists);
-	
-	m_fenceValue++;
-	ThrowIfFailed(cmdQueue->Signal(m_fence.Get(), m_fenceValue));
-	m_junkUploadBuffers.push({ {uplaodBuffer}, cmdAlloc, m_fenceValue });
+
+	DX12GarbageFrameResourceMG::s_instance.RegistGarbege(cmdQueue, uplaodBuffer, cmdAlloc);
 }
 
 void DX12DefaultBufferCreator::CreateDefaultBuffers(const std::vector<const void*>& datas, const std::vector<D3D12_RESOURCE_DESC>& descs,
@@ -146,22 +143,5 @@ void DX12DefaultBufferCreator::CreateDefaultBuffers(const std::vector<const void
 	ID3D12CommandList* cmdLists[] = { m_cmd.Get() };
 	cmdQueue->ExecuteCommandLists(1, cmdLists);
 
-	m_fenceValue++;
-	ThrowIfFailed(cmdQueue->Signal(m_fence.Get(), m_fenceValue));
-	m_junkUploadBuffers.push({ uplaodBuffers, cmdAlloc, m_fenceValue });
-}
-
-void DX12DefaultBufferCreator::TryClearJunkUploadBuffers()
-{
-	while (m_junkUploadBuffers.size())
-	{
-		if (m_fence->GetCompletedValue() >= m_junkUploadBuffers.front().fenceValue)
-		{
-			m_junkUploadBuffers.pop();
-		}
-		else
-		{
-			break;
-		}
-	}
+	DX12GarbageFrameResourceMG::s_instance.RegistGarbeges(cmdQueue, uplaodBuffers, cmdAlloc);
 }

@@ -123,7 +123,9 @@ struct CGHMesh
 struct CGHMeshDataSet
 {
 	std::vector<CGHMesh> meshs;
-	std::vector<CGHNode> nodes;
-	std::vector<CGHAnimation> animations;
-	std::vector<int> nodeParentIndexList;
+
+	bool IsSkinnedMesh()
+	{
+		return true;
+	}
 };

@@ -9,14 +9,6 @@
 
 class DX12TextureBuffer;
 
-struct ObjectInfo
-{
-	DirectX::XMFLOAT4X4 worldMat;
-	unsigned int numUVComponent[8] = {};
-	unsigned int numUVChannel = 0;
-	unsigned int hasTanBitan = 0;
-	unsigned int objectID = 0;
-};
 
 class TestScene
 {
@@ -29,6 +21,9 @@ public:
 	void Render();
 
 private:
+	void CreateFontPSO();
+
+private:
 	unsigned int m_srvSize = 0;
 	CGHMeshDataSet* m_meshSet;
 	CGHMaterialSet* m_materialSet;
@@ -37,7 +32,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_commadAllocs;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>> m_nodeBones;
-	std::unique_ptr<DX12UploadBuffer<ObjectInfo>> m_objectInfos;
 	std::unique_ptr<DX12UploadBuffer<CGHMaterial>> m_material;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> m_descHeaps;
 };
