@@ -4,6 +4,7 @@
 #include "../Common/Source/DX12SwapChain.h"
 
 #include "GraphicResourceLoader.h"
+#include "DX12GarbageFrameResourceMG.h"
 #include "Camera.h"
 
 using namespace DirectX;
@@ -104,11 +105,10 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		
 		ThrowIfFailed(m_cmdList->Close());
 
-		ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(m_dataLoaderCmdAlloc.GetAddressOf())));
+		m_cmdListAllocs.front().Reset();
 
 		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-			m_dataLoaderCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_dataLoaderCmdList.GetAddressOf())));
+			m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_dataLoaderCmdList.GetAddressOf())));
 
 		ThrowIfFailed(m_dataLoaderCmdList->Close());
 
@@ -195,22 +195,22 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
-void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, CGHMaterialSet* outMaterialSet)
+void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, DX12NodeData* nodedata)
 {
 	DX12GraphicResourceLoader loader;
 	std::vector<ComPtr<ID3D12Resource>> upBuffers;
-
-	ThrowIfFailed(m_dataLoaderCmdAlloc->Reset());
-	ThrowIfFailed(m_dataLoaderCmdList->Reset(m_dataLoaderCmdAlloc.Get(), nullptr));
+	
+	auto allocator = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
+	ThrowIfFailed(m_dataLoaderCmdList->Reset(allocator.Get(), nullptr));
 	loader.LoadAllData(filePath, aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS,
-		m_dataLoaderCmdList.Get(), outMeshSet, outMaterialSet, &upBuffers);
+		m_dataLoaderCmdList.Get(), outMeshSet, &upBuffers, nodedata);
 
 	ThrowIfFailed(m_dataLoaderCmdList->Close());
 
 	ID3D12CommandList* cmdLists[] = { m_dataLoaderCmdList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
-	FlushCommandQueue();
+	DX12GarbageFrameResourceMG::s_instance.RegistGarbeges(m_commandQueue.Get(), upBuffers, allocator);
 }
 
 void GraphicDeviceDX12::RenderBegin()

@@ -71,11 +71,9 @@ private:
 	static std::unordered_map<std::string, TEXTURE>				s_textures;
 	static std::unordered_map<std::string, TEXTURE>				s_evictedTextures;
 	static Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>	s_commandList;
-	static Microsoft::WRL::ComPtr<ID3D12CommandAllocator>		s_comAlloc;
-	static Microsoft::WRL::ComPtr<ID3D12Fence>					s_fence;
-	static UINT64												s_fenceCount;
 	static UINT													s_srvuavDescriptorSize;
 
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>				m_currAlloc;
 	TextureInfoData* 											m_textureInfoMapped;
 	Microsoft::WRL::ComPtr<ID3D12Resource>						m_textureInfos;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>			m_uploadBuffers;

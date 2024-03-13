@@ -19,7 +19,9 @@ public:
 	void Init();
 	void TryClearJunks();
 	void RegistGarbege(ID3D12CommandQueue* cmdQueue, Microsoft::WRL::ComPtr<ID3D12Resource> resource, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc);
-	void RegistGarbeges(ID3D12CommandQueue* cmdQueue, std::vector< Microsoft::WRL::ComPtr<ID3D12Resource>> resources, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc);
+	void RegistGarbeges(ID3D12CommandQueue* cmdQueue, std::vector< Microsoft::WRL::ComPtr<ID3D12Resource>>& resources, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc);
+
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> RentCommandAllocator();
 
 private:
 	DX12GarbageFrameResourceMG();
@@ -27,6 +29,7 @@ private:
 
 private:
 	std::queue<JunkResource> m_junks;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_allocators;
 
 	ID3D12Device* m_device = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;

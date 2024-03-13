@@ -10,15 +10,31 @@
 #include "DX12UploadBuffer.h"
 #include "CGHBaseClass.h"
 
+struct DX12NodeData
+{
+	std::vector<CGHNode> nodes;
+	std::vector<int> nodeParentIndexList;
+};
+
 struct TextureInfo
 {
-	std::string texFilePath;
+public:
+	unsigned int textureFilePathID = 0;
 	aiTextureType type = aiTextureType_NONE;
 	aiTextureMapping mapping = aiTextureMapping_UV;
 	unsigned int uvIndex = 0;
 	float blend = 1.0f;
 	aiTextureOp textureOp = aiTextureOp_Multiply;
 	aiTextureMapMode mapMode[3] = {};
+	float pad0[3] = {};
+
+public:
+	static size_t GetTextureFilePathID(const char* path);
+	static const std::string& GetTexturePath(unsigned int pathID);
+	
+private:
+	static std::unordered_map<std::string, size_t> s_textureIndex;
+	static std::vector<std::string> s_textureNames;
 };
 
 #pragma pack(push, 4)
@@ -42,15 +58,10 @@ struct CGHMaterial
 	float reflectivity = 0.0f;
 	unsigned int numTexture = 0;
 	float pad0[3] = {};
+
+	TextureInfo textureInfo[7] = {};
 };
 #pragma pack(pop)
-
-struct CGHMaterialSet
-{
-	std::vector<std::string> names;
-	std::vector<CGHMaterial> materials;
-	std::vector<std::vector<TextureInfo>> textureInfos;
-};
 
 template <typename T>
 struct TimeValue
@@ -106,11 +117,11 @@ struct CGHBone
 
 struct CGHMesh
 {
-	aiString meshName;
+	std::string meshName;
 	aiPrimitiveType primitiveType = aiPrimitiveType_POINT;
-	int materialIndex = -1;
 	int numData[MESHDATA_NUM] = {};
 	std::vector<unsigned int> numUVComponent;
+	unsigned int materialIndex = 0;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> meshDataUVs;

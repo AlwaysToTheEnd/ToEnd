@@ -30,8 +30,8 @@ public:
 	CGHNode(const CGHNode& rhs);
 	virtual ~CGHNode();
 
-	virtual void Update(float delta);
-	virtual void RateUpdate(float delta);
+	virtual void Update(unsigned int currFrame, float delta);
+	virtual void RateUpdate(unsigned int currFrame, float delta);
 
 	virtual void OnClcked();
 	virtual void OnMouseOvered();
@@ -42,6 +42,8 @@ public:
 	bool GetActive() { return m_active; }
 	CGHNode* GetParent() { return m_parent; }
 	const char* GetaName() { return m_name.c_str(); }
+
+	const std::unordered_map<std::string, CGHNode*>* GetNodeTree();
 
 	void SetActive(bool isActive) const { isActive = m_active; }
 	void SetParent(CGHNode* parent);

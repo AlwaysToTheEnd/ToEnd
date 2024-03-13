@@ -70,7 +70,7 @@ public:
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
-	void LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, CGHMaterialSet* outMaterialSet);
+	void LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, DX12NodeData* nodedata = nullptr);
 
 private:
 	GraphicDeviceDX12() = default;
@@ -109,7 +109,6 @@ private:
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
 	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;
-	ComPtr<ID3D12CommandAllocator>										m_dataLoaderCmdAlloc;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
 	std::unordered_map<std::string,
 		Microsoft::WRL::ComPtr<ID3D12Resource>>							m_dx12resources;

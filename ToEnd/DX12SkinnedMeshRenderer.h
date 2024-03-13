@@ -16,13 +16,7 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
-	unsigned int Render(ID3D12GraphicsCommandList* cmd, unsigned int rootsigOffset);
-
-	void SetMesh(CGHMeshDataSet* meshDataSet);
-
 private:
 	static size_t s_hashCode;
-	CGHMeshDataSet* m_meshSet;
-	std::vector<std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>> m_nodeBones;
 };
 

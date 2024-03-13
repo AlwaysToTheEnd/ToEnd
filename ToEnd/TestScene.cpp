@@ -28,7 +28,6 @@ enum
 
 TestScene::TestScene()
 	: m_meshSet(nullptr)
-	, m_materialSet(nullptr)
 	, m_textureBuffer(nullptr)
 {
 }
@@ -44,11 +43,6 @@ TestScene::~TestScene()
 	{
 		delete m_meshSet;
 	}
-
-	if (m_materialSet)
-	{
-		delete m_materialSet;
-	}
 }
 
 void TestScene::Init()
@@ -57,9 +51,8 @@ void TestScene::Init()
 	auto dxDevice = dxGraphic->GetDevice();
 
 	m_meshSet = new CGHMeshDataSet;
-	m_materialSet = new CGHMaterialSet;
 
-	dxGraphic->LoadMeshDataFile("MeshData/meshes0.fbx", m_meshSet, m_materialSet);
+	dxGraphic->LoadMeshDataFile("MeshData/meshes0.fbx", m_meshSet, &nodeData);
 
 	//rootsig
 	{
@@ -207,10 +200,9 @@ void TestScene::Init()
 	}*/
 
 	{
-		m_material = std::make_unique<DX12UploadBuffer<CGHMaterial>>(dxDevice, m_materialSet->materials.size(), true);
-		for (unsigned int i = 0; i < m_meshSet->nodes.size(); i++)
+		for (unsigned int i = 0; i < nodeData.nodes.size(); i++)
 		{
-			const char* name = m_meshSet->nodes[i].GetaName();
+			const char* name = nodeData.nodes[i].GetaName();
 
 			auto iter = m_nodeKeys.find(name);
 			assert(iter == m_nodeKeys.end());
@@ -218,32 +210,27 @@ void TestScene::Init()
 			m_nodeKeys[name] = i;
 		}
 
-		for (unsigned int i = 0; i < m_materialSet->materials.size(); i++)
-		{
-			m_material->CopyData(i, &m_materialSet->materials[i]);
-		}
-
 		m_textureBuffer = new DX12TextureBuffer();
 		m_textureBuffer->Init(10);
 		m_textureBuffer->Open();
 		{
 			TextureInfo texInfo;
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_MainTex.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
 			texInfo.blend = 1.0f;
 			texInfo.uvIndex = 0;
 			texInfo.type = aiTextureType_DIFFUSE;
 			m_textureBuffer->AddTexture(&texInfo);
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_Texture2.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_Texture2.png");
 			m_textureBuffer->AddTexture(&texInfo);
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_BumpMap.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap.png");
 			m_textureBuffer->AddTexture(&texInfo);
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_BumpMap2.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap2.png");
 			m_textureBuffer->AddTexture(&texInfo);
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_DetailMainTex.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_DetailMainTex.png");
 			m_textureBuffer->AddTexture(&texInfo);
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_OcclusionMap.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_OcclusionMap.png");
 			m_textureBuffer->AddTexture(&texInfo);
-			texInfo.texFilePath = "Textures/BaseBody/cf_m_skin_body_00_NailMask.png";
+			texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_NailMask.png");
 			m_textureBuffer->AddTexture(&texInfo);
 		}
 		m_textureBuffer->Close();
@@ -296,7 +283,7 @@ void TestScene::Init()
 
 void TestScene::Update(float delta)
 {
-	m_meshSet->nodes.front().Update(delta);
+	nodeData.nodes.front().Update(delta);
 
 	for (size_t i = 0; i < m_meshSet->meshs.size(); i++)
 	{
@@ -311,7 +298,7 @@ void TestScene::Update(float delta)
 			assert(iter != m_nodeKeys.end());
 
 			DirectX::XMMATRIX offsetMat = DirectX::XMLoadFloat4x4(&currMesh.bones[boneIndex].offsetMatrix);
-			DirectX::XMMATRIX combinedMat = DirectX::XMLoadFloat4x4(&m_meshSet->nodes[iter->second].m_srt);
+			DirectX::XMMATRIX combinedMat = DirectX::XMLoadFloat4x4(&nodeData.nodes[iter->second].m_srt);
 			DirectX::XMMATRIX resultMat = offsetMat * combinedMat;
 
 			currBoneUploadBuffer->CopyData(boneIndex, &DirectX::XMMatrixTranspose(resultMat));
@@ -341,7 +328,6 @@ void TestScene::Render()
 
 	D3D12_GPU_VIRTUAL_ADDRESS matCB = m_material->Resource()->GetGPUVirtualAddress();
 	unsigned int matStride = m_material->GetElementByteSize();
-	unsigned int objectInfoStride = m_objectInfos->GetElementByteSize();
 
 	for (unsigned int i = 0; i < m_meshSet->meshs.size(); i++)
 	{
@@ -362,8 +348,6 @@ void TestScene::Render()
 			assert(false);
 			break;
 		}
-
-	
 
 		auto descHeapHandle = m_descHeaps[i]->GetGPUDescriptorHandleForHeapStart();
 

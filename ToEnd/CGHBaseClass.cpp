@@ -17,39 +17,39 @@ CGHNode::~CGHNode()
 }
 
 
-void CGHNode::Update(float delta)
+void CGHNode::Update(unsigned int currFrame, float delta)
 {
 	if (m_active)
 	{
 		if (m_transformComponent != nullptr)
 		{
-			m_transformComponent->Update(this, delta);
+			m_transformComponent->Update(this, currFrame, delta);
 		}
 
 		for (auto& iter : m_components)
 		{
-			iter->Update(this, delta);
+			iter->Update(this, currFrame, delta);
 		}
 
 		for (auto& iter : m_childs)
 		{
-			iter->Update(delta);
+			iter->Update(currFrame, delta);
 		}
 	}
 }
 
-void CGHNode::RateUpdate(float delta)
+void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 {
 	if (m_active)
 	{
 		for (auto& iter : m_components)
 		{
-			iter->RateUpdate(this, delta);
+			iter->RateUpdate(this, currFrame, delta);
 		}
 
 		for (auto& iter : m_childs)
 		{
-			iter->RateUpdate(delta);
+			iter->RateUpdate(currFrame, delta);
 		}
 	}
 }
@@ -61,6 +61,12 @@ void CGHNode::OnClcked()
 
 void CGHNode::OnMouseOvered()
 {
+}
+
+const std::unordered_map<std::string, CGHNode*>* CGHNode::GetNodeTree()
+{
+
+	return nullptr;
 }
 
 void CGHNode::SetParent(CGHNode* parent)

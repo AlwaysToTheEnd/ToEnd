@@ -2,15 +2,13 @@
 #include "d3dx12.h"
 #include "CGHGraphicResource.h"
 #include "GraphicDeivceDX12.h"
+#include "DX12GarbageFrameResourceMG.h"
 #include "../Common/Source/DxException.h"
 #include <DirectXTex.h>
 
 std::unordered_map<std::string, DX12TextureBuffer::TEXTURE>	DX12TextureBuffer::s_textures;
 std::unordered_map<std::string, DX12TextureBuffer::TEXTURE>	DX12TextureBuffer::s_evictedTextures;
 Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>			DX12TextureBuffer::s_commandList = nullptr;
-Microsoft::WRL::ComPtr<ID3D12CommandAllocator>				DX12TextureBuffer::s_comAlloc = nullptr;
-Microsoft::WRL::ComPtr<ID3D12Fence>							DX12TextureBuffer::s_fence = nullptr;
-UINT64														DX12TextureBuffer::s_fenceCount = 0;
 UINT														DX12TextureBuffer::s_srvuavDescriptorSize = 0;
 
 using namespace DirectX;
@@ -42,15 +40,15 @@ void DX12TextureBuffer::Init(UINT bufferSize)
 
 	if (s_commandList == nullptr)
 	{
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAlloc;
+
 		s_srvuavDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		ThrowIfFailed(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(s_comAlloc.GetAddressOf())));
+			IID_PPV_ARGS(cmdAlloc.GetAddressOf())));
 
-		ThrowIfFailed(device->CreateCommandList(1, D3D12_COMMAND_LIST_TYPE_DIRECT, s_comAlloc.Get(),
+		ThrowIfFailed(device->CreateCommandList(1, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAlloc.Get(),
 			nullptr, IID_PPV_ARGS(s_commandList.GetAddressOf())));
-
-		ThrowIfFailed(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(s_fence.GetAddressOf())));
 
 		ThrowIfFailed(s_commandList->Close());
 
@@ -68,15 +66,15 @@ void DX12TextureBuffer::Init(UINT bufferSize)
 void DX12TextureBuffer::Open()
 {
 	m_isClosed = false;
-
-	ThrowIfFailed(s_commandList->Reset(s_comAlloc.Get(), nullptr));
+	m_currAlloc = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
+	ThrowIfFailed(s_commandList->Reset(m_currAlloc.Get(), nullptr));
 }
 
 void DX12TextureBuffer::AddTexture(const TextureInfo* texInfo)
 {
 	assert(!m_isClosed && "can not call to create texture on a closed TextureBuffer");
 
-	const std::string& filePath = texInfo->texFilePath;
+	const std::string& filePath = TextureInfo::GetTexturePath(texInfo->textureFilePathID);
 	auto device = GraphicDeviceDX12::GetDevice();
 	TEXTURE* texture = ResidentTexture(filePath);
 
@@ -129,25 +127,8 @@ void DX12TextureBuffer::Close()
 	auto queue = GraphicDeviceDX12::GetGraphic()->GetCommandQueue();
 	queue->ExecuteCommandLists(1, commandLists);
 	
-	s_fenceCount++;
-	ThrowIfFailed(queue->Signal(s_fence.Get(), s_fenceCount));
-
-	if (s_fence->GetCompletedValue() < s_fenceCount)
-	{
-		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-		ThrowIfFailed(s_fence->SetEventOnCompletion(s_fenceCount, eventHandle));
-
-		if (eventHandle)
-		{
-			WaitForSingleObject(eventHandle, INFINITE);
-			CloseHandle(eventHandle);
-		}
-		else
-		{
-			assert(false);
-		}
-	}
-
+	DX12GarbageFrameResourceMG::s_instance.RegistGarbeges(queue, m_uploadBuffers, m_currAlloc);
+	m_currAlloc = nullptr;
 	m_uploadBuffers.clear();
 }
 

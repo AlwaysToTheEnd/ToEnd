@@ -26,8 +26,8 @@ private:
 private:
 	unsigned int m_srvSize = 0;
 	CGHMeshDataSet* m_meshSet;
-	CGHMaterialSet* m_materialSet;
 	DX12TextureBuffer* m_textureBuffer;
+	DX12NodeData nodeData;
 	std::unordered_map<std::string, unsigned int> m_nodeKeys;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_commadAllocs;

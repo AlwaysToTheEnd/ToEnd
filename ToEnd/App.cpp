@@ -11,6 +11,7 @@
 #include "DX12FontManager.h"
 #include "DX12GarbageFrameResourceMG.h"
 #include "DX12DefaultBufferCreator.h"
+#include "DX12GraphicResourceManager.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -24,6 +25,7 @@ HRESULT App::Init()
 	HRESULT result = InitWindow();
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
 	m_timer.Start();
+	DX12GraphicResourceManager::s_insatance.Init();
 	DX12GarbageFrameResourceMG::s_instance.Init();
 	DX12DefaultBufferCreator::instance.Init();
 

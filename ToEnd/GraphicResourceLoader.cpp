@@ -5,6 +5,7 @@
 #include "assimp\scene.h"
 #include "assimp\Importer.hpp"
 #include "CGHBaseClass.h"
+#include "DX12GraphicResourceManager.h"
 
 using namespace Assimp;
 
@@ -21,7 +22,7 @@ struct BoneWeight
 };
 
 void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags, ID3D12GraphicsCommandList* cmd,
-	CGHMeshDataSet* meshDataOut, CGHMaterialSet* materialSetOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut)
+	CGHMeshDataSet* meshDataOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut, DX12NodeData* nodeOut)
 {
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
@@ -33,15 +34,21 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 	assert(scene != nullptr);
 
-	LoadNodeData(scene, meshDataOut);
-	LoadMaterialData(scene, d12Device, materialSetOut);
+	m_materiIndices.clear();
+
+	if (nodeOut != nullptr)
+	{
+		LoadNodeData(scene, nodeOut);
+	}
+
+	LoadMaterialData(scene, d12Device);
 	LoadAnimationData(scene, meshDataOut);
 	LoadMeshData(scene, d12Device, cmd, meshDataOut, uploadbuffersOut);
 
 	importer.FreeScene();
 }
 
-void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSet* meshDataOut)
+void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, DX12NodeData* nodeOut)
 {
 	if (scene->mRootNode)
 	{
@@ -49,7 +56,7 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSe
 		unsigned int numNodeLastLevel = 1;
 
 		nodes.push_back(scene->mRootNode);
-		meshDataOut->nodeParentIndexList.push_back(-1);
+		nodeOut->nodeParentIndexList.push_back(-1);
 
 		while (numNodeLastLevel)
 		{
@@ -63,7 +70,7 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSe
 
 				for (unsigned int j = 0; j < currNode->mNumChildren; j++)
 				{
-					meshDataOut->nodeParentIndexList.push_back(parentNodeIndex);
+					nodeOut->nodeParentIndexList.push_back(parentNodeIndex);
 					nodes.push_back(currNode->mChildren[j]);
 				}
 			}
@@ -71,14 +78,14 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSe
 			numNodeLastLevel = numNodeCurrLevel;
 		}
 
-		meshDataOut->nodes.resize(nodes.size());
+		nodeOut->nodes.resize(nodes.size());
 		for (size_t i = 0; i < nodes.size(); i++)
 		{
 			DirectX::XMMATRIX transMat = {};
 			DirectX::XMVECTOR scale;
 			DirectX::XMVECTOR rotQuter;
 			DirectX::XMVECTOR pos;
-			COMTransform* transform = meshDataOut->nodes[i].CreateComponent<COMTransform>();
+			COMTransform* transform = nodeOut->nodes[i].CreateComponent<COMTransform>();
 
 			std::memcpy(&transMat, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
 			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);
@@ -86,29 +93,27 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, CGHMeshDataSe
 			transform->SetScale(scale);
 			transform->SetRotateQuter(rotQuter);
 
-			meshDataOut->nodes[i].SetName(nodes[i]->mName.C_Str());
+			nodeOut->nodes[i].SetName(nodes[i]->mName.C_Str());
 
-			if (meshDataOut->nodeParentIndexList[i] != -1)
+			if (nodeOut->nodeParentIndexList[i] != -1)
 			{
-				meshDataOut->nodes[i].SetParent(&meshDataOut->nodes[meshDataOut->nodeParentIndexList[i]]);
+				nodeOut->nodes[i].SetParent(&nodeOut->nodes[nodeOut->nodeParentIndexList[i]]);
 			}
 		}
 	}
 }
 
-void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Device* d12Device, CGHMaterialSet* materialSetOut)
+void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Device* d12Device)
 {
 	const unsigned int numMaterials = scene->mNumMaterials;
-	materialSetOut->materials.resize(numMaterials);
-	materialSetOut->names.resize(numMaterials);
-	materialSetOut->textureInfos.resize(numMaterials);
 	{
 		for (unsigned int i = 0; i < numMaterials; i++)
 		{
-			CGHMaterial& currDumpMat = materialSetOut->materials[i];
+			CGHMaterial currDumpMat;
+			aiString matName;
 			const aiMaterial* currMat = scene->mMaterials[i];
 
-			currMat->Get(AI_MATKEY_NAME, materialSetOut->names[i]);
+			currMat->Get(AI_MATKEY_NAME, matName);
 			currMat->Get(AI_MATKEY_TWOSIDED, currDumpMat.twosided);
 			currMat->Get(AI_MATKEY_SHADING_MODEL, currDumpMat.shadingModel);
 			currMat->Get(AI_MATKEY_ENABLE_WIREFRAME, currDumpMat.wireframe);
@@ -137,17 +142,20 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 					aiString filePath;
 					aiReturn result = currMat->GetTexture(texView.type, currTextureIndex,
 						&filePath, &texView.mapping, &texView.uvIndex, &texView.blend, &texView.textureOp, texView.mapMode);
-					texView.texFilePath = filePath.C_Str();
+
+					texView.textureFilePathID = TextureInfo::GetTextureFilePathID(filePath.C_Str());
+
 					assert(result == aiReturn_SUCCESS);
 
 					if (result == aiReturn_SUCCESS)
 					{
-						materialSetOut->textureInfos[i].push_back(texView);
+						currDumpMat.textureInfo[currDumpMat.numTexture] = texView;
+						currDumpMat.numTexture++;
 					}
 				}
 			}
 
-			currDumpMat.numTexture = materialSetOut->textureInfos[i].size();
+			m_materiIndices.push_back(DX12GraphicResourceManager::s_insatance.SetData(matName.C_Str(), &currDumpMat));
 		}
 	}
 }
@@ -158,8 +166,6 @@ void DX12GraphicResourceLoader::LoadAnimationData(const aiScene* scene, CGHMeshD
 	{
 		assert(scene->mAnimations[i]->mNumMeshChannels == 0);
 		assert(scene->mAnimations[i]->mNumMorphMeshChannels == 0);
-
-
 	}
 }
 
@@ -233,8 +239,8 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 		CGHMesh& targetMesh = meshDataOut->meshs[i];
 		unsigned int numUVChannel = currMesh->GetNumUVChannels();
 
-		targetMesh.meshName = currMesh->mName;
-		targetMesh.materialIndex = currMesh->mMaterialIndex;
+		targetMesh.meshName = currMesh->mName.C_Str();
+		targetMesh.materialIndex = m_materiIndices[currMesh->mMaterialIndex];
 
 		if (currMesh->HasPositions())
 		{
