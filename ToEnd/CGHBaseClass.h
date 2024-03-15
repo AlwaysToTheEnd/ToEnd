@@ -5,7 +5,20 @@
 #include <memory>
 #include <DirectXMath.h>
 #include <algorithm>
+#include <functional>
 #include "Component.h"
+
+struct CGHEvent
+{
+	CGHEvent(std::function<void()> _func,const void* _object)
+	{
+		func = _func;
+		object = _object;
+	}
+
+	std::function<void()> func;
+	const void* object = nullptr;
+};
 
 static struct GlobalOptions
 {
@@ -39,30 +52,64 @@ public:
 	template<typename T> T* CreateComponent();
 	template<typename T> T* GetComponent();
 
-	bool GetActive() { return m_active; }
-	CGHNode* GetParent() { return m_parent; }
-	const char* GetaName() { return m_name.c_str(); }
-
-	const std::unordered_map<std::string, CGHNode*>* GetNodeTree();
+	bool GetActive() const { return m_active; }
+	CGHNode* GetParent() const { return m_parent; }
+	const char* GetaName() const { return m_name.c_str(); }
+	void GetChildNodes(std::vector<const CGHNode*>* nodeOut) const;
 
 	void SetActive(bool isActive) const { isActive = m_active; }
 	void SetParent(CGHNode* parent);
 	void SetName(const char* name) { m_name = name; }
 
+private:
+	void ChildNodeTreeChangeEvent();
+
 public:
 	DirectX::XMFLOAT4X4 m_srt;
-
-protected:
-	std::string m_name;
-
-	CGHNode* m_parent = nullptr;
-	std::unique_ptr<COMTransform> m_transformComponent;
-	std::vector<CGHNode*> m_childs;
-	std::vector<std::unique_ptr<Component>> m_components;
+	std::vector<CGHEvent> m_childNodeTreeChangeEvent;
 
 private:
+	std::string m_name;
 	bool m_active = true;
+	CGHNode* m_parent = nullptr;
+	std::vector<CGHNode*> m_childs;
+	std::vector<std::unique_ptr<Component>> m_components;
 };
+
+
+template<>
+inline COMTransform* CGHNode::CreateComponent()
+{
+	COMTransform* result = new COMTransform(this);
+	std::unique_ptr<Component> uniqueTemp(result);
+
+	m_components[COMPONENT_TRANSFORM] = std::move(uniqueTemp);
+
+	return result;
+}
+
+template<>
+inline COMTransform* CGHNode::GetComponent()
+{
+	return reinterpret_cast<COMTransform*>(m_components[COMPONENT_TRANSFORM].get());
+}
+
+template<>
+inline COMSkinnedMesh* CGHNode::CreateComponent()
+{
+	COMSkinnedMesh* result = new COMSkinnedMesh(this);
+	std::unique_ptr<Component> uniqueTemp(result);
+
+	m_components[COMPONENT_SKINNEDMESH] = std::move(uniqueTemp);
+
+	return result;
+}
+
+template<>
+inline COMSkinnedMesh* CGHNode::GetComponent()
+{
+	return reinterpret_cast<COMSkinnedMesh*>(m_components[COMPONENT_SKINNEDMESH].get());
+}
 
 template<typename T>
 inline T* CGHNode::CreateComponent()
@@ -86,17 +133,6 @@ inline T* CGHNode::CreateComponent()
 	return result;
 }
 
-template<>
-inline COMTransform* CGHNode::CreateComponent()
-{
-	COMTransform* result = new COMTransform();
-	std::unique_ptr<COMTransform> uniqueTemp(result);
-
-	m_transformComponent = std::move(uniqueTemp);
-
-	return result;
-}
-
 template<typename T>
 inline T* CGHNode::GetComponent()
 {
@@ -112,12 +148,6 @@ inline T* CGHNode::GetComponent()
 	}
 
 	return result;
-}
-
-template<>
-inline COMTransform* CGHNode::GetComponent()
-{
-	return m_transformComponent.get();
 }
 
 namespace CGH
@@ -145,3 +175,6 @@ namespace CGH
 		}
 	}
 }
+
+
+

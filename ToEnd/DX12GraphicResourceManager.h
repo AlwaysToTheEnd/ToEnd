@@ -40,7 +40,7 @@ private:
 private:
 	std::unordered_map<size_t, GraphicData> m_datas;
 	ID3D12Device* m_device = nullptr;
-	const int baseNumData = 50;
+	const int baseNumData = 128;
 };
 
 template<typename T>
