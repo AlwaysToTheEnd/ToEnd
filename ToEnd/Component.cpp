@@ -2,8 +2,10 @@
 #include "Component.h"
 #include "CGHBaseClass.h"
 #include "GraphicDeivceDX12.h"
+#include "DX12GraphicResourceManager.h"
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
+size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
 size_t COMSkinnedMesh::s_hashCode = typeid(COMSkinnedMesh).hash_code();
 size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRenderer).hash_code();
 
@@ -199,4 +201,58 @@ void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFram
 	{
 		GraphicDeviceDX12::GetGraphic()->RenderSkinnedMesh(node, renderFlag);
 	}
+}
+
+COMMaterial::COMMaterial(CGHNode* node)
+{
+	m_material = DX12GraphicResourceManager::s_insatance.CreateData<CGHMaterial>(&m_currMaterialIndex);
+}
+
+COMMaterial::~COMMaterial()
+{
+}
+
+void COMMaterial::Release(CGHNode* node)
+{
+	if (m_material)
+	{
+		DX12GraphicResourceManager::s_insatance.ReleaseData(m_material);
+		m_material = nullptr;
+	}
+}
+
+
+void COMMaterial::SetMaterial(CGHMaterial* material)
+{
+	if(m_material != material)
+	{
+		if (m_material)
+		{
+			DX12GraphicResourceManager::s_insatance.ReleaseData(m_material);
+		}
+
+		m_material = material;
+
+		if (m_material)
+		{
+			DX12GraphicResourceManager::s_insatance.AddRef(m_material);
+			m_currMaterialIndex = DX12GraphicResourceManager::s_insatance.GetIndex(m_material);
+		}
+		else
+		{
+			m_currMaterialIndex = 0;
+		}
+	}
+}
+
+UINT64 COMMaterial::GetMaterialDataGPU()
+{
+	UINT64 result = 0;
+
+	if (m_material)
+	{
+		result = DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex);
+	}
+
+	return result;
 }

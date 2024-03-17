@@ -3,33 +3,34 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <wrl.h>
 #include <assert.h>
-
 
 class DX12GraphicResourceManager
 {
 	struct GraphicData
 	{
 		unsigned int stride = 0;
-		std::unordered_map<std::string, size_t> names;
+		std::vector<unsigned int> releasedIndices;
 		BYTE* cpuData = nullptr;
 		Microsoft::WRL::ComPtr<ID3D12Resource> gpuData;
 	};
 public:
+	static const int baseNumData = 256;
 	static DX12GraphicResourceManager s_insatance;
 
 public:
 	void Init();
 
-	template<typename T> const T* GetData(const char* name, size_t* indexOut = nullptr);
-	template<typename T> const T* GetData(size_t index);
-	template<typename T> const size_t GetSize();
-	template<typename T> const D3D12_GPU_VIRTUAL_ADDRESS GetGpuStartAddress();
-	template<typename T> const D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(size_t index);
-	template<typename T> const D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(const char* name);
+	template<typename T> T* CreateData(unsigned int* indexOut);
+	template<typename T> unsigned int GetIndex(T* data);
+	template<typename T> void ReleaseData(T* data);
+	template<typename T> unsigned int AddRef(T* data);
 
-	template<typename T> size_t SetData(const char* name, const T* data);
+	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuStartAddress();
+	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(T* data);
+	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(size_t index);
 
 private:
 	DX12GraphicResourceManager() = default;
@@ -39,58 +40,87 @@ private:
 
 private:
 	std::unordered_map<size_t, GraphicData> m_datas;
+	std::unordered_map<void*, int> m_refCount;
 	ID3D12Device* m_device = nullptr;
-	const int baseNumData = 128;
 };
 
-template<typename T>
-inline const T* DX12GraphicResourceManager::GetData(const char* name, size_t* indexOut)
-{
-	const T* result = nullptr;
 
+template<typename T>
+inline T* DX12GraphicResourceManager::CreateData(unsigned int* indexOut)
+{
+	T* result = nullptr;
+	GraphicData& datas = m_datas[typeid(T).hash_code()];
+	unsigned int index = datas.releasedIndices.back();
+
+	datas.releasedIndices.pop_back();
+
+	if (indexOut)
+	{
+		*indexOut = index;
+	}
+
+	if (datas.gpuData == nullptr)
+	{
+		CreateResource(sizeof(T), &datas);
+	}
+
+	result = (T*)(datas.cpuData + index * datas.stride);
+	m_refCount[result] = 1;
+
+	return result;
+}
+
+template<typename T>
+inline unsigned int DX12GraphicResourceManager::GetIndex(T* data)
+{
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
 
-	auto iter = datas.names.find(name);
+	unsigned int index = ((size_t)data - (size_t)datas.cpuData) / datas.stride;
+	assert(index < baseNumData);
 
-	if (iter != datas.names.end() && datas.cpuData != nullptr)
+	return index;
+}
+
+template<typename T>
+inline void DX12GraphicResourceManager::ReleaseData(T* data)
+{
+	auto iter = m_refCount.find(data);
+
+	if (iter != m_refCount.end())
 	{
-		result = (T*)(datas.cpuData + iter->second * datas.stride);
-
-		if (indexOut)
+		iter->second -= 1;
+		
+		if (iter->second < 1)
 		{
-			*indexOut = iter->second;
+			GraphicData& datas = m_datas[typeid(T).hash_code()];
+
+			unsigned int index = ((size_t)data - (size_t)datas.cpuData) / datas.stride;
+			assert(index < baseNumData);
+
+			datas.releasedIndices.push_back(index);
+			m_refCount.erase(iter);
 		}
 	}
-
-	return result;
 }
 
 template<typename T>
-inline const T* DX12GraphicResourceManager::GetData(size_t index)
+inline unsigned int DX12GraphicResourceManager::AddRef(T* data)
 {
-	const T* result = nullptr;
+	unsigned int result = 0;
 
-	GraphicData& datas = m_datas[typeid(T).hash_code()];
+	auto iter = m_refCount.find(data);
 
-	if (datas.names.size() > index && datas.cpuData != nullptr)
+	if (iter != m_refCount.end())
 	{
-		result = (T*)(datas.cpuData + index * datas.stride);
+		iter->second += 1;
+		result = iter->second;
 	}
 
 	return result;
 }
 
 template<typename T>
-inline const size_t DX12GraphicResourceManager::GetSize()
-{
-	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
-	GraphicData& datas = m_datas[typeid(T).hash_code()];
-
-	return datas.names.size();
-}
-
-template<typename T>
-inline const D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuStartAddress()
+inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuStartAddress()
 {
 	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
@@ -98,60 +128,27 @@ inline const D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuStartAd
 }
 
 template<typename T>
-inline const D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(size_t index)
+inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(T* data)
 {
 	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
 
-	if (datas.names.size() > index)
-	{
-		result = datas.gpuData->GetGPUVirtualAddress() + (index * datas.stride);
-	}
+	unsigned int index = ((size_t)data - (size_t)datas.cpuData) / datas.stride;
 
-	return result;
+	assert(index < baseNumData);
+
+	result = datas.gpuData->GetGPUVirtualAddress() + (index * datas.stride);
+
+	return result();
 }
 
 template<typename T>
-inline const D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(const char* name)
+inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(size_t index)
 {
 	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
 
-	auto iter = datas.names.find(name);
-
-	if (iter != datas.names.end())
-	{
-		result = datas.gpuData->GetGPUVirtualAddress() + (iter->second * datas.stride);
-	}
+	result = datas.gpuData->GetGPUVirtualAddress() + (index * datas.stride);
 
 	return result;
-}
-
-template<typename T>
-inline size_t DX12GraphicResourceManager::SetData(const char* name, const T* data)
-{
-	size_t index = 0;
-	GraphicData& datas = m_datas[typeid(T).hash_code()];
-	size_t dataSize = sizeof(T);
-
-	if (datas.gpuData == nullptr)
-	{
-		CreateResource(dataSize, &datas);
-	}
-
-	auto iter = datas.names.find(name);
-
-	if (iter == datas.names.end())
-	{
-		index = datas.names.size();
-		assert(index < baseNumData);
-		datas.names[name] = index;
-	}
-	else
-	{
-		index = iter->second;
-	}
-	
-	std::memcpy(datas.cpuData.data() + datas.stride * index, data, dataSize);
-	return index;
 }

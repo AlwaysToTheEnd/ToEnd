@@ -22,7 +22,7 @@ struct BoneWeight
 };
 
 void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags, ID3D12GraphicsCommandList* cmd,
-	CGHMeshDataSet* meshDataOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut, DX12NodeData* nodeOut)
+	CGHMeshDataSet* meshDataOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut, std::vector<CGHNode>* nodeOut)
 {
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
@@ -38,7 +38,7 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 	if (nodeOut != nullptr)
 	{
-		LoadNodeData(scene, nodeOut);
+		LoadNodeData(scene, *nodeOut);
 	}
 
 	LoadMaterialData(scene, d12Device);
@@ -48,44 +48,24 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 	importer.FreeScene();
 }
 
-void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, DX12NodeData* nodeOut)
+void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut)
 {
+	DX12NodeData nodeData;
+
 	if (scene->mRootNode)
 	{
 		std::vector<aiNode*> nodes;
-		unsigned int numNodeLastLevel = 1;
-
 		nodes.push_back(scene->mRootNode);
-		nodeOut->nodeParentIndexList.push_back(-1);
+		std::vector<int> nodeParentIndexList;
 
-		while (numNodeLastLevel)
-		{
-			unsigned numNodeCurrLevel = 0;
-			size_t numNodes = nodes.size();
-			for (unsigned int i = 0; i < numNodeLastLevel; i++)
-			{
-				size_t parentNodeIndex = numNodes - i - 1;
-				aiNode* currNode = nodes[parentNodeIndex];
-				numNodeCurrLevel += currNode->mNumChildren;
-
-				for (unsigned int j = 0; j < currNode->mNumChildren; j++)
-				{
-					nodeOut->nodeParentIndexList.push_back(parentNodeIndex);
-					nodes.push_back(currNode->mChildren[j]);
-				}
-			}
-
-			numNodeLastLevel = numNodeCurrLevel;
-		}
-
-		nodeOut->nodes.resize(nodes.size());
+		nodeOut.resize(nodes.size());
 		for (size_t i = 0; i < nodes.size(); i++)
 		{
 			DirectX::XMMATRIX transMat = {};
 			DirectX::XMVECTOR scale;
 			DirectX::XMVECTOR rotQuter;
 			DirectX::XMVECTOR pos;
-			COMTransform* transform = nodeOut->nodes[i].CreateComponent<COMTransform>();
+			COMTransform* transform = nodeOut[i].CreateComponent<COMTransform>();
 
 			std::memcpy(&transMat, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
 			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);
@@ -93,11 +73,11 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, DX12NodeData*
 			transform->SetScale(scale);
 			transform->SetRotateQuter(rotQuter);
 
-			nodeOut->nodes[i].SetName(nodes[i]->mName.C_Str());
+			nodeOut[i].SetName(nodes[i]->mName.C_Str());
 
-			if (nodeOut->nodeParentIndexList[i] != -1)
+			if (nodeParentIndexList[i] != -1)
 			{
-				nodeOut->nodes[i].SetParent(&nodeOut->nodes[nodeOut->nodeParentIndexList[i]]);
+				nodeOut[i].SetParent(&nodeOut[nodeParentIndexList[i]]);
 			}
 		}
 	}
@@ -109,27 +89,28 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 	{
 		for (unsigned int i = 0; i < numMaterials; i++)
 		{
-			CGHMaterial currDumpMat;
+			unsigned int materialIndex = 0;
+			CGHMaterial* currDumpMat = DX12GraphicResourceManager::s_insatance.CreateData<CGHMaterial>(&materialIndex);
 			aiString matName;
 			const aiMaterial* currMat = scene->mMaterials[i];
 
 			currMat->Get(AI_MATKEY_NAME, matName);
-			currMat->Get(AI_MATKEY_TWOSIDED, currDumpMat.twosided);
-			currMat->Get(AI_MATKEY_SHADING_MODEL, currDumpMat.shadingModel);
-			currMat->Get(AI_MATKEY_ENABLE_WIREFRAME, currDumpMat.wireframe);
-			currMat->Get(AI_MATKEY_BLEND_FUNC, currDumpMat.blend);
-			currMat->Get(AI_MATKEY_OPACITY, currDumpMat.opacity);
-			currMat->Get(AI_MATKEY_BUMPSCALING, currDumpMat.bumpscaling);
-			currMat->Get(AI_MATKEY_SHININESS, currDumpMat.shininess);
-			currMat->Get(AI_MATKEY_REFLECTIVITY, currDumpMat.reflectivity);
-			currMat->Get(AI_MATKEY_SHININESS_STRENGTH, currDumpMat.shinpercent);
-			currMat->Get(AI_MATKEY_REFRACTI, currDumpMat.refracti);
-			currMat->Get(AI_MATKEY_COLOR_DIFFUSE, currDumpMat.diffuse);
-			currMat->Get(AI_MATKEY_COLOR_AMBIENT, currDumpMat.ambient);
-			currMat->Get(AI_MATKEY_COLOR_SPECULAR, currDumpMat.specular);
-			currMat->Get(AI_MATKEY_COLOR_EMISSIVE, currDumpMat.emissive);
-			currMat->Get(AI_MATKEY_COLOR_TRANSPARENT, currDumpMat.transparent);
-			currMat->Get(AI_MATKEY_COLOR_REFLECTIVE, currDumpMat.reflective);
+			currMat->Get(AI_MATKEY_TWOSIDED, currDumpMat->twosided);
+			currMat->Get(AI_MATKEY_SHADING_MODEL, currDumpMat->shadingModel);
+			currMat->Get(AI_MATKEY_ENABLE_WIREFRAME, currDumpMat->wireframe);
+			currMat->Get(AI_MATKEY_BLEND_FUNC, currDumpMat->blend);
+			currMat->Get(AI_MATKEY_OPACITY, currDumpMat->opacity);
+			currMat->Get(AI_MATKEY_BUMPSCALING, currDumpMat->bumpscaling);
+			currMat->Get(AI_MATKEY_SHININESS, currDumpMat->shininess);
+			currMat->Get(AI_MATKEY_REFLECTIVITY, currDumpMat->reflectivity);
+			currMat->Get(AI_MATKEY_SHININESS_STRENGTH, currDumpMat->shinpercent);
+			currMat->Get(AI_MATKEY_REFRACTI, currDumpMat->refracti);
+			currMat->Get(AI_MATKEY_COLOR_DIFFUSE, currDumpMat->diffuse);
+			currMat->Get(AI_MATKEY_COLOR_AMBIENT, currDumpMat->ambient);
+			currMat->Get(AI_MATKEY_COLOR_SPECULAR,currDumpMat->specular);
+			currMat->Get(AI_MATKEY_COLOR_EMISSIVE,currDumpMat->emissive);
+			currMat->Get(AI_MATKEY_COLOR_TRANSPARENT, currDumpMat->transparent);
+			currMat->Get(AI_MATKEY_COLOR_REFLECTIVE, currDumpMat->reflective);
 
 			for (int textureType = aiTextureType_NONE; textureType < aiTextureType_UNKNOWN; textureType++)
 			{
@@ -149,13 +130,13 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 
 					if (result == aiReturn_SUCCESS)
 					{
-						currDumpMat.textureInfo[currDumpMat.numTexture] = texView;
-						currDumpMat.numTexture++;
+						currDumpMat->textureInfo[currDumpMat->numTexture] = texView;
+						currDumpMat->numTexture++;
 					}
 				}
 			}
 
-			m_materiIndices.push_back(DX12GraphicResourceManager::s_insatance.SetData(matName.C_Str(), &currDumpMat));
+			m_materiIndices.push_back(materialIndex);
 		}
 	}
 }

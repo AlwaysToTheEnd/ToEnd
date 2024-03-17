@@ -54,6 +54,11 @@ void GraphicDeviceDX12::DeleteDeivce()
 	}
 }
 
+void GraphicDeviceDX12::BaseRender()
+{
+
+}
+
 void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 {
 #if defined(DEBUG)||defined(_DEBUG)
@@ -195,7 +200,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
-void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, DX12NodeData* nodedata)
+void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, std::vector<CGHNode>* node)
 {
 	DX12GraphicResourceLoader loader;
 	std::vector<ComPtr<ID3D12Resource>> upBuffers;
@@ -203,7 +208,7 @@ void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* o
 	auto allocator = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
 	ThrowIfFailed(m_dataLoaderCmdList->Reset(allocator.Get(), nullptr));
 	loader.LoadAllData(filePath, aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS,
-		m_dataLoaderCmdList.Get(), outMeshSet, &upBuffers, nodedata);
+		m_dataLoaderCmdList.Get(), outMeshSet, &upBuffers, node);
 
 	ThrowIfFailed(m_dataLoaderCmdList->Close());
 
@@ -224,14 +229,31 @@ void GraphicDeviceDX12::RenderBegin()
 
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
+}
 
-	ThrowIfFailed(m_cmdList->Close());
-	ID3D12CommandList* cmdsLists[] = { m_cmdList.Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+void GraphicDeviceDX12::RenderMesh(CGHNode* node, unsigned int renderFlag)
+{
+	m_meshRenderQueue.queue.push_back({ node, renderFlag });
+}
+
+void GraphicDeviceDX12::RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag)
+{
+	m_skinnedMeshRenderQueue.queue.push_back({ node, renderFlag });
+}
+
+void GraphicDeviceDX12::RenderUI(CGHNode* node, unsigned int renderFlag)
+{
+	m_uiRenderQueue.queue.push_back({ node, renderFlag });
 }
 
 void GraphicDeviceDX12::RenderEnd()
 {
+	BaseRender();
+
+	m_meshRenderQueue.queue.clear();
+	m_skinnedMeshRenderQueue.queue.clear();
+	m_uiRenderQueue.queue.clear();
+
 	auto cmdListAlloc = GetCurrRenderEndCommandAllocator();
 
 	ThrowIfFailed(cmdListAlloc->Reset());

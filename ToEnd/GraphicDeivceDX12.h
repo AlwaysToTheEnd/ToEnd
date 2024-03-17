@@ -45,6 +45,11 @@ struct DX12PassConstants
 
 class GraphicDeviceDX12
 {
+	struct DX12RenderQueue
+	{
+		std::vector<std::pair<CGHNode*,unsigned int>> queue;
+	};
+
 public:
 	static GraphicDeviceDX12* GetGraphic();
 	static void CreateDeivce(HWND hWnd, int windowWidth, int windowHeight);
@@ -68,15 +73,17 @@ public:
 
 	void RenderBegin();
 	void RenderMesh(CGHNode* node, unsigned int renderFlag);
-	void RenderSkinnedMesh(CGHNode*, unsigned int renderFlag);
+	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
+	void RenderUI(CGHNode* node, unsigned int renderFlag);
 
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
-	void LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, DX12NodeData* nodedata = nullptr);
+	void LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, std::vector<CGHNode>* node = nullptr);
 
 private:
 	GraphicDeviceDX12() = default;
+	void BaseRender();
 
 	void Init(HWND hWnd, int windowWidth, int windowHeight);
 	void FlushCommandQueue();
@@ -107,6 +114,9 @@ private:
 	DX12SwapChain*					m_swapChain = nullptr;
 
 	ID3D12PipelineState*			m_currPipeline = nullptr;
+	DX12RenderQueue					m_meshRenderQueue;
+	DX12RenderQueue					m_skinnedMeshRenderQueue;
+	DX12RenderQueue					m_uiRenderQueue;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

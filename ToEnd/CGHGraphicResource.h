@@ -10,10 +10,9 @@
 #include "DX12UploadBuffer.h"
 #include "CGHBaseClass.h"
 
-struct DX12NodeData
+enum CGHRENDER_FLAG
 {
-	std::vector<CGHNode> nodes;
-	std::vector<int> nodeParentIndexList;
+
 };
 
 struct TextureInfo
@@ -57,9 +56,9 @@ struct CGHMaterial
 	aiColor3D reflective;
 	float reflectivity = 0.0f;
 	unsigned int numTexture = 0;
-	float pad0[3] = {};
-
-	TextureInfo textureInfo[7] = {};
+	TextureInfo textureInfo[7];
+	unsigned int renderQueue = 0;
+	float pad0[2] = {};
 };
 #pragma pack(pop)
 

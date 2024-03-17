@@ -1,4 +1,5 @@
 #include "DX12GraphicResourceManager.h"
+#include <numeric>
 #include "GraphicDeivceDX12.h"
 
 DX12GraphicResourceManager DX12GraphicResourceManager::s_insatance;

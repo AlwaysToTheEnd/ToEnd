@@ -79,16 +79,29 @@ private:
 	std::vector<DirectX::XMFLOAT4X4*> m_boneDatasCpu;
 };
 
-
 class COMMaterial : public Component
 {
 public:
+	COMMaterial(CGHNode* node);
+	virtual ~COMMaterial();
+	virtual void Release(CGHNode* node) override;
+	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override {}
+	virtual size_t GetTypeHashCode() override { return s_hashCode; }
+	virtual unsigned int GetPriority() override { return COMPONENT_MATERIAL; }
+
+	void SetMaterial(CGHMaterial* material);
+	CGHMaterial* GetMaterialData() { return m_material; }
+	UINT64 GetMaterialDataGPU();
 
 public:
-	const CGHMaterial* m_data;
+	void* m_shader = nullptr;
 
 private:
-
+	static size_t s_hashCode;
+	static CGHMaterial* s_baseMaterial;
+	CGHMaterial* m_material = nullptr;
+	unsigned int m_currMaterialIndex = 0;
 };
 
 class COMDX12SkinnedMeshRenderer : public Component
