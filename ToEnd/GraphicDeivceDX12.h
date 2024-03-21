@@ -79,7 +79,8 @@ public:
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
-	void LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, std::vector<CGHNode>* node = nullptr);
+	void LoadMeshDataFile(const char* filePath, std::vector<CGHMesh>* outMeshSet, 
+		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
 
 private:
 	GraphicDeviceDX12() = default;

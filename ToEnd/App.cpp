@@ -12,6 +12,7 @@
 #include "DX12GarbageFrameResourceMG.h"
 #include "DX12DefaultBufferCreator.h"
 #include "DX12GraphicResourceManager.h"
+#include "DX12TextureBuffer.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -28,6 +29,7 @@ HRESULT App::Init()
 	DX12GraphicResourceManager::s_insatance.Init();
 	DX12GarbageFrameResourceMG::s_instance.Init();
 	DX12DefaultBufferCreator::instance.Init();
+	DX12TextureBuffer::Init();
 
 	m_testScene = new TestScene();
 	m_testScene->Init();
@@ -220,6 +222,8 @@ void App::Update(float delta)
 	DX12GarbageFrameResourceMG::s_instance.TryClearJunks();
 
 	m_testScene->Update(delta);
+
+	CGHNode::ClearNodeEvents();
 }
 
 void App::Render()

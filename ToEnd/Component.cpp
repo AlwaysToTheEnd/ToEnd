@@ -17,7 +17,7 @@ void COMTransform::Update(CGHNode* node, unsigned int, float delta)
 {
 	DirectX::XMMATRIX rotateMat = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&m_queternion));
 	DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
-	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z); 
+	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
 
 	CGHNode* parentNode = node->GetParent();
 	if (parentNode != nullptr)
@@ -60,12 +60,10 @@ COMSkinnedMesh::COMSkinnedMesh(CGHNode* node)
 		IID_PPV_ARGS(m_boneDatas.GetAddressOf())));
 	ThrowIfFailed(m_boneDatas->Map(0, nullptr, reinterpret_cast<void**>(&mapped)));
 
-	node->m_childNodeTreeChangeEvent.push_back({ std::bind(&COMSkinnedMesh::NodeTreeChanged, this), this });
-
 	for (unsigned int i = 0; i < frameNum; i++)
 	{
 		m_boneDatasCpu.push_back(mapped);
-		
+
 		for (unsigned int j = 0; j < MAXNUMBONE; j++)
 		{
 			std::memcpy(mapped, &CGH::IdentityMatrix, sizeof(DirectX::XMFLOAT4X4));
@@ -81,23 +79,11 @@ COMSkinnedMesh::~COMSkinnedMesh()
 void COMSkinnedMesh::Release(CGHNode* node)
 {
 	m_boneDatas->Unmap(0, nullptr);
-
-	auto& events = node->m_childNodeTreeChangeEvent;
-	
-	for (size_t i = 0; i < events.size(); i++)
-	{
-		if (events[i].object == this)
-		{
-			events.back() = events[i];
-			events.pop_back();
-			break;
-		}
-	}
 }
 
 void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
-	if (m_currNodeTreeDirtyFlag)
+	if (node->CheckNodeEvent(node->GetRoot(), CGHNODE_EVENT_FLAG_ROOT_TREE_CHANGED))
 	{
 		m_currNodeTree.clear();
 		std::vector<const CGHNode*> childNodeStack;
@@ -108,31 +94,26 @@ void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float del
 		{
 			m_currNodeTree.insert({ iter->GetaName(), iter });
 		}
-
-		m_currNodeTreeDirtyFlag = false;
 	}
 
 	if (m_data)
 	{
 		DirectX::XMFLOAT4X4* mapped = m_boneDatasCpu[currFrame];
 
-		for (auto& currMesh : m_data->meshs)
+		for (auto& currBone : m_data->bones)
 		{
-			for (auto& currBone : currMesh.bones)
+			auto iter = m_currNodeTree.find(currBone.name);
+			if (iter != m_currNodeTree.end())
 			{
-				auto iter = m_currNodeTree.find(currBone.name);
-				if (iter != m_currNodeTree.end())
-				{
-					DirectX::XMStoreFloat4x4(mapped, DirectX::XMLoadFloat4x4(&currBone.offsetMatrix) * DirectX::XMLoadFloat4x4(&iter->second->m_srt));
-				}
-
-				mapped++;
+				DirectX::XMStoreFloat4x4(mapped, DirectX::XMLoadFloat4x4(&currBone.offsetMatrix) * DirectX::XMLoadFloat4x4(&iter->second->m_srt));
 			}
+
+			mapped++;
 		}
 	}
 }
 
-void COMSkinnedMesh::SetMeshData(const CGHMeshDataSet* meshData)
+void COMSkinnedMesh::SetMeshData(const CGHMesh* meshData)
 {
 	if (m_data == meshData) return;
 
@@ -141,12 +122,8 @@ void COMSkinnedMesh::SetMeshData(const CGHMeshDataSet* meshData)
 	if (m_data)
 	{
 		unsigned int numBone = 0;
-		for (auto& iter : m_data->meshs)
-		{
-			numBone += iter.bones.size();
-		}
 
-		assert(numBone < MAXNUMBONE);
+		assert(m_data->bones.size() < MAXNUMBONE);
 	}
 }
 
@@ -206,6 +183,14 @@ void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFram
 COMMaterial::COMMaterial(CGHNode* node)
 {
 	m_material = DX12GraphicResourceManager::s_insatance.CreateData<CGHMaterial>(&m_currMaterialIndex);
+
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = CGHMaterial::CGHMaterialTextureNum;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	ThrowIfFailed(GraphicDeviceDX12::GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_descHeap.GetAddressOf())));
+
+	m_textureBuffer.SetBufferSize(CGHMaterial::CGHMaterialTextureNum);
 }
 
 COMMaterial::~COMMaterial()
@@ -221,27 +206,21 @@ void COMMaterial::Release(CGHNode* node)
 	}
 }
 
-
-void COMMaterial::SetMaterial(CGHMaterial* material)
+void COMMaterial::SetData(const CGHMaterial* material)
 {
-	if(m_material != material)
+	*m_material = *material;
+}
+
+void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
+{
+	if (textureInfo)
 	{
-		if (m_material)
-		{
-			DX12GraphicResourceManager::s_insatance.ReleaseData(m_material);
-		}
-
-		m_material = material;
-
-		if (m_material)
-		{
-			DX12GraphicResourceManager::s_insatance.AddRef(m_material);
-			m_currMaterialIndex = DX12GraphicResourceManager::s_insatance.GetIndex(m_material);
-		}
-		else
-		{
-			m_currMaterialIndex = 0;
-		}
+		m_textureBuffer.SetTexture(TextureInfo::GetTexturePath(textureInfo->textureFilePathID).c_str(), index);
+		m_material->textureInfo[index] = *textureInfo;
+	}
+	else
+	{
+		m_material->textureInfo[index].type = aiTextureType_NONE;
 	}
 }
 

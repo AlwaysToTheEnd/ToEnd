@@ -5,10 +5,31 @@
 
 #include "GraphicResourceLoader.h"
 #include "DX12GarbageFrameResourceMG.h"
+#include "Component.h"
 #include "Camera.h"
 
 using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
+
+enum
+{
+	ROOT_MAINPASS_CB = 0,
+
+	ROOT_OBJECTINFO_CB,
+	ROOT_MATERIAL_CB,
+	ROOT_TEXTUREINFO_SRV,
+	ROOT_TEXTURE_TABLE,
+
+	ROOT_NORMAL_SRV,
+	ROOT_TANGENT_SRV,
+	ROOT_BITAN_SRV,
+	ROOT_UV,
+
+	ROOT_WEIGHTINFO_SRV,
+	ROOT_WEIGHT_SRV,
+	ROOT_BONEDATA_SRV,
+	ROOT_NUM,
+};
 
 GraphicDeviceDX12* GraphicDeviceDX12::GetGraphic()
 {
@@ -56,7 +77,57 @@ void GraphicDeviceDX12::DeleteDeivce()
 
 void GraphicDeviceDX12::BaseRender()
 {
+	m_cmdList->SetPipelineState(DX12PipelineMG::instance.GetGraphicPipeline("TestScene"));
+	m_cmdList->SetGraphicsRootSignature(DX12PipelineMG::instance.GetRootSignature("TestScene"));
 
+	D3D12_CPU_DESCRIPTOR_HANDLE presentRTV[] = { GetCurrPresentRTV() };
+	auto presentDSV = GetPresentDSV();
+	m_cmdList->OMSetRenderTargets(1, presentRTV, false, &presentDSV);
+	m_cmdList->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+
+	for (auto& iter : m_skinnedMeshRenderQueue.queue)
+	{
+		COMMaterial* matCom = iter.first->GetComponent<COMMaterial>();
+		COMSkinnedMesh* meshCom = iter.first->GetComponent<COMSkinnedMesh>();
+
+		m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		D3D12_GPU_VIRTUAL_ADDRESS matCB = matCom->GetMaterialDataGPU();
+		const CGHMesh* currMesh = meshCom->GetMeshData();
+		auto textureDescHeap = matCom->GetTextureHeap();
+		auto descHeapHandle = textureDescHeap->GetGPUDescriptorHandleForHeapStart();
+
+		ID3D12DescriptorHeap* heaps[] = { textureDescHeap };
+		m_cmdList->SetDescriptorHeaps(_countof(heaps), heaps);
+
+		m_cmdList->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB);
+		m_cmdList->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
+
+		D3D12_VERTEX_BUFFER_VIEW vbView = {};
+		vbView.BufferLocation = currMesh->meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
+		vbView.SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
+		vbView.StrideInBytes = sizeof(aiVector3D);
+
+		D3D12_INDEX_BUFFER_VIEW ibView = {};
+		ibView.BufferLocation = currMesh->meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
+		ibView.Format = DXGI_FORMAT_R32_UINT;
+		ibView.SizeInBytes = sizeof(unsigned int) * currMesh->numData[MESHDATA_INDEX];
+
+		m_cmdList->IASetVertexBuffers(0, 1, &vbView);
+		m_cmdList->IASetIndexBuffer(&ibView);
+
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_UV, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
+
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_WEIGHTINFO_SRV, currMesh->boneWeightInfos->GetGPUVirtualAddress());
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_WEIGHT_SRV, currMesh->boneWeights->GetGPUVirtualAddress());
+
+		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, meshCom->GetBoneData(m_currFrame));
+
+		m_cmdList->DrawIndexedInstanced(currMesh->numData[MESHDATA_INDEX], 1, 0, 0, 0);
+	}
 }
 
 void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
@@ -98,8 +169,8 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		ThrowIfFailed(m_d3dDevice->CreateCommandQueue(&queueDesc,
 			IID_PPV_ARGS(m_commandQueue.GetAddressOf())));
 
-		m_cmdListAllocs.resize(m_numFrameResource*2);
-		for (size_t i = 0; i < m_numFrameResource*2; i++)
+		m_cmdListAllocs.resize(m_numFrameResource * 2);
+		for (size_t i = 0; i < m_numFrameResource * 2; i++)
 		{
 			ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(m_cmdListAllocs[i].GetAddressOf())));
@@ -107,7 +178,7 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 
 		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
 			m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_cmdList.GetAddressOf())));
-		
+
 		ThrowIfFailed(m_cmdList->Close());
 
 		m_cmdListAllocs.front().Reset();
@@ -157,7 +228,7 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 
 	XMVECTOR rayOrigin = XMVectorZero();
 	XMVECTOR ray = XMLoadFloat3(&camera->GetViewRay(m_projMat, static_cast<unsigned int>(m_screenViewport.Width), static_cast<unsigned int>(m_screenViewport.Height)));
-	
+
 	rayOrigin = XMVector3Transform(rayOrigin, xmInvView);
 	ray = (xmInvView.r[0] * ray.m128_f32[0]) + (xmInvView.r[1] * ray.m128_f32[1]) + (xmInvView.r[2] * ray.m128_f32[2]);
 
@@ -186,7 +257,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	}
 	ThrowIfFailed(m_cmdList->Close());
 
-	ID3D12CommandList* cmdLists[] = { m_cmdList.Get()};
+	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 	float fovAngleY = 0.785398163f;
@@ -200,15 +271,16 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
-void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, CGHMeshDataSet* outMeshSet, std::vector<CGHNode>* node)
+void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, std::vector<CGHMesh>* outMeshSet,
+	std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode)
 {
 	DX12GraphicResourceLoader loader;
 	std::vector<ComPtr<ID3D12Resource>> upBuffers;
-	
+
 	auto allocator = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
 	ThrowIfFailed(m_dataLoaderCmdList->Reset(allocator.Get(), nullptr));
 	loader.LoadAllData(filePath, aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS,
-		m_dataLoaderCmdList.Get(), outMeshSet, &upBuffers, node);
+		m_dataLoaderCmdList.Get(), &upBuffers, outMeshSet, outMaterials, outNode);
 
 	ThrowIfFailed(m_dataLoaderCmdList->Close());
 
@@ -254,15 +326,10 @@ void GraphicDeviceDX12::RenderEnd()
 	m_skinnedMeshRenderQueue.queue.clear();
 	m_uiRenderQueue.queue.clear();
 
-	auto cmdListAlloc = GetCurrRenderEndCommandAllocator();
-
-	ThrowIfFailed(cmdListAlloc->Reset());
-	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
-
 	m_swapChain->RenderEnd(m_cmdList.Get());
 
 	ThrowIfFailed(m_cmdList->Close());
-	ID3D12CommandList* cmdsLists[] = { m_cmdList.Get()};
+	ID3D12CommandList* cmdsLists[] = { m_cmdList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
 	m_swapChain->Present();
@@ -271,7 +338,7 @@ void GraphicDeviceDX12::RenderEnd()
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
-	
+
 	if (m_fence->GetCompletedValue() < m_fenceCounts[m_currFrame])
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
@@ -319,5 +386,5 @@ ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderBeginCommandAllocator()
 
 ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderEndCommandAllocator()
 {
-	return m_cmdListAllocs[m_currFrame+m_numFrameResource].Get();
+	return m_cmdListAllocs[m_currFrame + m_numFrameResource].Get();
 }

@@ -3,6 +3,7 @@
 #include <vector>
 #include <DirectXMath.h>
 #include "CGHGraphicResource.h"
+#include "DX12TextureBuffer.h"
 
 enum COMPONENTPRIORITY
 {
@@ -64,16 +65,13 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH; }
 
-	void SetMeshData(const CGHMeshDataSet* meshData);
+	void SetMeshData(const CGHMesh* meshData);
+	const CGHMesh* GetMeshData() const { return m_data; }
 	D3D12_GPU_VIRTUAL_ADDRESS GetBoneData(unsigned int currFrame);
 
 private:
-	void NodeTreeChanged() { m_currNodeTreeDirtyFlag = true; }
-
-private:
 	static size_t s_hashCode;
-	const CGHMeshDataSet* m_data;
-	bool m_currNodeTreeDirtyFlag = true;
+	const CGHMesh* m_data;
 	std::unordered_map<std::string,const CGHNode*> m_currNodeTree;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_boneDatas;
 	std::vector<DirectX::XMFLOAT4X4*> m_boneDatasCpu;
@@ -90,9 +88,11 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_MATERIAL; }
 
-	void SetMaterial(CGHMaterial* material);
-	CGHMaterial* GetMaterialData() { return m_material; }
+	void SetData(const CGHMaterial* material);
+	void SetTexture(const TextureInfo* textureInfo, unsigned int index);
+	const CGHMaterial* GetMaterialData() { return m_material; }
 	UINT64 GetMaterialDataGPU();
+	ID3D12DescriptorHeap* GetTextureHeap() { return m_descHeap.Get(); }
 
 public:
 	void* m_shader = nullptr;
@@ -102,6 +102,8 @@ private:
 	static CGHMaterial* s_baseMaterial;
 	CGHMaterial* m_material = nullptr;
 	unsigned int m_currMaterialIndex = 0;
+	DX12TextureBuffer m_textureBuffer;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap;
 };
 
 class COMDX12SkinnedMeshRenderer : public Component

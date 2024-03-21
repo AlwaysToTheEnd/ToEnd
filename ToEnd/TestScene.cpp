@@ -6,25 +6,7 @@
 #include "DX12TextureBuffer.h"
 #include "DX12FontManager.h"
 
-enum
-{
-	ROOT_MAINPASS_CB = 0,
 
-	ROOT_OBJECTINFO_CB,
-	ROOT_MATERIAL_CB,
-	ROOT_TEXTUREINFO_SRV,
-	ROOT_TEXTURE_TABLE,
-
-	ROOT_NORMAL_SRV,
-	ROOT_TANGENT_SRV,
-	ROOT_BITAN_SRV,
-	ROOT_UV,
-
-	ROOT_WEIGHTINFO_SRV,
-	ROOT_WEIGHT_SRV,
-	ROOT_BONEDATA_SRV,
-	ROOT_NUM,
-};
 
 TestScene::TestScene()
 	: m_meshSet(nullptr)

@@ -12,17 +12,9 @@ namespace DirectX
 	class ScratchImage;
 }
 
-struct TextureInfo;
-
 class DX12TextureBuffer
 {
 private:
-	enum DX12TEXTURE_VIEW_DESC_TYPE
-	{
-		DX12TEXTURE_VIEW_DESC_TYPE_SRV,
-		DX12TEXTURE_VIEW_DESC_TYPE_UAV
-	};
-
 	struct TEXTURE
 	{
 		unsigned int refCount = 0;
@@ -30,53 +22,30 @@ private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> tex;
 	};
 
-	enum TEXTURE_FILE_TYPE
-	{
-		DDS_TEXTURE,
-		WIC_TEXTURE,
-		NONE_TEXTURE,
-	};
-
-	struct TextureInfoData
-	{
-		unsigned int type = 0;
-		unsigned int mapping = 0;
-		unsigned int uvIndex = 0;
-		float blend = 1.0f;
-		unsigned int textureOp = 0;
-		unsigned int mapMode[3] = {};
-	};
-
 public:
 	DX12TextureBuffer(DX12TextureBuffer& rhs) = delete;
 	DX12TextureBuffer& operator=(const DX12TextureBuffer& rhs) = delete;
 	DX12TextureBuffer();
 	~DX12TextureBuffer();
-	void Init(UINT bufferSize);
+	static void Init();
 
-	void Open();
-	void AddTexture(const TextureInfo* texInfo);
-	void Close();
+	void SetTexture(const char* texturePath, unsigned int index);
+	void CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle);
 
-	D3D12_GPU_VIRTUAL_ADDRESS GetTextureInfos() const { return m_textureInfos->GetGPUVirtualAddress(); }
+	void SetBufferSize(unsigned int size) { m_textures.resize(size); }
 	UINT GetTexturesNum() const { return (UINT)m_textures.size(); }
 
-	void CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle);
 private:
-	void DataToDevice(ID3D12Device* device, const DirectX::TexMetadata& metadata, const DirectX::ScratchImage& scratch, TEXTURE& target);
+	Microsoft::WRL::ComPtr<ID3D12Resource> DataToDevice(const DirectX::TexMetadata& metadata, const DirectX::ScratchImage& scratch, TEXTURE& target);
 	void EvictTexture(const std::string& filePath);
 	TEXTURE* ResidentTexture(const std::string& filePath);
 
 private:
+	static ID3D12Device*										s_device;
 	static std::unordered_map<std::string, TEXTURE>				s_textures;
 	static std::unordered_map<std::string, TEXTURE>				s_evictedTextures;
 	static Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>	s_commandList;
 	static UINT													s_srvuavDescriptorSize;
 
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>				m_currAlloc;
-	TextureInfoData* 											m_textureInfoMapped;
-	Microsoft::WRL::ComPtr<ID3D12Resource>						m_textureInfos;
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>			m_uploadBuffers;
 	std::vector<TEXTURE*>										m_textures;
-	bool														m_isClosed;
 };

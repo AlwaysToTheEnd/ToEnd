@@ -1,11 +1,13 @@
 struct TextureInfo
 {
+    float pad0;
     uint type;
     uint mapping;
     uint unChannelIndex;
     float blend;
     uint textureOp;
     uint3 mapMode;
+    float3 pad1;
 };
 
 struct BoneWeightInfo
@@ -46,11 +48,7 @@ cbuffer cbPass : register(b0, space0)
     float3 gPad0;
 };
 
-cbuffer ObjectInfo : register(b0, space1)
-{
-    float4x4 gWorldMat;
-    uint gObejctID;
-};
+uint gObejctID : register(b0, space1);
 
 cbuffer MaterialData : register(b1, space1)
 {
@@ -71,11 +69,11 @@ cbuffer MaterialData : register(b1, space1)
     float3 reflective;
     float reflectivity;
     uint gNumTexture;
+    TextureInfo gTextureInfo[8];
     float3 pad0;
 };
 
-StructuredBuffer<TextureInfo> gTextureInfos : register(t0, space1);
-Texture2D gTextures[10] : register(t1, space1);
+Texture2D gTextures[8] : register(t0, space1);
 
 StructuredBuffer<float3> gVertexNormals : register(t0, space2);
 StructuredBuffer<float3> gVertexTangents : register(t1, space2);

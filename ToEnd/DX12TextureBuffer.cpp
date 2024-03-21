@@ -6,6 +6,7 @@
 #include "../Common/Source/DxException.h"
 #include <DirectXTex.h>
 
+ID3D12Device* DX12TextureBuffer::s_device = nullptr;
 std::unordered_map<std::string, DX12TextureBuffer::TEXTURE>	DX12TextureBuffer::s_textures;
 std::unordered_map<std::string, DX12TextureBuffer::TEXTURE>	DX12TextureBuffer::s_evictedTextures;
 Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>			DX12TextureBuffer::s_commandList = nullptr;
@@ -15,67 +16,39 @@ using namespace DirectX;
 using namespace std;
 
 DX12TextureBuffer::DX12TextureBuffer()
-	: m_isClosed(true)
-	, m_textureInfoMapped(nullptr)
 {
 }
 
 DX12TextureBuffer::~DX12TextureBuffer()
 {
-	if (m_textureInfos != nullptr)
-	{
-		m_textureInfos->Unmap(0, nullptr);
-	}
-
 	for (const auto& iter : m_textures)
 	{
 		EvictTexture(iter->filePath);
 	}
 }
 
-void DX12TextureBuffer::Init(UINT bufferSize)
+void DX12TextureBuffer::Init()
 {
-	auto device = GraphicDeviceDX12::GetDevice();
-	assert(device && bufferSize);
-
 	if (s_commandList == nullptr)
 	{
+		s_device = GraphicDeviceDX12::GetDevice();
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAlloc;
 
-		s_srvuavDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		s_srvuavDescriptorSize = s_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		ThrowIfFailed(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+		ThrowIfFailed(s_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
 			IID_PPV_ARGS(cmdAlloc.GetAddressOf())));
 
-		ThrowIfFailed(device->CreateCommandList(1, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAlloc.Get(),
+		ThrowIfFailed(s_device->CreateCommandList(1, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAlloc.Get(),
 			nullptr, IID_PPV_ARGS(s_commandList.GetAddressOf())));
 
 		ThrowIfFailed(s_commandList->Close());
-
-		ThrowIfFailed(device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(sizeof(TextureInfoData) * bufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-			IID_PPV_ARGS(m_textureInfos.GetAddressOf())));
-
-		ThrowIfFailed(m_textureInfos->Map(0, nullptr, reinterpret_cast<void**>(&m_textureInfoMapped)));
 	}
 }
 
-void DX12TextureBuffer::Open()
+void DX12TextureBuffer::SetTexture(const char* texturePath, unsigned int index)
 {
-	m_isClosed = false;
-	m_currAlloc = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
-	ThrowIfFailed(s_commandList->Reset(m_currAlloc.Get(), nullptr));
-}
-
-void DX12TextureBuffer::AddTexture(const TextureInfo* texInfo)
-{
-	assert(!m_isClosed && "can not call to create texture on a closed TextureBuffer");
-
-	const std::string& filePath = TextureInfo::GetTexturePath(texInfo->textureFilePathID);
-	auto device = GraphicDeviceDX12::GetDevice();
+	std::string filePath(texturePath);
 	TEXTURE* texture = ResidentTexture(filePath);
 
 	if (texture == nullptr)
@@ -102,34 +75,27 @@ void DX12TextureBuffer::AddTexture(const TextureInfo* texInfo)
 		texture->filePath = filePath;
 		texture->refCount = 1;
 
-		DataToDevice(device, metaData, scratch, *texture);
+		auto alloc = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
+		s_commandList->Reset(alloc.Get(), nullptr);
+
+		auto uploadbuffer = DataToDevice(metaData, scratch, *texture);
+
+		ThrowIfFailed(s_commandList->Close());
+		ID3D12CommandList* commandLists[] = { s_commandList.Get() };
+		auto queue = GraphicDeviceDX12::GetGraphic()->GetCommandQueue();
+		queue->ExecuteCommandLists(1, commandLists);
+
+		DX12GarbageFrameResourceMG::s_instance.RegistGarbege(queue, uploadbuffer, alloc);
 	}
-	
-	TextureInfoData infodata;
-	infodata.type = texInfo->type;
-	infodata.uvIndex = texInfo->uvIndex;
-	infodata.textureOp = texInfo->textureOp;
-	infodata.blend = texInfo->blend;
-	infodata.mapping = texInfo->mapping;
-	std::memcpy(infodata.mapMode, texInfo->mapMode, sizeof(infodata.mapMode));
 
-	std::memcpy(m_textureInfoMapped + m_textures.size(), &infodata, sizeof(TextureInfoData));
-	m_textures.push_back(texture);
-}
+	assert(index < m_textures.size());
 
-void DX12TextureBuffer::Close()
-{
-	assert(!m_isClosed && "TextureHeap already closed");
+	if (m_textures[index] != nullptr)
+	{
+		EvictTexture(filePath);
+	}
 
-	ThrowIfFailed(s_commandList->Close());
-
-	ID3D12CommandList* commandLists[] = { s_commandList.Get() };
-	auto queue = GraphicDeviceDX12::GetGraphic()->GetCommandQueue();
-	queue->ExecuteCommandLists(1, commandLists);
-	
-	DX12GarbageFrameResourceMG::s_instance.RegistGarbeges(queue, m_uploadBuffers, m_currAlloc);
-	m_currAlloc = nullptr;
-	m_uploadBuffers.clear();
+	m_textures[index] = texture;
 }
 
 void DX12TextureBuffer::CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle)
@@ -141,49 +107,52 @@ void DX12TextureBuffer::CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle)
 
 	for (auto& iter : m_textures)
 	{
-		texDesc = iter->tex->GetDesc();
-		desc.Format = texDesc.Format;
-		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		if (iter != nullptr)
+		{
+			texDesc = iter->tex->GetDesc();
+			desc.Format = texDesc.Format;
+			desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		switch (texDesc.Dimension)
-		{
-		case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
-		{
-			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-			desc.Texture1D.MipLevels = texDesc.MipLevels;
-			desc.Texture1D.MostDetailedMip = 0;
-			desc.Texture1D.ResourceMinLODClamp = 0;
-		}
+			switch (texDesc.Dimension)
+			{
+			case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+			{
+				desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+				desc.Texture1D.MipLevels = texDesc.MipLevels;
+				desc.Texture1D.MostDetailedMip = 0;
+				desc.Texture1D.ResourceMinLODClamp = 0;
+			}
 			break;
-		case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
-		{
-			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			desc.Texture2D.MipLevels = texDesc.MipLevels;
-			desc.Texture2D.MostDetailedMip = 0;
-			desc.Texture2D.ResourceMinLODClamp = 0;
-			desc.Texture2D.PlaneSlice = 0;
-		}
+			case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+			{
+				desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				desc.Texture2D.MipLevels = texDesc.MipLevels;
+				desc.Texture2D.MostDetailedMip = 0;
+				desc.Texture2D.ResourceMinLODClamp = 0;
+				desc.Texture2D.PlaneSlice = 0;
+			}
 			break;
-		case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-		{
-			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-			desc.Texture3D.MipLevels = texDesc.MipLevels;
-			desc.Texture3D.MostDetailedMip = 0;
-			desc.Texture3D.ResourceMinLODClamp = 0;
-		}
+			case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+			{
+				desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+				desc.Texture3D.MipLevels = texDesc.MipLevels;
+				desc.Texture3D.MostDetailedMip = 0;
+				desc.Texture3D.ResourceMinLODClamp = 0;
+			}
 			break;
-		default:
-			assert(false);
-			break;
+			default:
+				assert(false);
+				break;
+			}
+
+			device->CreateShaderResourceView(iter->tex.Get(), &desc, srvHeapHandle);
 		}
 
-		device->CreateShaderResourceView(iter->tex.Get(), &desc, srvHeapHandle);
 		srvHeapHandle.ptr += s_srvuavDescriptorSize;
 	}
 }
 
-void DX12TextureBuffer::DataToDevice(ID3D12Device* device,
-	const DirectX::TexMetadata& metadata,
+Microsoft::WRL::ComPtr<ID3D12Resource> DX12TextureBuffer::DataToDevice(const DirectX::TexMetadata& metadata,
 	const DirectX::ScratchImage& scratch,
 	TEXTURE& target)
 {
@@ -209,7 +178,7 @@ void DX12TextureBuffer::DataToDevice(ID3D12Device* device,
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.SampleDesc.Quality = 0;
 
-	ThrowIfFailed(device->CreateCommittedResource(
+	ThrowIfFailed(s_device->CreateCommittedResource(
 		&textureHP,
 		D3D12_HEAP_FLAG_NONE,
 		&textureDesc,
@@ -217,29 +186,31 @@ void DX12TextureBuffer::DataToDevice(ID3D12Device* device,
 		nullptr,
 		IID_PPV_ARGS(target.tex.GetAddressOf())));
 
-	uploaderDesc = textureDesc;
+	Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer;
 
+	uploaderDesc = textureDesc;
 	uploaderDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	uploaderDesc.Height = 1;
 	uploaderDesc.Width = range.End;
 	uploaderDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	uploaderDesc.Format = DXGI_FORMAT_UNKNOWN;
 
-	m_uploadBuffers.emplace_back();
-	ThrowIfFailed(device->CreateCommittedResource(
+	ThrowIfFailed(s_device->CreateCommittedResource(
 		&uploadHP,
 		D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 		&uploaderDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(m_uploadBuffers.back().GetAddressOf())));
+		IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
 	D3D12_SUBRESOURCE_DATA subData;
 	subData.pData = pixelMemory;
 	subData.RowPitch = image->rowPitch;
 	subData.SlicePitch = image->slicePitch;
 	UpdateSubresources<1>(s_commandList.Get(), target.tex.Get(),
-		m_uploadBuffers.back().Get(), 0, 0, 1, &subData);
+		uploadBuffer.Get(), 0, 0, 1, &subData);
+
+	return uploadBuffer;
 }
 
 void DX12TextureBuffer::EvictTexture(const std::string& filePath)
@@ -258,7 +229,7 @@ void DX12TextureBuffer::EvictTexture(const std::string& filePath)
 		ID3D12Pageable* const resource = s_evictedTextures[filePath].tex.Get();
 
 		s_textures.erase(iter);
-		
+
 		GraphicDeviceDX12::GetDevice()->Evict(1, &resource);
 	}
 }
@@ -272,7 +243,7 @@ DX12TextureBuffer::TEXTURE* DX12TextureBuffer::ResidentTexture(const std::string
 	{
 		iter = s_evictedTextures.find(filePath);
 
-		if (iter != s_evictedTextures.end()) 
+		if (iter != s_evictedTextures.end())
 		{
 			s_textures[filePath] = iter->second;
 			result = &s_textures[filePath];

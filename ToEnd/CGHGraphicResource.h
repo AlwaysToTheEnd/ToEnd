@@ -39,6 +39,7 @@ private:
 #pragma pack(push, 4)
 struct CGHMaterial
 {
+	static const int CGHMaterialTextureNum = 8;
 	int shadingModel = 0;
 	int twosided = false;
 	int wireframe = false;
@@ -56,7 +57,7 @@ struct CGHMaterial
 	aiColor3D reflective;
 	float reflectivity = 0.0f;
 	unsigned int numTexture = 0;
-	TextureInfo textureInfo[7];
+	TextureInfo textureInfo[CGHMaterialTextureNum];
 	unsigned int renderQueue = 0;
 	float pad0[2] = {};
 };
@@ -120,7 +121,6 @@ struct CGHMesh
 	aiPrimitiveType primitiveType = aiPrimitiveType_POINT;
 	int numData[MESHDATA_NUM] = {};
 	std::vector<unsigned int> numUVComponent;
-	unsigned int materialIndex = 0;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> meshDataUVs;
@@ -128,14 +128,9 @@ struct CGHMesh
 	std::vector<CGHBone> bones;
 	Microsoft::WRL::ComPtr<ID3D12Resource> boneWeightInfos;
 	Microsoft::WRL::ComPtr<ID3D12Resource> boneWeights;
-};
-
-struct CGHMeshDataSet
-{
-	std::vector<CGHMesh> meshs;
 
 	bool IsSkinnedMesh()
 	{
-		return true;
+		return bones.size();
 	}
 };

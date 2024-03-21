@@ -7,7 +7,6 @@
 struct ID3D12GraphicsCommandList;
 struct aiScene;
 
-
 class DX12GraphicResourceLoader
 {
 	struct DX12NodeData
@@ -16,17 +15,19 @@ class DX12GraphicResourceLoader
 		std::vector<int> nodeParentIndexList;
 	};
 public:
-	void LoadAllData(const std::string& filePath, int removeComponentFlags, ID3D12GraphicsCommandList* cmd,
-		CGHMeshDataSet* meshDataOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut, std::vector<CGHNode>* nodeOut = nullptr);
+	void LoadAllData(const std::string& filePath, int removeComponentFlags, 
+		ID3D12GraphicsCommandList* cmd, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut,
+		std::vector<CGHMesh>* meshDataOut, std::vector<CGHMaterial>* materialOut = nullptr,
+		std::vector<CGHNode>* nodeOut = nullptr);
 
 private:
 	void LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut);
 	void LoadMaterialData(const aiScene* scene, ID3D12Device* d12Device);
-	void LoadAnimationData(const aiScene* scene, CGHMeshDataSet* meshDataOut);
-	void LoadMeshData(const aiScene* scene, ID3D12Device* d12Device, ID3D12GraphicsCommandList* cmd, CGHMeshDataSet* meshDataOut,
-		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut);
+	void LoadAnimationData(const aiScene* scene, std::vector<CGHMesh>* meshDataOut);
+	void LoadMeshData(const aiScene* scene, ID3D12Device* d12Device, ID3D12GraphicsCommandList* cmd, std::vector<CGHMesh>* meshDataOut, 
+		std::vector<CGHMaterial>* materialOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut);
 
 private:
-	std::vector<size_t> m_materiIndices;
+	std::vector<CGHMaterial> m_currMaterials;
 };
 

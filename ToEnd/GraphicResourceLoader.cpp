@@ -5,7 +5,6 @@
 #include "assimp\scene.h"
 #include "assimp\Importer.hpp"
 #include "CGHBaseClass.h"
-#include "DX12GraphicResourceManager.h"
 
 using namespace Assimp;
 
@@ -21,8 +20,9 @@ struct BoneWeight
 	float weight = 0.0f;
 };
 
-void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags, ID3D12GraphicsCommandList* cmd,
-	CGHMeshDataSet* meshDataOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut, std::vector<CGHNode>* nodeOut)
+void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags,
+	ID3D12GraphicsCommandList* cmd, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut,
+	std::vector<CGHMesh>* meshDataOut, std::vector<CGHMaterial>* materialOut, std::vector<CGHNode>* nodeOut)
 {
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
@@ -34,16 +34,20 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 	assert(scene != nullptr);
 
-	m_materiIndices.clear();
 
 	if (nodeOut != nullptr)
 	{
 		LoadNodeData(scene, *nodeOut);
 	}
 
-	LoadMaterialData(scene, d12Device);
+	m_currMaterials.clear();
+	if (materialOut != nullptr)
+	{
+		LoadMaterialData(scene, d12Device);
+	}
+
 	LoadAnimationData(scene, meshDataOut);
-	LoadMeshData(scene, d12Device, cmd, meshDataOut, uploadbuffersOut);
+	LoadMeshData(scene, d12Device, cmd, meshDataOut, materialOut, uploadbuffersOut);
 
 	importer.FreeScene();
 }
@@ -89,8 +93,8 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 	{
 		for (unsigned int i = 0; i < numMaterials; i++)
 		{
-			unsigned int materialIndex = 0;
-			CGHMaterial* currDumpMat = DX12GraphicResourceManager::s_insatance.CreateData<CGHMaterial>(&materialIndex);
+			m_currMaterials.emplace_back();
+			CGHMaterial* currDumpMat = &m_currMaterials.back();
 			aiString matName;
 			const aiMaterial* currMat = scene->mMaterials[i];
 
@@ -135,13 +139,11 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 					}
 				}
 			}
-
-			m_materiIndices.push_back(materialIndex);
 		}
 	}
 }
 
-void DX12GraphicResourceLoader::LoadAnimationData(const aiScene* scene, CGHMeshDataSet* meshDataOut)
+void DX12GraphicResourceLoader::LoadAnimationData(const aiScene* scene, std::vector<CGHMesh>* meshDataOut)
 {
 	for (unsigned int i = 0; i < scene->mNumAnimations; i++)
 	{
@@ -150,8 +152,8 @@ void DX12GraphicResourceLoader::LoadAnimationData(const aiScene* scene, CGHMeshD
 	}
 }
 
-void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device* d12Device, ID3D12GraphicsCommandList* cmd,
-	CGHMeshDataSet* meshDataOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut)
+void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device* d12Device, ID3D12GraphicsCommandList* cmd, std::vector<CGHMesh>* meshDataOut,
+	std::vector<CGHMaterial>* materialOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut)
 {
 	D3D12_HEAP_FLAGS heapFlags;
 	D3D12_HEAP_PROPERTIES uploadHeapPDesc = {};
@@ -213,15 +215,20 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 	const unsigned int numMeshes = scene->mNumMeshes;
 	const unsigned int srvSize = d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	meshDataOut->meshs.resize(numMeshes);
+	materialOut->resize(numMeshes);
 	for (unsigned int i = 0; i < numMeshes; i++)
 	{
 		aiMesh* currMesh = scene->mMeshes[i];
-		CGHMesh& targetMesh = meshDataOut->meshs[i];
+		
+		CGHMesh& targetMesh = (*meshDataOut)[i];
 		unsigned int numUVChannel = currMesh->GetNumUVChannels();
 
 		targetMesh.meshName = currMesh->mName.C_Str();
-		targetMesh.materialIndex = m_materiIndices[currMesh->mMaterialIndex];
+
+		if (materialOut != nullptr)
+		{
+			materialOut->push_back(m_currMaterials[currMesh->mMaterialIndex]);
+		}
 
 		if (currMesh->HasPositions())
 		{
