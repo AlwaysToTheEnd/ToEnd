@@ -3,6 +3,7 @@
 #include <vector>
 #include "assimp\postprocess.h"
 #include "CGHGraphicResource.h"
+#include "CGHBaseClass.h"
 
 struct ID3D12GraphicsCommandList;
 struct aiScene;

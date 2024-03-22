@@ -105,7 +105,6 @@ private:
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12RootSignature>>	m_rootSignatures;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12CommandSignature>>	m_commandSignatures;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>>				m_shaders[DX12_SHADER_TYPE_COUNT];
-
 };
 
 

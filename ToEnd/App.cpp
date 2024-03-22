@@ -8,7 +8,6 @@
 #include "CGHBaseClass.h"
 #include "../Common/Source/DxException.h"
 #include "GraphicDeivceDX12.h"
-#include "DX12FontManager.h"
 #include "DX12GarbageFrameResourceMG.h"
 #include "DX12DefaultBufferCreator.h"
 #include "DX12GraphicResourceManager.h"

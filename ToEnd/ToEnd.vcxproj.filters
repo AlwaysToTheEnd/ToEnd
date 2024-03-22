@@ -12,8 +12,8 @@
     <Filter Include="Graphic">
       <UniqueIdentifier>{7d41255b-3e47-4292-aee6-8e85e9d43d22}</UniqueIdentifier>
     </Filter>
-    <Filter Include="FontLoad">
-      <UniqueIdentifier>{cdc5fdbb-5ef9-4eb5-b303-363c1f77ff75}</UniqueIdentifier>
+    <Filter Include="Shader">
+      <UniqueIdentifier>{786c279f-49e6-4c4a-8a65-7138d7793e37}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -65,15 +65,6 @@
     <ClInclude Include="DX12TextureBuffer.h">
       <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="ttfParser.h">
-      <Filter>FontLoad</Filter>
-    </ClInclude>
-    <ClInclude Include="CGHFontLoader.h">
-      <Filter>FontLoad</Filter>
-    </ClInclude>
-    <ClInclude Include="DX12FontManager.h">
-      <Filter>FontLoad</Filter>
-    </ClInclude>
     <ClInclude Include="DX12DefaultBufferCreator.h">
       <Filter>Graphic</Filter>
     </ClInclude>
@@ -124,12 +115,6 @@
     <ClCompile Include="DX12TextureBuffer.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
-    <ClCompile Include="CGHFontLoader.cpp">
-      <Filter>FontLoad</Filter>
-    </ClCompile>
-    <ClCompile Include="DX12FontManager.cpp">
-      <Filter>FontLoad</Filter>
-    </ClCompile>
     <ClCompile Include="DX12DefaultBufferCreator.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
@@ -145,9 +130,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Shader\MaterialRegister.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="Shader\RenderBaseRegister.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shader\baseShader.hlsl" />
-    <FxCompile Include="fontShader.hlsl" />
+    <FxCompile Include="Shader\skinnedMeshShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="fontShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

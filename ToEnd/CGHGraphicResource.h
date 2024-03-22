@@ -4,11 +4,10 @@
 #include <unordered_map>
 #include <wrl.h>
 #include <d3d12.h>
+#include <DirectXMath.h>
 
 #include "assimp\material.h"
 #include "assimp\mesh.h"
-#include "DX12UploadBuffer.h"
-#include "CGHBaseClass.h"
 
 enum CGHRENDER_FLAG
 {

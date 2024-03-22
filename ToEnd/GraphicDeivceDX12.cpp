@@ -5,31 +5,14 @@
 
 #include "GraphicResourceLoader.h"
 #include "DX12GarbageFrameResourceMG.h"
+#include "DX12PipelineMG.h"
 #include "Component.h"
 #include "Camera.h"
 
 using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
 
-enum
-{
-	ROOT_MAINPASS_CB = 0,
 
-	ROOT_OBJECTINFO_CB,
-	ROOT_MATERIAL_CB,
-	ROOT_TEXTUREINFO_SRV,
-	ROOT_TEXTURE_TABLE,
-
-	ROOT_NORMAL_SRV,
-	ROOT_TANGENT_SRV,
-	ROOT_BITAN_SRV,
-	ROOT_UV,
-
-	ROOT_WEIGHTINFO_SRV,
-	ROOT_WEIGHT_SRV,
-	ROOT_BONEDATA_SRV,
-	ROOT_NUM,
-};
 
 GraphicDeviceDX12* GraphicDeviceDX12::GetGraphic()
 {
@@ -77,56 +60,19 @@ void GraphicDeviceDX12::DeleteDeivce()
 
 void GraphicDeviceDX12::BaseRender()
 {
-	m_cmdList->SetPipelineState(DX12PipelineMG::instance.GetGraphicPipeline("TestScene"));
-	m_cmdList->SetGraphicsRootSignature(DX12PipelineMG::instance.GetRootSignature("TestScene"));
+	auto& currPso = m_psos[PIPELINE_SKINNEDMESH];
 
-	D3D12_CPU_DESCRIPTOR_HANDLE presentRTV[] = { GetCurrPresentRTV() };
-	auto presentDSV = GetPresentDSV();
-	m_cmdList->OMSetRenderTargets(1, presentRTV, false, &presentDSV);
-	m_cmdList->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
-
-	for (auto& iter : m_skinnedMeshRenderQueue.queue)
+	if (currPso.pso)
 	{
-		COMMaterial* matCom = iter.first->GetComponent<COMMaterial>();
-		COMSkinnedMesh* meshCom = iter.first->GetComponent<COMSkinnedMesh>();
+		m_cmdList->SetPipelineState(currPso.pso);
+		m_cmdList->SetGraphicsRootSignature(currPso.rootSig);
 
-		m_cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		currPso.baseGraphicCmdFunc(m_cmdList.Get());
 
-		D3D12_GPU_VIRTUAL_ADDRESS matCB = matCom->GetMaterialDataGPU();
-		const CGHMesh* currMesh = meshCom->GetMeshData();
-		auto textureDescHeap = matCom->GetTextureHeap();
-		auto descHeapHandle = textureDescHeap->GetGPUDescriptorHandleForHeapStart();
-
-		ID3D12DescriptorHeap* heaps[] = { textureDescHeap };
-		m_cmdList->SetDescriptorHeaps(_countof(heaps), heaps);
-
-		m_cmdList->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB);
-		m_cmdList->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
-
-		D3D12_VERTEX_BUFFER_VIEW vbView = {};
-		vbView.BufferLocation = currMesh->meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
-		vbView.SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
-		vbView.StrideInBytes = sizeof(aiVector3D);
-
-		D3D12_INDEX_BUFFER_VIEW ibView = {};
-		ibView.BufferLocation = currMesh->meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
-		ibView.Format = DXGI_FORMAT_R32_UINT;
-		ibView.SizeInBytes = sizeof(unsigned int) * currMesh->numData[MESHDATA_INDEX];
-
-		m_cmdList->IASetVertexBuffers(0, 1, &vbView);
-		m_cmdList->IASetIndexBuffer(&ibView);
-
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_UV, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
-
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_WEIGHTINFO_SRV, currMesh->boneWeightInfos->GetGPUVirtualAddress());
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_WEIGHT_SRV, currMesh->boneWeights->GetGPUVirtualAddress());
-
-		m_cmdList->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, meshCom->GetBoneData(m_currFrame));
-
-		m_cmdList->DrawIndexedInstanced(currMesh->numData[MESHDATA_INDEX], 1, 0, 0, 0);
+		for (auto& currNode : m_skinnedMeshRenderQueue.queue)
+		{
+			currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
+		}
 	}
 }
 
@@ -181,7 +127,7 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 
 		ThrowIfFailed(m_cmdList->Close());
 
-		m_cmdListAllocs.front().Reset();
+		m_cmdListAllocs.front()->Reset();
 
 		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
 			m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_dataLoaderCmdList.GetAddressOf())));
@@ -195,6 +141,8 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 
 	OnResize(windowWidth, windowHeight);
+
+	BuildPso();
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -272,7 +220,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 }
 
 void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, std::vector<CGHMesh>* outMeshSet,
-	std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode)
+	std::vector<CGHMaterial>* outMaterials, std::vector<CGHNode>* outNode)
 {
 	DX12GraphicResourceLoader loader;
 	std::vector<ComPtr<ID3D12Resource>> upBuffers;
@@ -377,6 +325,206 @@ void GraphicDeviceDX12::FlushCommandQueue()
 			assert(false);
 		}
 	}
+}
+
+void GraphicDeviceDX12::BuildPso()
+{
+	enum
+	{
+		ROOT_MAINPASS_CB = 0,
+		ROOT_MATERIAL_CB,
+		ROOT_TEXTURE_TABLE,
+
+		ROOT_OBJECTINFO_CB,
+		ROOT_NORMAL_SRV,
+		ROOT_TANGENT_SRV,
+		ROOT_BITAN_SRV,
+		ROOT_UV,
+
+		ROOT_WEIGHTINFO_SRV,
+		ROOT_WEIGHT_SRV,
+		ROOT_BONEDATA_SRV,
+	};
+
+	m_psos.resize(PIPELINE_WORK_NUM);
+
+	D3D12_INPUT_ELEMENT_DESC inputElementdesc = { "POSITION" ,0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 };
+
+	D3D12_ROOT_PARAMETER temp = {};
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	std::vector<D3D12_ROOT_PARAMETER> baseRoot(ROOT_MAINPASS_CB + 1);
+	std::vector<D3D12_ROOT_PARAMETER> materialRoot(ROOT_TEXTURE_TABLE + 1);
+
+	baseRoot[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	baseRoot[0].Descriptor.RegisterSpace = 0;
+	baseRoot[0].Descriptor.ShaderRegister = 0;
+	baseRoot[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	materialRoot[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	materialRoot[0].Descriptor.RegisterSpace = 0;
+	materialRoot[0].Descriptor.ShaderRegister = 1;
+	materialRoot[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_DESCRIPTOR_RANGE textureTableRange = {};
+	textureTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	textureTableRange.RegisterSpace = 0;
+	textureTableRange.BaseShaderRegister = 0;
+	textureTableRange.NumDescriptors = CGHMaterial::CGHMaterialTextureNum;
+
+	materialRoot[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	materialRoot[1].DescriptorTable.NumDescriptorRanges = 1;
+	materialRoot[1].DescriptorTable.pDescriptorRanges = &textureTableRange;
+	materialRoot[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+#pragma region PIPELINE_SKINNEDMESH
+	//rootsig
+	{
+		rootParams.clear();
+		rootParams.insert(rootParams.end(), baseRoot.begin(), baseRoot.end());
+		rootParams.insert(rootParams.end(), materialRoot.begin(), materialRoot.end());
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		temp.Constants.Num32BitValues = 1;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 1;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 2;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 3;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 2;
+		temp.Descriptor.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 2;
+		temp.Descriptor.ShaderRegister = 1;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 2;
+		temp.Descriptor.ShaderRegister = 2;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
+		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootsigDesc.pStaticSamplers = s_StaticSamplers;
+		rootsigDesc.NumStaticSamplers = _countof(s_StaticSamplers);
+		rootsigDesc.NumParameters = rootParams.size();
+		rootsigDesc.pParameters = rootParams.data();
+
+		DX12PipelineMG::instance.CreateRootSignature("PIPELINE_SKINNEDMESH", &rootsigDesc);
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		psoDesc.NodeMask = 0;
+
+		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("PIPELINE_SKINNEDMESH");
+
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "PIPELINE_SKINNEDMESH_VS", L"Shader/skinnedMeshShader.hlsl", "VS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "PIPELINE_SKINNEDMESH_PS", L"Shader/skinnedMeshShader.hlsl", "PS");
+
+		//IA Set
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psoDesc.InputLayout.NumElements = 1;
+		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.SampleMask = UINT_MAX;
+
+		//OM Set
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
+
+		DX12PipelineMG::instance.CreateGraphicPipeline("PIPELINE_SKINNEDMESH", &psoDesc);
+
+		m_psos[PIPELINE_SKINNEDMESH].pso = DX12PipelineMG::instance.GetGraphicPipeline("PIPELINE_SKINNEDMESH");
+		m_psos[PIPELINE_SKINNEDMESH].rootSig = DX12PipelineMG::instance.GetRootSignature("PIPELINE_SKINNEDMESH");
+
+		m_psos[PIPELINE_SKINNEDMESH].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd) 
+		{
+			D3D12_CPU_DESCRIPTOR_HANDLE presentRTV[] = { GetCurrPresentRTV() };
+			auto presentDSV = GetPresentDSV();
+			cmd->OMSetRenderTargets(1, presentRTV, false, &presentDSV);
+			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+		};
+
+		m_psos[PIPELINE_SKINNEDMESH].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		{
+			COMMaterial* matCom = node->GetComponent<COMMaterial>();
+			COMSkinnedMesh* meshCom = node->GetComponent<COMSkinnedMesh>();
+
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			D3D12_GPU_VIRTUAL_ADDRESS matCB = matCom->GetMaterialDataGPU();
+			const CGHMesh* currMesh = meshCom->GetMeshData();
+			auto textureDescHeap = matCom->GetTextureHeap();
+			auto descHeapHandle = textureDescHeap->GetGPUDescriptorHandleForHeapStart();
+
+			ID3D12DescriptorHeap* heaps[] = { textureDescHeap };
+			cmd->SetDescriptorHeaps(_countof(heaps), heaps);
+
+			cmd->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB);
+			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
+
+			D3D12_VERTEX_BUFFER_VIEW vbView = {};
+			vbView.BufferLocation = currMesh->meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
+			vbView.SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
+			vbView.StrideInBytes = sizeof(aiVector3D);
+
+			D3D12_INDEX_BUFFER_VIEW ibView = {};
+			ibView.BufferLocation = currMesh->meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
+			ibView.Format = DXGI_FORMAT_R32_UINT;
+			ibView.SizeInBytes = sizeof(unsigned int) * currMesh->numData[MESHDATA_INDEX];
+
+			cmd->IASetVertexBuffers(0, 1, &vbView);
+			cmd->IASetIndexBuffer(&ibView);
+
+			cmd->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
+			cmd->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
+			cmd->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
+			cmd->SetGraphicsRootShaderResourceView(ROOT_UV, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
+
+			cmd->SetGraphicsRootShaderResourceView(ROOT_WEIGHTINFO_SRV, currMesh->boneWeightInfos->GetGPUVirtualAddress());
+			cmd->SetGraphicsRootShaderResourceView(ROOT_WEIGHT_SRV, currMesh->boneWeights->GetGPUVirtualAddress());
+
+			cmd->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, meshCom->GetBoneData(GetCurrFrameIndex()));
+
+			cmd->DrawIndexedInstanced(currMesh->numData[MESHDATA_INDEX], 1, 0, 0, 0);
+		};
+	}
+#pragma endregion
 }
 
 ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderBeginCommandAllocator()

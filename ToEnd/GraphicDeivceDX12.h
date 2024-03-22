@@ -8,20 +8,16 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <DirectXMath.h>
+#include <functional>
 #include "DX12UploadBuffer.h"
 #include "CGHGraphicResource.h"
+#include "CGHBaseClass.h"
 
 #include "../Common/Source/CGHUtil.h"
 
 using Microsoft::WRL::ComPtr;
 class DX12SwapChain;
 class Camera;
-
-struct DX12GraphicResource
-{
-	Microsoft::WRL::ComPtr<ID3D12Resource>  resource;
-	D3D12_CPU_DESCRIPTOR_HANDLE				cpuHandle = {};
-};
 
 struct DX12PassConstants
 {
@@ -43,11 +39,30 @@ struct DX12PassConstants
 	DirectX::XMFLOAT2		pad = {};
 };
 
+
+
 class GraphicDeviceDX12
 {
 	struct DX12RenderQueue
 	{
 		std::vector<std::pair<CGHNode*,unsigned int>> queue;
+	};
+
+	struct PipeLineWorkSet
+	{
+		ID3D12PipelineState* pso = nullptr;
+		ID3D12RootSignature* rootSig = nullptr;
+		std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
+		std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)> nodeGraphicCmdFunc;
+	};
+
+	enum PIPELINEWORKLIST
+	{
+		PIPELINE_MESH,
+		PIPELINE_SKINNEDMESH,
+		PIPELINE_SHADOW,
+		PIPELINE_LIGHT,
+		PIPELINE_WORK_NUM
 	};
 
 public:
@@ -89,6 +104,8 @@ private:
 	void Init(HWND hWnd, int windowWidth, int windowHeight);
 	void FlushCommandQueue();
 
+	void BuildPso();
+
 	ID3D12CommandAllocator*		GetCurrRenderBeginCommandAllocator();
 	ID3D12CommandAllocator*		GetCurrRenderEndCommandAllocator();
 
@@ -123,7 +140,6 @@ private:
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
 	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
-	std::unordered_map<std::string,
-		Microsoft::WRL::ComPtr<ID3D12Resource>>							m_dx12resources;
+	std::vector<PipeLineWorkSet>										m_psos;
 	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };

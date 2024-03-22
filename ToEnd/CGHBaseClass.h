@@ -142,7 +142,7 @@ inline T* CGHNode::GetComponent()
 	{
 		if (iter->GetTypeHashCode() == typeid(T).hash_code())
 		{
-			result = iter.get();
+			result = reinterpret_cast<T*>(iter.get());
 			break;
 		}
 	}
