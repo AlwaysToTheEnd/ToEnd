@@ -10,11 +10,6 @@ struct aiScene;
 
 class DX12GraphicResourceLoader
 {
-	struct DX12NodeData
-	{
-		std::vector<CGHNode> nodes;
-		std::vector<int> nodeParentIndexList;
-	};
 public:
 	void LoadAllData(const std::string& filePath, int removeComponentFlags, 
 		ID3D12GraphicsCommandList* cmd, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut,

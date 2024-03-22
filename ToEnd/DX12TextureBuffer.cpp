@@ -23,7 +23,10 @@ DX12TextureBuffer::~DX12TextureBuffer()
 {
 	for (const auto& iter : m_textures)
 	{
-		EvictTexture(iter->filePath);
+		if (iter)
+		{
+			EvictTexture(iter->filePath);
+		}
 	}
 }
 

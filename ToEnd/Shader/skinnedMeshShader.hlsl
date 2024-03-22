@@ -62,6 +62,9 @@ VSOut VS(VertexIn vin)
     }
     
     vout.PosH = mul(float4(sumPosL, 1.0f), gViewProj);
+    vout.Normal = sumNormalL;
+    vout.tangent = sumTangent;
+    vout.bitangent = sumBitan;
     vout.uv0 = gVertexUV[vin.id];
     
     return vout;

@@ -54,13 +54,34 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 
 void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut)
 {
-	DX12NodeData nodeData;
-
 	if (scene->mRootNode)
 	{
 		std::vector<aiNode*> nodes;
-		nodes.push_back(scene->mRootNode);
 		std::vector<int> nodeParentIndexList;
+		unsigned int numNodeLastLevel = 1;
+
+		nodes.push_back(scene->mRootNode);
+		nodeParentIndexList.push_back(-1);
+
+		while (numNodeLastLevel)
+		{
+			unsigned numNodeCurrLevel = 0;
+			size_t numNodes = nodes.size();
+			for (unsigned int i = 0; i < numNodeLastLevel; i++)
+			{
+				size_t parentNodeIndex = numNodes - i - 1;
+				aiNode* currNode = nodes[parentNodeIndex];
+				numNodeCurrLevel += currNode->mNumChildren;
+
+				for (unsigned int j = 0; j < currNode->mNumChildren; j++)
+				{
+					nodeParentIndexList.push_back(parentNodeIndex);
+					nodes.push_back(currNode->mChildren[j]);
+				}
+			}
+
+			numNodeLastLevel = numNodeCurrLevel;
+		}
 
 		nodeOut.resize(nodes.size());
 		for (size_t i = 0; i < nodes.size(); i++)
@@ -215,12 +236,13 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 	const unsigned int numMeshes = scene->mNumMeshes;
 	const unsigned int srvSize = d12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	materialOut->resize(numMeshes);
+	std::vector<CGHMesh>& outMeshs = *meshDataOut;
+	outMeshs.resize(numMeshes);
 	for (unsigned int i = 0; i < numMeshes; i++)
 	{
 		aiMesh* currMesh = scene->mMeshes[i];
 		
-		CGHMesh& targetMesh = (*meshDataOut)[i];
+		CGHMesh& targetMesh = outMeshs[i];
 		unsigned int numUVChannel = currMesh->GetNumUVChannels();
 
 		targetMesh.meshName = currMesh->mName.C_Str();

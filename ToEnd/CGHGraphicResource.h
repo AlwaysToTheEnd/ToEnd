@@ -38,7 +38,7 @@ private:
 #pragma pack(push, 4)
 struct CGHMaterial
 {
-	static const int CGHMaterialTextureNum = 8;
+	static const int CGHMaterialTextureNum = 16;
 	int shadingModel = 0;
 	int twosided = false;
 	int wireframe = false;
@@ -55,10 +55,10 @@ struct CGHMaterial
 	float shinpercent = 1.0f;
 	aiColor3D reflective;
 	float reflectivity = 0.0f;
-	unsigned int numTexture = 0;
-	TextureInfo textureInfo[CGHMaterialTextureNum];
+	unsigned int numTexture = CGHMaterialTextureNum;
 	unsigned int renderQueue = 0;
 	float pad0[2] = {};
+	TextureInfo textureInfo[CGHMaterialTextureNum];
 };
 #pragma pack(pop)
 

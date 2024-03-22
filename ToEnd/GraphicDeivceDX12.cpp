@@ -352,8 +352,8 @@ void GraphicDeviceDX12::BuildPso()
 
 	D3D12_ROOT_PARAMETER temp = {};
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	std::vector<D3D12_ROOT_PARAMETER> baseRoot(ROOT_MAINPASS_CB + 1);
-	std::vector<D3D12_ROOT_PARAMETER> materialRoot(ROOT_TEXTURE_TABLE + 1);
+	std::vector<D3D12_ROOT_PARAMETER> baseRoot(1);
+	std::vector<D3D12_ROOT_PARAMETER> materialRoot(2);
 
 	baseRoot[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	baseRoot[0].Descriptor.RegisterSpace = 0;
@@ -365,15 +365,16 @@ void GraphicDeviceDX12::BuildPso()
 	materialRoot[0].Descriptor.ShaderRegister = 1;
 	materialRoot[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	D3D12_DESCRIPTOR_RANGE textureTableRange = {};
-	textureTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	textureTableRange.RegisterSpace = 0;
-	textureTableRange.BaseShaderRegister = 0;
-	textureTableRange.NumDescriptors = CGHMaterial::CGHMaterialTextureNum;
+	D3D12_DESCRIPTOR_RANGE textureTableRange[1] = {};
+	textureTableRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	textureTableRange[0].RegisterSpace = 0;
+	textureTableRange[0].BaseShaderRegister = 0;
+	textureTableRange[0].NumDescriptors = CGHMaterial::CGHMaterialTextureNum;
+	textureTableRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 	materialRoot[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	materialRoot[1].DescriptorTable.NumDescriptorRanges = 1;
-	materialRoot[1].DescriptorTable.pDescriptorRanges = &textureTableRange;
+	materialRoot[1].DescriptorTable.pDescriptorRanges = textureTableRange;
 	materialRoot[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 #pragma region PIPELINE_SKINNEDMESH

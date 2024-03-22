@@ -3,6 +3,8 @@
 #include "CGHBaseClass.h"
 #include "GraphicDeivceDX12.h"
 #include "DX12GraphicResourceManager.h"
+#include "DX12TextureBuffer.h"
+
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
@@ -105,7 +107,8 @@ void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float del
 			auto iter = m_currNodeTree.find(currBone.name);
 			if (iter != m_currNodeTree.end())
 			{
-				DirectX::XMStoreFloat4x4(mapped, DirectX::XMLoadFloat4x4(&currBone.offsetMatrix) * DirectX::XMLoadFloat4x4(&iter->second->m_srt));
+				DirectX::XMMATRIX mat = DirectX::XMLoadFloat4x4(&currBone.offsetMatrix) * DirectX::XMLoadFloat4x4(&iter->second->m_srt);
+				DirectX::XMStoreFloat4x4(mapped, DirectX::XMMatrixTranspose(mat));
 			}
 
 			mapped++;
@@ -172,6 +175,10 @@ D3D12_GPU_VIRTUAL_ADDRESS COMSkinnedMesh::GetBoneData(unsigned int currFrame)
 //	return rootsigOffset + 7;
 //}
 
+COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
+{
+}
+
 void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
 	if (node->GetComponent<COMSkinnedMesh>())
@@ -190,7 +197,8 @@ COMMaterial::COMMaterial(CGHNode* node)
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(GraphicDeviceDX12::GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_descHeap.GetAddressOf())));
 
-	m_textureBuffer.SetBufferSize(CGHMaterial::CGHMaterialTextureNum);
+	m_textureBuffer = new DX12TextureBuffer;
+	m_textureBuffer->SetBufferSize(CGHMaterial::CGHMaterialTextureNum);
 }
 
 COMMaterial::~COMMaterial()
@@ -204,6 +212,11 @@ void COMMaterial::Release(CGHNode* node)
 		DX12GraphicResourceManager::s_insatance.ReleaseData(m_material);
 		m_material = nullptr;
 	}
+
+	if (m_textureBuffer)
+	{
+		delete m_textureBuffer;
+	}
 }
 
 void COMMaterial::SetData(const CGHMaterial* material)
@@ -215,8 +228,10 @@ void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
 {
 	if (textureInfo)
 	{
-		m_textureBuffer.SetTexture(TextureInfo::GetTexturePath(textureInfo->textureFilePathID).c_str(), index);
+		m_textureBuffer->SetTexture(TextureInfo::GetTexturePath(textureInfo->textureFilePathID).c_str(), index);
 		m_material->textureInfo[index] = *textureInfo;
+
+		m_textureBuffer->CreateSRVs(m_descHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 	else
 	{

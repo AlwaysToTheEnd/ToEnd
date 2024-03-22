@@ -79,7 +79,7 @@ enum DX12_SHADER_TYPE
 
 
 
-static class DX12PipelineMG
+class DX12PipelineMG
 {
 private:
 	~DX12PipelineMG();

@@ -221,6 +221,7 @@ void App::Update(float delta)
 	DX12GarbageFrameResourceMG::s_instance.TryClearJunks();
 
 	m_testScene->Update(delta);
+	m_testScene->RateUpdate(delta);
 
 	CGHNode::ClearNodeEvents();
 }

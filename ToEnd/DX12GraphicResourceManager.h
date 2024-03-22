@@ -50,18 +50,18 @@ inline T* DX12GraphicResourceManager::CreateData(unsigned int* indexOut)
 {
 	T* result = nullptr;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
-	unsigned int index = datas.releasedIndices.back();
 
+	if (datas.gpuData == nullptr)
+	{
+		CreateResource(sizeof(T), &datas);
+	}
+
+	unsigned int index = datas.releasedIndices.back();
 	datas.releasedIndices.pop_back();
 
 	if (indexOut)
 	{
 		*indexOut = index;
-	}
-
-	if (datas.gpuData == nullptr)
-	{
-		CreateResource(sizeof(T), &datas);
 	}
 
 	result = (T*)(datas.cpuData + index * datas.stride);

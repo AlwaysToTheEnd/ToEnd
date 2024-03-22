@@ -19,7 +19,10 @@ CGHNode::~CGHNode()
 {
 	for (auto& iter : m_components)
 	{
-		iter->Release(this);
+		if (iter.get())
+		{
+			iter->Release(this);
+		}
 	}
 }
 
@@ -30,7 +33,10 @@ void CGHNode::Update(unsigned int currFrame, float delta)
 	{
 		for (auto& iter : m_components)
 		{
-			iter->Update(this, currFrame, delta);
+			if (iter.get())
+			{
+				iter->Update(this, currFrame, delta);
+			}
 		}
 
 		for (auto& iter : m_childs)
@@ -46,7 +52,10 @@ void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 	{
 		for (auto& iter : m_components)
 		{
-			iter->RateUpdate(this, currFrame, delta);
+			if (iter.get())
+			{
+				iter->RateUpdate(this, currFrame, delta);
+			}
 		}
 
 		for (auto& iter : m_childs)

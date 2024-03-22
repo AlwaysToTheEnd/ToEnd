@@ -25,5 +25,11 @@ void DX12GraphicResourceManager::CreateResource(unsigned int dataStride, Graphic
 		ThrowIfFailed(m_device->GetDeviceRemovedReason());
 	}
 
+	data->releasedIndices.reserve(baseNumData);
+	for (int i = baseNumData-1; i >= 0; i--)
+	{
+		data->releasedIndices.push_back(i);
+	}
+
 	ThrowIfFailed(data->gpuData->Map(0, nullptr, reinterpret_cast<void**>(&data->cpuData)));
 }

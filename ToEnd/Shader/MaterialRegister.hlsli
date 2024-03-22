@@ -29,8 +29,8 @@ cbuffer MaterialData : register(b1, space0)
     float3 reflective;
     float reflectivity;
     uint gNumTexture;
-    TextureInfo gTextureInfo[8];
     float3 pad0;
+    TextureInfo gTextureInfo[16];
 };
 
-Texture2D gTextures[8] : register(t0, space0);
+Texture2D gTextures[16] : register(t0, space0);

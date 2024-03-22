@@ -76,7 +76,6 @@ private:
 	std::vector<std::unique_ptr<Component>> m_components;
 };
 
-
 template<>
 inline COMTransform* CGHNode::CreateComponent()
 {
@@ -111,14 +110,48 @@ inline COMSkinnedMesh* CGHNode::GetComponent()
 	return reinterpret_cast<COMSkinnedMesh*>(m_components[COMPONENT_SKINNEDMESH].get());
 }
 
+template<>
+inline COMMaterial* CGHNode::CreateComponent()
+{
+	COMMaterial* result = new COMMaterial(this);
+	std::unique_ptr<Component> uniqueTemp(result);
+
+	m_components[COMPONENT_MATERIAL] = std::move(uniqueTemp);
+
+	return result;
+}
+
+template<>
+inline COMMaterial* CGHNode::GetComponent()
+{
+	return reinterpret_cast<COMMaterial*>(m_components[COMPONENT_MATERIAL].get());
+}
+
+template<>
+inline COMDX12SkinnedMeshRenderer* CGHNode::CreateComponent()
+{
+	COMDX12SkinnedMeshRenderer* result = new COMDX12SkinnedMeshRenderer(this);
+	std::unique_ptr<Component> uniqueTemp(result);
+
+	m_components[COMPONENT_SKINNEDMESH_RENDERER] = std::move(uniqueTemp);
+
+	return result;
+}
+
+template<>
+inline COMDX12SkinnedMeshRenderer* CGHNode::GetComponent()
+{
+	return reinterpret_cast<COMDX12SkinnedMeshRenderer*>(m_components[COMPONENT_SKINNEDMESH_RENDERER].get());
+}
+
 template<typename T>
 inline T* CGHNode::CreateComponent()
 {
-	Component* result = new T(this);
+	T* result = new T(this);
 	std::unique_ptr<Component> uniqueTemp(result);
 	m_components.push_back(std::move(uniqueTemp));
 
-	for (size_t i = m_components.size() - 1; i > 0; i--)
+	for (size_t i = m_components.size() - 1; i >= COMPONENT_CUSTOM; i--)
 	{
 		if (m_components[i - 1]->GetPriority() < m_components[i]->GetPriority())
 		{

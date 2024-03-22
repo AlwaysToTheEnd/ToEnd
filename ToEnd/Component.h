@@ -3,7 +3,6 @@
 #include <vector>
 #include <DirectXMath.h>
 #include "CGHGraphicResource.h"
-#include "DX12TextureBuffer.h"
 
 enum COMPONENTPRIORITY
 {
@@ -77,6 +76,8 @@ private:
 	std::vector<DirectX::XMFLOAT4X4*> m_boneDatasCpu;
 };
 
+class DX12TextureBuffer;
+
 class COMMaterial : public Component
 {
 public:
@@ -102,13 +103,14 @@ private:
 	static CGHMaterial* s_baseMaterial;
 	CGHMaterial* m_material = nullptr;
 	unsigned int m_currMaterialIndex = 0;
-	DX12TextureBuffer m_textureBuffer;
+	DX12TextureBuffer* m_textureBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap;
 };
 
 class COMDX12SkinnedMeshRenderer : public Component
 {
 public:
+	COMDX12SkinnedMeshRenderer(CGHNode* node);
 	COMDX12SkinnedMeshRenderer() = default;
 	~COMDX12SkinnedMeshRenderer() = default;
 
