@@ -18,7 +18,9 @@ uint gObejctID : register(b0, space1);
 StructuredBuffer<float3> gVertexNormals : register(t0, space1);
 StructuredBuffer<float3> gVertexTangents : register(t1, space1);
 StructuredBuffer<float3> gVertexBitans : register(t2, space1);
-StructuredBuffer<float3> gVertexUV : register(t3, space1);
+StructuredBuffer<float3> gVertexUV0 : register(t3, space1);
+StructuredBuffer<float3> gVertexUV1 : register(t4, space1);
+StructuredBuffer<float3> gVertexUV2 : register(t5, space1);
 
 StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t0, space2);
 StructuredBuffer<BoneWeight> gBoneWeights : register(t1, space2);
@@ -65,7 +67,7 @@ VSOut VS(VertexIn vin)
     vout.Normal = sumNormalL;
     vout.tangent = sumTangent;
     vout.bitangent = sumBitan;
-    vout.uv0 = gVertexUV[vin.id];
+    vout.uv0 = gVertexUV0[vin.id];
     
     return vout;
 }
@@ -79,7 +81,7 @@ struct PSOut
 PSOut PS(VSOut pin)
 {
     PSOut pout;
-    
+   
     pout.color = gTextures[0].Sample(gsamPointWrap, pin.uv0.rg);
     
     return pout;

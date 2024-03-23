@@ -339,7 +339,9 @@ void GraphicDeviceDX12::BuildPso()
 		ROOT_NORMAL_SRV,
 		ROOT_TANGENT_SRV,
 		ROOT_BITAN_SRV,
-		ROOT_UV,
+		ROOT_UV0,
+		ROOT_UV1,
+		ROOT_UV2,
 
 		ROOT_WEIGHTINFO_SRV,
 		ROOT_WEIGHT_SRV,
@@ -412,6 +414,18 @@ void GraphicDeviceDX12::BuildPso()
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 		temp.Descriptor.RegisterSpace = 1;
 		temp.Descriptor.ShaderRegister = 3;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 4;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 5;
 		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParams.push_back(temp);
 
@@ -515,7 +529,25 @@ void GraphicDeviceDX12::BuildPso()
 			cmd->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
-			cmd->SetGraphicsRootShaderResourceView(ROOT_UV, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
+			cmd->SetGraphicsRootShaderResourceView(ROOT_UV0, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
+
+			if (currMesh->meshDataUVs[1] != nullptr)
+			{
+				cmd->SetGraphicsRootShaderResourceView(ROOT_UV1, currMesh->meshDataUVs[1]->GetGPUVirtualAddress());
+			}
+			else
+			{
+				cmd->SetGraphicsRootShaderResourceView(ROOT_UV1, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
+			}
+
+			if (currMesh->meshDataUVs[2] != nullptr)
+			{
+				cmd->SetGraphicsRootShaderResourceView(ROOT_UV2, currMesh->meshDataUVs[2]->GetGPUVirtualAddress());
+			}
+			else
+			{
+				cmd->SetGraphicsRootShaderResourceView(ROOT_UV2, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
+			}
 
 			cmd->SetGraphicsRootShaderResourceView(ROOT_WEIGHTINFO_SRV, currMesh->boneWeightInfos->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_WEIGHT_SRV, currMesh->boneWeights->GetGPUVirtualAddress());

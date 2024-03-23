@@ -77,6 +77,9 @@
     <ClInclude Include="DX12GraphicResourceManager.h">
       <Filter>Graphic</Filter>
     </ClInclude>
+    <ClInclude Include="Xml.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -126,6 +129,9 @@
     </ClCompile>
     <ClCompile Include="DX12GraphicResourceManager.cpp">
       <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="Xml.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

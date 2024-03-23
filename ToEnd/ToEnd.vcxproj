@@ -170,6 +170,7 @@
     <ClInclude Include="GraphicDeivceDX12.h" />
     <ClInclude Include="GraphicResourceLoader.h" />
     <ClInclude Include="TestScene.h" />
+    <ClInclude Include="Xml.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp" />
@@ -188,6 +189,7 @@
     <ClCompile Include="GraphicDeivceDX12.cpp" />
     <ClCompile Include="GraphicResourceLoader.cpp" />
     <ClCompile Include="TestScene.cpp" />
+    <ClCompile Include="Xml.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

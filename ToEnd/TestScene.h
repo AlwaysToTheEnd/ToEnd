@@ -16,8 +16,12 @@ public:
 
 private:
 	CGHNode* node = nullptr;
-	std::vector<CGHNode> m_nodes;
-	std::vector<CGHMaterial> m_mats;
-	std::vector<CGHMesh> m_meshes;
+	std::vector<CGHNode> m_headNodes;
+	std::vector<CGHMesh> m_headMeshs;
+	std::vector<CGHMaterial> m_headMats;
+
+	std::vector<CGHNode> m_bodyNodes;
+	std::vector<CGHMesh> m_bodyMeshs;
+	std::vector<CGHMaterial> m_bodyMats;
 	CGHNode* m_rootNode = nullptr;
 };

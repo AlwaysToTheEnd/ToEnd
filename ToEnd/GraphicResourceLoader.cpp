@@ -91,8 +91,9 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<C
 			DirectX::XMVECTOR rotQuter;
 			DirectX::XMVECTOR pos;
 			COMTransform* transform = nodeOut[i].CreateComponent<COMTransform>();
+			aiMatrix4x4 tempMat = nodes[i]->mTransformation.Transpose();
 
-			std::memcpy(&transMat, &nodes[i]->mTransformation, sizeof(aiMatrix4x4));
+			std::memcpy(&transMat, &tempMat, sizeof(aiMatrix4x4));
 			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);
 			transform->SetPos(pos);
 			transform->SetScale(scale);
@@ -316,13 +317,14 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 
 			for (int j = 0; j < numBone; j++)
 			{
-				const aiBone* currBone = currMesh->mBones[j];
+				aiBone* currBone = currMesh->mBones[j];
 				if (currBone->mNumWeights > 0)
 				{
 					unsigned int currTargetBoneIndex = targetMesh.bones.size();
 					targetMesh.bones.emplace_back();
 					targetMesh.bones.back().name = currBone->mName.C_Str();
-					std::memcpy(&targetMesh.bones.back().offsetMatrix, &currBone->mOffsetMatrix, sizeof(aiMatrix4x4));
+					aiMatrix4x4 transposeMat = currBone->mOffsetMatrix.Transpose();
+					std::memcpy(&targetMesh.bones.back().offsetMatrix, &transposeMat, sizeof(aiMatrix4x4));
 					CGH::FixEpsilonMatrix(targetMesh.bones.back().offsetMatrix, 0.000001f);
 
 					for (unsigned int k = 0; k < currBone->mNumWeights; k++)
