@@ -53,6 +53,8 @@ COMSkinnedMesh::COMSkinnedMesh(CGHNode* node)
 	auto device = GraphicDeviceDX12::GetDevice();
 	unsigned int frameNum = graphic->GetNumFrameResource();
 
+	node->AddEvent(std::bind(&COMSkinnedMesh::NodeTreeDirty, this), CGHNODE_EVENT_FLAG_CHILDTREE_CHANGED);
+
 	DirectX::XMFLOAT4X4* mapped = nullptr;
 	ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -85,17 +87,19 @@ void COMSkinnedMesh::Release(CGHNode* node)
 
 void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
-	if (node->CheckNodeEvent(node->GetRoot(), CGHNODE_EVENT_FLAG_ROOT_TREE_CHANGED))
+	if (m_nodeTreeDirty)
 	{
 		m_currNodeTree.clear();
 		std::vector<const CGHNode*> childNodeStack;
-		childNodeStack.reserve(256);
+		childNodeStack.reserve(512);
 		node->GetChildNodes(&childNodeStack);
 
 		for (auto iter : childNodeStack)
 		{
 			m_currNodeTree.insert({ iter->GetaName(), iter });
 		}
+
+		m_nodeTreeDirty = false;
 	}
 
 	if (m_data)
@@ -142,6 +146,11 @@ D3D12_GPU_VIRTUAL_ADDRESS COMSkinnedMesh::GetBoneData(unsigned int currFrame)
 	return result;
 }
 
+void COMSkinnedMesh::NodeTreeDirty()
+{
+	m_nodeTreeDirty = true;
+}
+
 COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
 {
 }
@@ -150,7 +159,7 @@ void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFram
 {
 	if (node->GetComponent<COMSkinnedMesh>())
 	{
-		GraphicDeviceDX12::GetGraphic()->RenderSkinnedMesh(node, renderFlag);
+		GraphicDeviceDX12::GetGraphic()->RenderSkinnedMesh(node, m_renderFlag);
 	}
 }
 

@@ -222,8 +222,6 @@ void App::Update(float delta)
 
 	m_testScene->Update(delta);
 	m_testScene->RateUpdate(delta);
-
-	CGHNode::ClearNodeEvents();
 }
 
 void App::Render()

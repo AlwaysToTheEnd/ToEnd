@@ -43,6 +43,8 @@ public:
 	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
 	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR quterRotate);
 
+	DirectX::FXMVECTOR XM_CALLCONV GetRotateQuter() { return DirectX::XMLoadFloat4(&m_queternion); }
+
 private:
 	static size_t s_hashCode;
 	DirectX::XMFLOAT3 m_pos = {};
@@ -67,10 +69,14 @@ public:
 	void SetMeshData(const CGHMesh* meshData);
 	const CGHMesh* GetMeshData() const { return m_data; }
 	D3D12_GPU_VIRTUAL_ADDRESS GetBoneData(unsigned int currFrame);
+	void NodeTreeDirty();
+
+private:
 
 private:
 	static size_t s_hashCode;
-	const CGHMesh* m_data;
+	const CGHMesh* m_data = nullptr;
+	bool m_nodeTreeDirty = true;
 	std::unordered_map<std::string,const CGHNode*> m_currNodeTree;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_boneDatas;
 	std::vector<DirectX::XMFLOAT4X4*> m_boneDatasCpu;
@@ -119,9 +125,12 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
+	unsigned int GetRenderID() { return m_renderID; }
+
 private:
 	static size_t s_hashCode;
-	unsigned int renderFlag = 0;
+	unsigned int m_renderFlag = 0;
+	unsigned int m_renderID = 0;
 };
 
 

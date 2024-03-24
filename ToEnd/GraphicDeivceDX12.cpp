@@ -470,6 +470,7 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
 
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
@@ -499,6 +500,7 @@ void GraphicDeviceDX12::BuildPso()
 		{
 			COMMaterial* matCom = node->GetComponent<COMMaterial>();
 			COMSkinnedMesh* meshCom = node->GetComponent<COMSkinnedMesh>();
+			COMDX12SkinnedMeshRenderer* renderer = node->GetComponent<COMDX12SkinnedMeshRenderer>();
 
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -526,12 +528,13 @@ void GraphicDeviceDX12::BuildPso()
 			cmd->IASetVertexBuffers(0, 1, &vbView);
 			cmd->IASetIndexBuffer(&ibView);
 
+			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, renderer->GetRenderID(), 0);
 			cmd->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_UV0, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
 
-			if (currMesh->meshDataUVs[1] != nullptr)
+			if (currMesh->meshDataUVs.size() > 1)
 			{
 				cmd->SetGraphicsRootShaderResourceView(ROOT_UV1, currMesh->meshDataUVs[1]->GetGPUVirtualAddress());
 			}
@@ -540,7 +543,7 @@ void GraphicDeviceDX12::BuildPso()
 				cmd->SetGraphicsRootShaderResourceView(ROOT_UV1, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
 			}
 
-			if (currMesh->meshDataUVs[2] != nullptr)
+			if (currMesh->meshDataUVs.size() > 2)
 			{
 				cmd->SetGraphicsRootShaderResourceView(ROOT_UV2, currMesh->meshDataUVs[2]->GetGPUVirtualAddress());
 			}

@@ -1,8 +1,6 @@
 #include <assert.h>
 #include "CGHBaseClass.h"
 
-std::unordered_map<CGHNode*, int> CGHNode::s_nodeEvents;
-
 CGHNode::CGHNode()
 {
 	DirectX::XMStoreFloat4x4(&m_srt, DirectX::XMMatrixIdentity());
@@ -84,19 +82,7 @@ void CGHNode::GetChildNodes(std::vector<const CGHNode*>* nodeOut) const
 	}
 }
 
-bool CGHNode::CheckNodeEvent(CGHNode* idNode, CGHNODE_EVENTFLAGS flag) const
-{
-	auto iter = s_nodeEvents.find(idNode);
-
-	if (iter != s_nodeEvents.end())
-	{
-		return iter->second && flag;
-	}
-
-	return false;
-}
-
-void CGHNode::SetParent(CGHNode* parent)
+void CGHNode::SetParent(CGHNode* parent, bool denyEvent)
 {
 	if (m_parent != parent)
 	{
@@ -112,39 +98,46 @@ void CGHNode::SetParent(CGHNode* parent)
 				}
 			}
 
-			s_nodeEvents[m_parent->GetRoot()] |= CGHNODE_EVENT_FLAG_ROOT_TREE_CHANGED;
+			if (!denyEvent)
+			{
+				CGHNode* tempNode = m_parent;
+
+				while (tempNode)
+				{
+					tempNode->ExcuteEvent(CGHNODE_EVENT_FLAG_CHILDTREE_CHANGED);
+				}
+			}
 		}
 
 		m_parent = parent;
 
 		if (m_parent)
 		{
-			m_root = m_parent->GetRoot();
 			m_parent->m_childs.push_back(this);
-			SetRoot(m_parent->m_root);
 		}
-		else
+
+		if (!denyEvent)
 		{
-			SetRoot(this);
+			CGHNode* tempNode = m_parent;
+
+			while (tempNode)
+			{
+				tempNode->ExcuteEvent(CGHNODE_EVENT_FLAG_CHILDTREE_CHANGED);
+			}
 		}
-
-		s_nodeEvents[GetRoot()] |= CGHNODE_EVENT_FLAG_ROOT_TREE_CHANGED;
 	}
 }
 
-void CGHNode::ClearNodeEvents()
+void CGHNode::ExcuteEvent(CGHNODE_EVENT_FLAGS flag)
 {
-	s_nodeEvents.clear();
-}
-
-void CGHNode::SetRoot(CGHNode* node)
-{
-	m_root = node;
-
-	for (auto& iter : m_childs)
+	for (auto& iter : m_evnets)
 	{
-		iter->SetRoot(node);
+		if (flag && iter.eventFlags)
+		{
+			iter.func();
+		}
 	}
 }
+
 
 

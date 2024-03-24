@@ -8,13 +8,6 @@
 #include <functional>
 #include "Component.h"
 
-enum CGHNODE_EVENTFLAGS
-{
-	CGHNODE_EVENT_FLAG_NONE = 0,
-	CGHNODE_EVENT_FLAG_ROOT_TREE_CHANGED = 1,
-	CGHNODE_EVENT_FLAG_END = 0xffffffff,
-};
-
 static struct GlobalOptions
 {
 	struct WindowOption
@@ -31,8 +24,23 @@ static struct GlobalOptions
 	}GRAPHIC;
 }GO;
 
+enum CGHNODE_EVENT_FLAGS
+{
+	CGHNODE_EVENT_FLAG_NONE = 0,
+	CGHNODE_EVENT_FLAG_CHILDTREE_CHANGED = 1,
+	CGHNODE_EVENT_FLAG_END = 0xffffffff,
+};
+
+
+
 class CGHNode
 {
+	struct CGHNodeEvent
+	{
+		std::function<void()> func;
+		int eventFlags;
+	};
+
 public:
 	CGHNode();
 	CGHNode(const CGHNode& rhs);
@@ -49,30 +57,26 @@ public:
 
 	bool GetActive() const { return m_active; }
 	CGHNode* GetParent() const { return m_parent; }
-	CGHNode* GetRoot() const { return m_root; }
 	const char* GetaName() const { return m_name.c_str(); }
 	void GetChildNodes(std::vector<const CGHNode*>* nodeOut) const;
-	bool CheckNodeEvent(CGHNode* idNode, CGHNODE_EVENTFLAGS flag) const;
 
+	void AddEvent(std::function<void()> evnet, int flags) { m_evnets.push_back({ evnet, flags }); }
 	void SetActive(bool isActive) const { isActive = m_active; }
-	void SetParent(CGHNode* parent);
+	void SetParent(CGHNode* parent, bool denyEvent = false);
 	void SetName(const char* name) { m_name = name; }
 
-	static void ClearNodeEvents();
-
 private:
-	void SetRoot(CGHNode* node);
+	void ExcuteEvent(CGHNODE_EVENT_FLAGS flag);
 
 public:
 	DirectX::XMFLOAT4X4 m_srt;
 
 private:
-	static std::unordered_map<CGHNode*, int> s_nodeEvents;
 	std::string m_name;
 	bool m_active = true;
 	CGHNode* m_parent = nullptr;
-	CGHNode* m_root = this;
 	std::vector<CGHNode*> m_childs;
+	std::vector<CGHNodeEvent> m_evnets;
 	std::vector<std::unique_ptr<Component>> m_components;
 };
 

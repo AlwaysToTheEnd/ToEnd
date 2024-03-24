@@ -103,7 +103,7 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<C
 
 			if (nodeParentIndexList[i] != -1)
 			{
-				nodeOut[i].SetParent(&nodeOut[nodeParentIndexList[i]]);
+				nodeOut[i].SetParent(&nodeOut[nodeParentIndexList[i]], true);
 			}
 		}
 	}

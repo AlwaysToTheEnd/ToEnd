@@ -17,89 +17,84 @@ TestScene::~TestScene()
 
 void TestScene::Init()
 {
-	/*{
-		XmlDocument* document = new XmlDocument;
-		std::string errorName;
-		document->LoadFile("MeshData/nodeTreeData.xml");
-		if (document->Error())
+	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
+
+	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
+	{
+		m_rootNode = &m_bodyNodes.front();
+
+		auto render = m_rootNode->CreateComponent<COMDX12SkinnedMeshRenderer>();
+		auto material = m_rootNode->CreateComponent<COMMaterial>();
+		auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();
+
+		skinnedMesh->SetMeshData(&m_bodyMeshs.front());
+		material->SetData(&m_bodyMats.front());
+
+		TextureInfo texInfo;
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_DIFFUSE;
+		material->SetTexture(&texInfo, 0);
+	}
+	
+	{
+		dxGraphic->LoadMeshDataFile("MeshData/head0.fbx", &m_headMeshs, &m_headMats, &m_headNodes);
+		std::string headRootName = "cf_J_Head_s";
+		for (auto& iter : m_bodyNodes)
 		{
-			errorName = document->ErrorIDToName(document->ErrorID());
-
-		}
-
-		std::vector<int> parentIndex;
-		parentIndex.reserve(1024);
-		m_nodes.reserve(1024);
-		XmlElement* list = document->FirstChildElement();
-
-		DirectX::XMFLOAT3 pos = {};
-		DirectX::XMFLOAT3 scale = {};
-		DirectX::XMFLOAT4 rotation = {};
-
-		for (list = list->FirstChildElement(); list != nullptr; list = list->NextSiblingElement())
-		{
-			m_nodes.emplace_back();
-			auto transform = m_nodes.back().CreateComponent<COMTransform>();
-
-			m_nodes.back().SetName(list->Attribute("name"));
-			pos.x = list->FloatAttribute("posX");
-			pos.y = list->FloatAttribute("posY");
-			pos.z = list->FloatAttribute("posZ");
-
-			scale.x = list->FloatAttribute("scaleX");
-			scale.y = list->FloatAttribute("scaleY");
-			scale.z = list->FloatAttribute("scaleZ");
-
-			rotation.x = list->FloatAttribute("rotationX");
-			rotation.y = list->FloatAttribute("rotationY");
-			rotation.z = list->FloatAttribute("rotationZ");
-			rotation.w = list->FloatAttribute("rotationW");
-
-			transform->SetPos(DirectX::XMLoadFloat3(&pos));
-			transform->SetScale(DirectX::XMLoadFloat3(&scale));
-			transform->SetRotateQuter(DirectX::XMLoadFloat4(&rotation));
-
-			int parentIndex = list->IntAttribute("pIndex");
-
-			if (parentIndex != -1)
+			if (iter.GetaName() == headRootName)
 			{
-				m_nodes.back().SetParent(&m_nodes[parentIndex]);
+				m_headNodes.front().SetParent(&iter, true);
+				break;
 			}
 		}
 
-		delete document;
-	}*/
-	
-	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
-	
-	dxGraphic->LoadMeshDataFile("MeshData/meshes0.fbx", &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
-	m_rootNode = &m_bodyNodes.front();
+		CGHNode* headRoot = &m_headNodes.front();
 
-	auto render = m_rootNode->CreateComponent<COMDX12SkinnedMeshRenderer>();
-	auto material = m_rootNode->CreateComponent<COMMaterial>();
-	auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();
+		auto render = headRoot->CreateComponent<COMDX12SkinnedMeshRenderer>();
+		auto material = headRoot->CreateComponent<COMMaterial>();
+		auto skinnedMesh = headRoot->CreateComponent<COMSkinnedMesh>();
 
-	skinnedMesh->SetMeshData(&m_bodyMeshs.front());
-	material->SetData(&m_bodyMats.front());
+		skinnedMesh->SetMeshData(&m_headMeshs.front());
+		material->SetData(&m_headMats.front());
 
-	TextureInfo texInfo;
-	texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
-	texInfo.blend = 1.0f;
-	texInfo.uvIndex = 0;
-	texInfo.type = aiTextureType_DIFFUSE;
-	material->SetTexture(&texInfo, 0);
-	//texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_Texture2.png");
-	//m_textureBuffer->AddTexture(&texInfo);
-	//texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap.png");
-	//m_textureBuffer->AddTexture(&texInfo);
-	//texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap2.png");
-	//m_textureBuffer->AddTexture(&texInfo);
-	//texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_DetailMainTex.png");
-	//m_textureBuffer->AddTexture(&texInfo);
-	//texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_OcclusionMap.png");
-	//m_textureBuffer->AddTexture(&texInfo);
-	//texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_NailMask.png");
-	//m_textureBuffer->AddTexture(&texInfo);
+		TextureInfo texInfo;
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_MainTex.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_DIFFUSE;
+		material->SetTexture(&texInfo, 0);
+	}
+
+	{
+		dxGraphic->LoadMeshDataFile("MeshData/hair0.fbx", &m_hairMeshs, &m_hairMats, &m_hairNodes);
+		std::string hairRootName = "cf_J_FaceUp_ty";
+		for (auto& iter : m_headNodes)
+		{
+			if (iter.GetaName() == hairRootName)
+			{
+				m_hairNodes.front().SetParent(&iter, true);
+				break;
+			}
+		}
+
+		CGHNode* headRoot = &m_hairNodes.front();
+
+		auto render = headRoot->CreateComponent<COMDX12SkinnedMeshRenderer>();
+		auto material = headRoot->CreateComponent<COMMaterial>();
+		auto skinnedMesh = headRoot->CreateComponent<COMSkinnedMesh>();
+
+		skinnedMesh->SetMeshData(&m_hairMeshs.front());
+		material->SetData(&m_hairMats.front());
+
+		TextureInfo texInfo;
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/back_MainTex.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_DIFFUSE;
+		material->SetTexture(&texInfo, 0);
+	}
 }
 
 void TestScene::Update(float delta)
