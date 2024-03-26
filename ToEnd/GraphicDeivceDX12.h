@@ -65,13 +65,18 @@ class GraphicDeviceDX12
 
 	enum DEFERRED_TEXTURE
 	{
-		DEFERRED_TEXTURE_DIFFUS,
+		DEFERRED_TEXTURE_DIFFUSE,
 		DEFERRED_TEXTURE_NORMAL,
-		DEFERRED_TEXTURE_MREA,
-		DEFERRED_TEXTURE_OFA,
+		DEFERRED_TEXTURE_MRE,
+		DEFERRED_TEXTURE_AFA,
 		DEFERRED_TEXTURE_RENDERID,
 		DEFERRED_TEXTURE_NUM,
 	};
+
+	DXGI_FORMAT m_deferredFormat[DEFERRED_TEXTURE_NUM] = { 
+		DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R11G11B10_FLOAT,
+		DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R11G11B10_FLOAT,
+		DXGI_FORMAT_R16_UINT };
 
 public:
 	static GraphicDeviceDX12* GetGraphic();
@@ -147,10 +152,7 @@ private:
 	DX12RenderQueue					m_uiRenderQueue;
 
 	unsigned int					m_rtvSize = 0;
-	ComPtr<ID3D12Resource>			m_deferredNormal;
-	ComPtr<ID3D12Resource>			m_deferredMRE;
-	ComPtr<ID3D12Resource>			m_deferredAFA;
-	ComPtr<ID3D12Resource>			m_deferredRenderID;
+ 	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;

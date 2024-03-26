@@ -268,15 +268,10 @@ void GraphicDeviceDX12::RenderBegin()
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
-	auto heapCPU = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
-	auto deferredNormal = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_NORMAL - 1);
-	auto deferredMREA = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_MREA - 1);
-	auto deferredOFA = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_OFA - 1);
-	auto deferredRenderID = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_RENDERID - 1);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[DEFERRED_TEXTURE_NUM] = { GetCurrPresentRTV(), deferredNormal,deferredMREA,deferredOFA,deferredRenderID };
 	auto presentDSV = GetPresentDSV();
-	m_cmdList->OMSetRenderTargets(_countof(rtvs), rtvs, false, &presentDSV);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart() };
+
+	m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &presentDSV);
 }
 
 void GraphicDeviceDX12::RenderMesh(CGHNode* node, unsigned int renderFlag)
@@ -507,11 +502,11 @@ void GraphicDeviceDX12::BuildPso()
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		psoDesc.NumRenderTargets = DEFERRED_TEXTURE_NUM;
-		psoDesc.RTVFormats[DEFERRED_TEXTURE_DIFFUS] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		psoDesc.RTVFormats[DEFERRED_TEXTURE_NORMAL] = DXGI_FORMAT_R11G11B10_FLOAT;
-		psoDesc.RTVFormats[DEFERRED_TEXTURE_MREA] = DXGI_FORMAT_R11G11B10_FLOAT;
-		psoDesc.RTVFormats[DEFERRED_TEXTURE_OFA] = DXGI_FORMAT_R11G11B10_FLOAT;
-		psoDesc.RTVFormats[DEFERRED_TEXTURE_RENDERID] = DXGI_FORMAT_R16_UINT;
+
+		for (int i = 0; i < DEFERRED_TEXTURE_NUM; i++)
+		{
+			psoDesc.RTVFormats[i] = m_deferredFormat[i];
+		}
 
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
@@ -604,15 +599,13 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 	prop.CreationNodeMask = 0;
 	prop.VisibleNodeMask = 0;
 
-	m_deferredNormal = nullptr;
-	m_deferredMRE = nullptr;
-	m_deferredAFA = nullptr;
-	m_deferredRenderID = nullptr;
 
-	//normal
+	for (unsigned int i = 0; i < DEFERRED_TEXTURE_NUM; i++)
 	{
+		m_deferredResources[i] = nullptr;
+
 		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		rDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
+		rDesc.Format = m_deferredFormat[i];
 		rDesc.Alignment = 0;
 		rDesc.Width = windowWidth;
 		rDesc.Height = windowHeight;
@@ -624,61 +617,7 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredNormal.GetAddressOf())));
-	}
-
-	//MREA
-	{
-		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		rDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
-		rDesc.Alignment = 0;
-		rDesc.Width = windowWidth;
-		rDesc.Height = windowHeight;
-		rDesc.DepthOrArraySize = 1;
-		rDesc.MipLevels = 1;
-		rDesc.SampleDesc.Count = 1;
-		rDesc.SampleDesc.Quality = 0;
-		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredMRE.GetAddressOf())));
-	}
-
-	//OFA
-	{
-		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		rDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
-		rDesc.Alignment = 0;
-		rDesc.Width = windowWidth;
-		rDesc.Height = windowHeight;
-		rDesc.DepthOrArraySize = 1;
-		rDesc.MipLevels = 1;
-		rDesc.SampleDesc.Count = 1;
-		rDesc.SampleDesc.Quality = 0;
-		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredAFA.GetAddressOf())));
-	}
-
-	//RenderID
-	{
-		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		rDesc.Format = DXGI_FORMAT_R16_UINT;
-		rDesc.Alignment = 0;
-		rDesc.Width = windowWidth;
-		rDesc.Height = windowHeight;
-		rDesc.DepthOrArraySize = 1;
-		rDesc.MipLevels = 1;
-		rDesc.SampleDesc.Count = 1;
-		rDesc.SampleDesc.Quality = 0;
-		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredRenderID.GetAddressOf())));
+			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredResources[i].GetAddressOf())));
 	}
 
 	if (m_deferredRTVHeap == nullptr)
@@ -687,7 +626,7 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 		D3D12_DESCRIPTOR_HEAP_DESC heapdesc = {};
 		heapdesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		heapdesc.NodeMask = 0;
-		heapdesc.NumDescriptors = DEFERRED_TEXTURE_NUM - 1;
+		heapdesc.NumDescriptors = DEFERRED_TEXTURE_NUM;
 		heapdesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
 		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapdesc, IID_PPV_ARGS(m_deferredRTVHeap.GetAddressOf())));
@@ -699,19 +638,13 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 	viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	viewDesc.Texture2D.MipSlice = 0;
 	viewDesc.Texture2D.PlaneSlice = 0;
-	m_d3dDevice->CreateRenderTargetView(m_deferredNormal.Get(), &viewDesc, heapCPU);
 
-	heapCPU.ptr += m_rtvSize;
-	viewDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
-	m_d3dDevice->CreateRenderTargetView(m_deferredMRE.Get(), &viewDesc, heapCPU);
-
-	heapCPU.ptr += m_rtvSize;
-	viewDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
-	m_d3dDevice->CreateRenderTargetView(m_deferredAFA.Get(), &viewDesc, heapCPU);
-
-	heapCPU.ptr += m_rtvSize;
-	viewDesc.Format = DXGI_FORMAT_R16_UINT;
-	m_d3dDevice->CreateRenderTargetView(m_deferredRenderID.Get(), &viewDesc, heapCPU);
+	for (int i = 0; i < DEFERRED_TEXTURE_NUM; i++)
+	{
+		viewDesc.Format = m_deferredFormat[i];
+		m_d3dDevice->CreateRenderTargetView(m_deferredResources[i].Get(), &viewDesc, heapCPU);
+		heapCPU.ptr += m_rtvSize;
+	}
 }
 
 ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderBeginCommandAllocator()
