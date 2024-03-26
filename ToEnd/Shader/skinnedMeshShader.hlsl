@@ -77,9 +77,9 @@ struct PSOut
 {
     float4 color : SV_Target0;
     float3 normal : SV_Target1;
-    float4 metal_rough_emis_ao : SV_Target2;
-    float3 opac_fres_anis : SV_Traget3;
-    uint renderID : SV_Traget4;
+    float3 metal_rough_emis : SV_Target2;
+    float3 ao_fres_anis : SV_Target3;
+    uint renderID : SV_Target4;
 };
 
 PSOut PS(VSOut pin)
@@ -90,5 +90,5 @@ PSOut PS(VSOut pin)
     pout.normal = (pin.normal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
     pout.renderID = gRenderID;
     
-    return PackGBuffer();
+    return pout;
 }

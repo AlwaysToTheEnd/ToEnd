@@ -39,8 +39,6 @@ struct DX12PassConstants
 	DirectX::XMFLOAT2		pad = {};
 };
 
-
-
 class GraphicDeviceDX12
 {
 	struct DX12RenderQueue
@@ -150,8 +148,8 @@ private:
 
 	unsigned int					m_rtvSize = 0;
 	ComPtr<ID3D12Resource>			m_deferredNormal;
-	ComPtr<ID3D12Resource>			m_deferredMREA;
-	ComPtr<ID3D12Resource>			m_deferredOFA;
+	ComPtr<ID3D12Resource>			m_deferredMRE;
+	ComPtr<ID3D12Resource>			m_deferredAFA;
 	ComPtr<ID3D12Resource>			m_deferredRenderID;
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 
