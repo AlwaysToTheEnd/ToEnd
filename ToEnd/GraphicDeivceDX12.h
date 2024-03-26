@@ -65,6 +65,16 @@ class GraphicDeviceDX12
 		PIPELINE_WORK_NUM
 	};
 
+	enum DEFERRED_TEXTURE
+	{
+		DEFERRED_TEXTURE_DIFFUS,
+		DEFERRED_TEXTURE_NORMAL,
+		DEFERRED_TEXTURE_MREA,
+		DEFERRED_TEXTURE_OFA,
+		DEFERRED_TEXTURE_RENDERID,
+		DEFERRED_TEXTURE_NUM,
+	};
+
 public:
 	static GraphicDeviceDX12* GetGraphic();
 	static void CreateDeivce(HWND hWnd, int windowWidth, int windowHeight);
@@ -100,11 +110,13 @@ public:
 private:
 	GraphicDeviceDX12() = default;
 	void BaseRender();
+	void LightRender();
 
 	void Init(HWND hWnd, int windowWidth, int windowHeight);
 	void FlushCommandQueue();
 
 	void BuildPso();
+	void CreateDeferredTextures(int windowWidth, int windowHeight);
 
 	ID3D12CommandAllocator*		GetCurrRenderBeginCommandAllocator();
 	ID3D12CommandAllocator*		GetCurrRenderEndCommandAllocator();
@@ -135,6 +147,13 @@ private:
 	DX12RenderQueue					m_meshRenderQueue;
 	DX12RenderQueue					m_skinnedMeshRenderQueue;
 	DX12RenderQueue					m_uiRenderQueue;
+
+	unsigned int					m_rtvSize = 0;
+	ComPtr<ID3D12Resource>			m_deferredNormal;
+	ComPtr<ID3D12Resource>			m_deferredMREA;
+	ComPtr<ID3D12Resource>			m_deferredOFA;
+	ComPtr<ID3D12Resource>			m_deferredRenderID;
+	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

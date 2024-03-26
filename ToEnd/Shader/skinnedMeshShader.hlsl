@@ -13,7 +13,7 @@ struct BoneWeight
     float weight;
 };
 
-uint gObejctID : register(b0, space1);
+uint gRenderID : register(b0, space1);
 
 StructuredBuffer<float3> gVertexNormals : register(t0, space1);
 StructuredBuffer<float3> gVertexTangents : register(t1, space1);
@@ -28,8 +28,8 @@ StructuredBuffer<float4x4> gBoneData : register(t2, space2);
 
 struct VSOut
 {
-    float4 PosH : SV_POSITION;
-    float3 Normal : NORMAL0;
+    float4 posH : SV_POSITION;
+    float3 normal : NORMAL0;
     float3 tangent : NORMAL1;
     float3 bitangent : NORMAL2;
     float3 uv0 : TEXCOORD0;
@@ -39,8 +39,8 @@ VSOut VS(VertexIn vin)
 {
     VSOut vout;
    
-    vout.PosH = float4(vin.PosL, 1.0f);
-    vout.Normal = gVertexNormals[vin.id];
+    vout.posH = float4(vin.PosL, 1.0f);
+    vout.normal = gVertexNormals[vin.id];
     vout.tangent = gVertexTangents[vin.id];
     vout.bitangent = gVertexBitans[vin.id];
     
@@ -57,14 +57,14 @@ VSOut VS(VertexIn vin)
     {
         boenWeight = gBoneWeights[weightInfo.offsetIndex + i];
         
-        sumPosL += boenWeight.weight * mul(vout.PosH, gBoneData[boenWeight.boneIndex]).xyz;
-        sumNormalL += boenWeight.weight * mul(vout.Normal, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumPosL += boenWeight.weight * mul(vout.posH, gBoneData[boenWeight.boneIndex]).xyz;
+        sumNormalL += boenWeight.weight * mul(vout.normal, (float3x3) gBoneData[boenWeight.boneIndex]);
         sumTangent += boenWeight.weight * mul(vout.tangent, (float3x3) gBoneData[boenWeight.boneIndex]);
         sumBitan += boenWeight.weight * mul(vout.bitangent, (float3x3) gBoneData[boenWeight.boneIndex]);
     }
     
-    vout.PosH = mul(float4(sumPosL, 1.0f), gViewProj);
-    vout.Normal = sumNormalL;
+    vout.posH = mul(float4(sumPosL, 1.0f), gViewProj);
+    vout.normal = sumNormalL;
     vout.tangent = sumTangent;
     vout.bitangent = sumBitan;
     vout.uv0 = gVertexUV0[vin.id];
@@ -76,6 +76,10 @@ VSOut VS(VertexIn vin)
 struct PSOut
 {
     float4 color : SV_Target0;
+    float3 normal : SV_Target1;
+    float4 metal_rough_emis_ao : SV_Target2;
+    float3 opac_fres_anis : SV_Traget3;
+    uint renderID : SV_Traget4;
 };
 
 PSOut PS(VSOut pin)
@@ -83,6 +87,8 @@ PSOut PS(VSOut pin)
     PSOut pout;
    
     pout.color = gTextures[0].Sample(gsamPointWrap, pin.uv0.rg);
+    pout.normal = (pin.normal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
+    pout.renderID = gRenderID;
     
-    return pout;
+    return PackGBuffer();
 }

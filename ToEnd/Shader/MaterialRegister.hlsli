@@ -12,22 +12,22 @@ struct TextureInfo
 
 cbuffer MaterialData : register(b1, space0)
 {
-    int shadingModel;
-    int twosided;
-    int wireframe;
-    int blend;
-    float3 diffuse;
-    float opacity;
-    float3 ambient;
-    float bumpscaling;
-    float3 specular;
-    float shininess;
-    float3 emissive;
-    float refracti;
-    float3 transparent;
-    float shinpercent;
-    float3 reflective;
-    float reflectivity;
+    int gShadingModel;
+    int gTwosided;
+    int gWireframe;
+    int gBlend;
+    float3 gDiffuse;
+    float gOpacity;
+    float3 gAmbient;
+    float gBumpscaling;
+    float3 gSpecular;
+    float gShininess;
+    float3 gEmissive;
+    float gRefracti;
+    float3 gTransparent;
+    float gShinpercent;
+    float3 gReflective;
+    float gReflectivity;
     uint gNumTexture;
     float3 pad0;
     TextureInfo gTextureInfo[16];

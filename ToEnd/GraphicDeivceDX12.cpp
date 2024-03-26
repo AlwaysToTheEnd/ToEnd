@@ -76,6 +76,23 @@ void GraphicDeviceDX12::BaseRender()
 	}
 }
 
+void GraphicDeviceDX12::LightRender()
+{
+	CD3DX12_RESOURCE_BARRIER barrier[DEFERRED_TEXTURE_NUM - 1] = {};
+	barrier[DEFERRED_TEXTURE_NORMAL - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredNormal.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	barrier[DEFERRED_TEXTURE_MREA - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredMREA.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	barrier[DEFERRED_TEXTURE_OFA - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredOFA.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	barrier[DEFERRED_TEXTURE_RENDERID - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredRenderID.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	m_cmdList->ResourceBarrier(_countof(barrier), barrier);
+
+
+}
+
 void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 {
 #if defined(DEBUG)||defined(_DEBUG)
@@ -202,6 +219,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
 	{
 		m_swapChain->ReSize(m_cmdList.Get(), windowWidth, windowHeight);
+		CreateDeferredTextures(windowWidth, windowHeight);
 	}
 	ThrowIfFailed(m_cmdList->Close());
 
@@ -247,6 +265,18 @@ void GraphicDeviceDX12::RenderBegin()
 
 	m_swapChain->RenderBegin(m_cmdList.Get(), DirectX::Colors::Gray);
 
+	CD3DX12_RESOURCE_BARRIER barrier[DEFERRED_TEXTURE_NUM - 1] = {};
+	barrier[DEFERRED_TEXTURE_NORMAL - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredNormal.Get(),
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	barrier[DEFERRED_TEXTURE_MREA - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredMREA.Get(),
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	barrier[DEFERRED_TEXTURE_OFA - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredOFA.Get(),
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	barrier[DEFERRED_TEXTURE_RENDERID - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredRenderID.Get(),
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	m_cmdList->ResourceBarrier(_countof(barrier), barrier);
+
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 }
@@ -269,6 +299,7 @@ void GraphicDeviceDX12::RenderUI(CGHNode* node, unsigned int renderFlag)
 void GraphicDeviceDX12::RenderEnd()
 {
 	BaseRender();
+	LightRender();
 
 	m_meshRenderQueue.queue.clear();
 	m_skinnedMeshRenderQueue.queue.clear();
@@ -477,8 +508,12 @@ void GraphicDeviceDX12::BuildPso()
 
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.NumRenderTargets = DEFERRED_TEXTURE_NUM;
+		psoDesc.RTVFormats[DEFERRED_TEXTURE_DIFFUS] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.RTVFormats[DEFERRED_TEXTURE_NORMAL] = DXGI_FORMAT_R32G32B32_FLOAT;
+		psoDesc.RTVFormats[DEFERRED_TEXTURE_MREA] = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		psoDesc.RTVFormats[DEFERRED_TEXTURE_OFA] = DXGI_FORMAT_R32G32B32_FLOAT;
+		psoDesc.RTVFormats[DEFERRED_TEXTURE_RENDERID] = DXGI_FORMAT_R16_UINT;
 
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
@@ -488,11 +523,17 @@ void GraphicDeviceDX12::BuildPso()
 		m_psos[PIPELINE_SKINNEDMESH].pso = DX12PipelineMG::instance.GetGraphicPipeline("PIPELINE_SKINNEDMESH");
 		m_psos[PIPELINE_SKINNEDMESH].rootSig = DX12PipelineMG::instance.GetRootSignature("PIPELINE_SKINNEDMESH");
 
-		m_psos[PIPELINE_SKINNEDMESH].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd) 
+		m_psos[PIPELINE_SKINNEDMESH].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			D3D12_CPU_DESCRIPTOR_HANDLE presentRTV[] = { GetCurrPresentRTV() };
+			auto heapCPU = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+			auto deferredNormal = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_NORMAL - 1);
+			auto deferredMREA = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_MREA - 1);
+			auto deferredOFA = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_OFA - 1);
+			auto deferredRenderID = heapCPU.ptr + m_rtvSize * (DEFERRED_TEXTURE_RENDERID - 1);
+
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvs[DEFERRED_TEXTURE_NUM] = { GetCurrPresentRTV(), deferredNormal,deferredMREA,deferredOFA,deferredRenderID };
 			auto presentDSV = GetPresentDSV();
-			cmd->OMSetRenderTargets(1, presentRTV, false, &presentDSV);
+			cmd->OMSetRenderTargets(_countof(rtvs), rtvs, false, &presentDSV);
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
 		};
 
@@ -561,6 +602,127 @@ void GraphicDeviceDX12::BuildPso()
 		};
 	}
 #pragma endregion
+}
+
+void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
+{
+	D3D12_HEAP_PROPERTIES prop = {};
+	D3D12_RESOURCE_DESC rDesc = {};
+
+	prop.Type = D3D12_HEAP_TYPE_DEFAULT;
+	prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	prop.CreationNodeMask = 0;
+	prop.VisibleNodeMask = 0;
+
+	m_deferredNormal = nullptr;
+	m_deferredMREA = nullptr;
+	m_deferredOFA = nullptr;
+	m_deferredRenderID = nullptr;
+
+	//normal
+	{
+		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		rDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+		rDesc.Alignment = 0;
+		rDesc.Width = windowWidth;
+		rDesc.Height = windowHeight;
+		rDesc.DepthOrArraySize = 1;
+		rDesc.MipLevels = 1;
+		rDesc.SampleDesc.Count = 1;
+		rDesc.SampleDesc.Quality = 0;
+		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(m_deferredNormal.GetAddressOf())));
+	}
+
+	//MREA
+	{
+		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		rDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		rDesc.Alignment = 0;
+		rDesc.Width = windowWidth;
+		rDesc.Height = windowHeight;
+		rDesc.DepthOrArraySize = 1;
+		rDesc.MipLevels = 1;
+		rDesc.SampleDesc.Count = 1;
+		rDesc.SampleDesc.Quality = 0;
+		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(m_deferredMREA.GetAddressOf())));
+	}
+
+	//OFA
+	{
+		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		rDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+		rDesc.Alignment = 0;
+		rDesc.Width = windowWidth;
+		rDesc.Height = windowHeight;
+		rDesc.DepthOrArraySize = 1;
+		rDesc.MipLevels = 1;
+		rDesc.SampleDesc.Count = 1;
+		rDesc.SampleDesc.Quality = 0;
+		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(m_deferredOFA.GetAddressOf())));
+	}
+
+	//RenderID
+	{
+		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		rDesc.Format = DXGI_FORMAT_R16_UINT;
+		rDesc.Alignment = 0;
+		rDesc.Width = windowWidth;
+		rDesc.Height = windowHeight;
+		rDesc.DepthOrArraySize = 1;
+		rDesc.MipLevels = 1;
+		rDesc.SampleDesc.Count = 1;
+		rDesc.SampleDesc.Quality = 0;
+		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(m_deferredRenderID.GetAddressOf())));
+	}
+
+	if (m_deferredRTVHeap == nullptr)
+	{
+		m_rtvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		D3D12_DESCRIPTOR_HEAP_DESC heapdesc = {};
+		heapdesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		heapdesc.NodeMask = 0;
+		heapdesc.NumDescriptors = DEFERRED_TEXTURE_NUM - 1;
+		heapdesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapdesc, IID_PPV_ARGS(m_deferredRTVHeap.GetAddressOf())));
+	}
+
+	auto heapCPU = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_RENDER_TARGET_VIEW_DESC viewDesc = {};
+	viewDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	viewDesc.Texture2D.MipSlice = 0;
+	viewDesc.Texture2D.PlaneSlice = 0;
+	m_d3dDevice->CreateRenderTargetView(m_deferredNormal.Get(), &viewDesc, heapCPU);
+
+	heapCPU.ptr += m_rtvSize;
+	viewDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	m_d3dDevice->CreateRenderTargetView(m_deferredMREA.Get(), &viewDesc, heapCPU);
+
+	heapCPU.ptr += m_rtvSize;
+	viewDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	m_d3dDevice->CreateRenderTargetView(m_deferredOFA.Get(), &viewDesc, heapCPU);
+
+	heapCPU.ptr += m_rtvSize;
+	viewDesc.Format = DXGI_FORMAT_R16_UINT;
+	m_d3dDevice->CreateRenderTargetView(m_deferredRenderID.Get(), &viewDesc, heapCPU);
 }
 
 ID3D12CommandAllocator* GraphicDeviceDX12::GetCurrRenderBeginCommandAllocator()

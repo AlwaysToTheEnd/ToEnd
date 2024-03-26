@@ -142,6 +142,9 @@
     <None Include="Shader\RenderBaseRegister.hlsli">
       <Filter>Shader</Filter>
     </None>
+    <None Include="Shader\DeferredRenderBase.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\skinnedMeshShader.hlsl">
