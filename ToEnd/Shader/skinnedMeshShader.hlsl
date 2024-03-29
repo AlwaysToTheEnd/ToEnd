@@ -33,6 +33,8 @@ struct VSOut
     float3 tangent : NORMAL1;
     float3 bitangent : NORMAL2;
     float3 uv0 : TEXCOORD0;
+    float3 uv1 : TEXCOORD1;
+    float3 uv2 : TEXCOORD2;
 };
 
 VSOut VS(VertexIn vin)
@@ -68,6 +70,8 @@ VSOut VS(VertexIn vin)
     vout.tangent = sumTangent;
     vout.bitangent = sumBitan;
     vout.uv0 = gVertexUV0[vin.id];
+    vout.uv1 = gVertexUV1[vin.id];
+    vout.uv2 = gVertexUV2[vin.id];
     
     return vout;
 }

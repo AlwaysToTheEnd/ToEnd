@@ -80,6 +80,12 @@
     <ClInclude Include="Xml.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="BaseComponents.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="LightComponents.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -95,9 +101,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CGHBaseClass.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Component.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp">
@@ -133,6 +136,9 @@
     <ClCompile Include="Xml.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="BaseComponents.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -151,6 +157,9 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="fontShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\DeferredLightDir.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

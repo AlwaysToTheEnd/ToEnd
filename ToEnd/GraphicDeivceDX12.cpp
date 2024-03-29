@@ -6,7 +6,7 @@
 #include "GraphicResourceLoader.h"
 #include "DX12GarbageFrameResourceMG.h"
 #include "DX12PipelineMG.h"
-#include "Component.h"
+#include "BaseComponents.h"
 #include "Camera.h"
 
 using namespace DirectX;
@@ -60,7 +60,7 @@ void GraphicDeviceDX12::DeleteDeivce()
 
 void GraphicDeviceDX12::BaseRender()
 {
-	auto& currPso = m_psos[PIPELINE_SKINNEDMESH];
+	auto& currPso = m_PSOs[PIPELINE_SKINNEDMESH];
 
 	if (currPso.pso)
 	{
@@ -78,19 +78,23 @@ void GraphicDeviceDX12::BaseRender()
 
 void GraphicDeviceDX12::LightRender()
 {
-	/*CD3DX12_RESOURCE_BARRIER barrier[DEFERRED_TEXTURE_NUM - 1] = {};
-	barrier[DEFERRED_TEXTURE_NORMAL - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredNormal.Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	barrier[DEFERRED_TEXTURE_MREA - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredMREA.Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	barrier[DEFERRED_TEXTURE_OFA - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredOFA.Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	barrier[DEFERRED_TEXTURE_RENDERID - 1] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredRenderID.Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	auto presentDSV = m_swapChain->GetDSV();
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV() };
 
-	m_cmdList->ResourceBarrier(_countof(barrier), barrier);*/
+	m_cmdList->OMSetRenderTargets(1, rtvs, true, &presentDSV);
 
+	for (auto& currPso : m_lightPSOs)
+	{
+		m_cmdList->SetPipelineState(currPso.pso);
+		m_cmdList->SetGraphicsRootSignature(currPso.rootSig);
 
+		currPso.baseGraphicCmdFunc(m_cmdList.Get());
+
+		for (auto& currNode : m_lightRenderQueue.queue)
+		{
+			currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
+		}
+	}
 }
 
 void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
@@ -184,7 +188,7 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 	passCons.renderTargetSizeX = m_scissorRect.right;
 	passCons.renderTargetSizeY = m_scissorRect.bottom;
 	passCons.invRenderTargetSize = { 1.0f / m_screenViewport.Width, 1.0f / m_screenViewport.Height };
-	//passCons.samplerIndex = 2;
+	passCons.samplerIndex = 2;
 	passCons.eyePosW = camera->GetEyePos();
 	passCons.ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f }; //TODO ambientLight
 	passCons.mousePos = camera->GetMousePos();
@@ -268,10 +272,9 @@ void GraphicDeviceDX12::RenderBegin()
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
-	auto presentDSV = GetPresentDSV();
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart() };
 
-	m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &presentDSV);
+	m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &m_swapChain->GetDSV());
 }
 
 void GraphicDeviceDX12::RenderMesh(CGHNode* node, unsigned int renderFlag)
@@ -372,7 +375,7 @@ void GraphicDeviceDX12::BuildPso()
 		ROOT_BONEDATA_SRV,
 	};
 
-	m_psos.resize(PIPELINE_WORK_NUM);
+	m_PSOs.resize(PIPELINE_WORK_NUM);
 
 	D3D12_INPUT_ELEMENT_DESC inputElementdesc = { "POSITION" ,0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 };
 
@@ -513,15 +516,15 @@ void GraphicDeviceDX12::BuildPso()
 
 		DX12PipelineMG::instance.CreateGraphicPipeline("PIPELINE_SKINNEDMESH", &psoDesc);
 
-		m_psos[PIPELINE_SKINNEDMESH].pso = DX12PipelineMG::instance.GetGraphicPipeline("PIPELINE_SKINNEDMESH");
-		m_psos[PIPELINE_SKINNEDMESH].rootSig = DX12PipelineMG::instance.GetRootSignature("PIPELINE_SKINNEDMESH");
+		m_PSOs[PIPELINE_SKINNEDMESH].pso = DX12PipelineMG::instance.GetGraphicPipeline("PIPELINE_SKINNEDMESH");
+		m_PSOs[PIPELINE_SKINNEDMESH].rootSig = DX12PipelineMG::instance.GetRootSignature("PIPELINE_SKINNEDMESH");
 
-		m_psos[PIPELINE_SKINNEDMESH].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+		m_PSOs[PIPELINE_SKINNEDMESH].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
 		};
 
-		m_psos[PIPELINE_SKINNEDMESH].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		m_PSOs[PIPELINE_SKINNEDMESH].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
 		{
 			COMMaterial* matCom = node->GetComponent<COMMaterial>();
 			COMSkinnedMesh* meshCom = node->GetComponent<COMSkinnedMesh>();
@@ -586,6 +589,120 @@ void GraphicDeviceDX12::BuildPso()
 		};
 	}
 #pragma endregion
+
+	m_lightPSOs.resize(PIPELINELIGHT_NUM);
+#pragma region PIPELINE_DEFERRED_LIGHT
+	{
+		std::vector<D3D12_ROOT_PARAMETER> lightBaseRoot(5);
+		
+		lightBaseRoot[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		lightBaseRoot[0].Descriptor.RegisterSpace = 0;
+		lightBaseRoot[0].Descriptor.ShaderRegister = 0;
+		lightBaseRoot[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		lightBaseRoot[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		lightBaseRoot[1].Descriptor.RegisterSpace = 0;
+		lightBaseRoot[1].Descriptor.ShaderRegister = 1;
+		lightBaseRoot[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		lightBaseRoot[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		lightBaseRoot[2].Descriptor.RegisterSpace = 0;
+		lightBaseRoot[2].Descriptor.ShaderRegister = 2;
+		lightBaseRoot[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		lightBaseRoot[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		lightBaseRoot[3].Descriptor.RegisterSpace = 0;
+		lightBaseRoot[3].Descriptor.ShaderRegister = 3;
+		lightBaseRoot[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		lightBaseRoot[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		lightBaseRoot[4].Descriptor.RegisterSpace = 0;
+		lightBaseRoot[4].Descriptor.ShaderRegister = 4;
+		lightBaseRoot[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		rootParams.clear();
+		rootParams.insert(rootParams.end(), baseRoot.begin(), baseRoot.end());
+		rootParams.insert(rootParams.end(), lightBaseRoot.begin(), lightBaseRoot.end());
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		temp.Descriptor.RegisterSpace = 1;
+		temp.Descriptor.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParams.push_back(temp);
+
+		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
+		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootsigDesc.pStaticSamplers = s_StaticSamplers;
+		rootsigDesc.NumStaticSamplers = _countof(s_StaticSamplers);
+		rootsigDesc.NumParameters = rootParams.size();
+		rootsigDesc.pParameters = rootParams.data();
+
+		DX12PipelineMG::instance.CreateRootSignature("PIPELINE_DEFERRED_LIGHT", &rootsigDesc);
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		psoDesc.NodeMask = 0;
+		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("PIPELINE_DEFERRED_LIGHT");
+
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "DEFERRED_LIGHT_DIR_VS", L"Shader/skinnedMeshShader.hlsl", "VS");
+		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, "DEFERRED_LIGHT_DIR_GS", L"Shader/skinnedMeshShader.hlsl", "GS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "DEFERRED_LIGHT_DIR_PS", L"Shader/skinnedMeshShader.hlsl", "PS");
+
+		//IA Set
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		psoDesc.InputLayout.NumElements = 1;
+		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		psoDesc.SampleMask = UINT_MAX;
+
+		//OM Set
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
+
+		DX12PipelineMG::instance.CreateGraphicPipeline("PIPELINE_DEFERRED_LIGHT", &psoDesc);
+
+		m_lightPSOs[PIPELINELIGHT_DIR].pso = DX12PipelineMG::instance.GetGraphicPipeline("PIPELINE_DEFERRED_LIGHT");
+		m_lightPSOs[PIPELINELIGHT_DIR].rootSig = DX12PipelineMG::instance.GetRootSignature("PIPELINE_DEFERRED_LIGHT");
+
+		m_lightPSOs[PIPELINELIGHT_DIR].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+		{
+			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+
+			for (int i = 0; i < DEFERRED_TEXTURE_RENDERID; i++)
+			{
+				cmd->SetGraphicsRootShaderResourceView(i+1, m_deferredResources[i]->GetGPUVirtualAddress());
+			}
+
+			cmd->SetGraphicsRootShaderResourceView(5, m_swapChain->GetDSResource()->GetGPUVirtualAddress());
+		};
+
+		m_lightPSOs[PIPELINELIGHT_DIR].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		{
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			D3D12_VERTEX_BUFFER_VIEW vbView = {};
+			/*vbView.BufferLocation = currMesh->meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
+			vbView.SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
+			vbView.StrideInBytes = sizeof(aiVector3D);*/
+
+			D3D12_INDEX_BUFFER_VIEW ibView = {};
+			/*ibView.BufferLocation = currMesh->meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
+			ibView.Format = DXGI_FORMAT_R32_UINT;
+			ibView.SizeInBytes = sizeof(unsigned int) * currMesh->numData[MESHDATA_INDEX];*/
+
+			cmd->IASetVertexBuffers(0, 1, &vbView);
+			cmd->IASetIndexBuffer(&ibView);
+			/*cmd->DrawIndexedInstanced(currMesh->numData[MESHDATA_INDEX], 1, 0, 0, 0);*/
+		};
+	}
+
+#pragma endregion
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
@@ -599,23 +716,21 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 	prop.CreationNodeMask = 0;
 	prop.VisibleNodeMask = 0;
 
+	rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	rDesc.Alignment = 0;
+	rDesc.Width = windowWidth;
+	rDesc.Height = windowHeight;
+	rDesc.DepthOrArraySize = 1;
+	rDesc.MipLevels = 1;
+	rDesc.SampleDesc.Count = 1;
+	rDesc.SampleDesc.Quality = 0;
+	rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
 	for (unsigned int i = 0; i < DEFERRED_TEXTURE_NUM; i++)
 	{
 		m_deferredResources[i] = nullptr;
-
-		rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		rDesc.Format = m_deferredFormat[i];
-		rDesc.Alignment = 0;
-		rDesc.Width = windowWidth;
-		rDesc.Height = windowHeight;
-		rDesc.DepthOrArraySize = 1;
-		rDesc.MipLevels = 1;
-		rDesc.SampleDesc.Count = 1;
-		rDesc.SampleDesc.Quality = 0;
-		rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		rDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
 			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredResources[i].GetAddressOf())));
 	}

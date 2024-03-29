@@ -21,6 +21,7 @@ static struct GlobalOptions
 		const std::wstring	TextureFolderPath = L"./../Common/Texture";
 		const std::wstring	FontFolderPath = L"./../Common/Fonts";
 		const std::wstring	SpriteTextureSuffix = L"sp_";
+		float				Shadowlength = 100.0f;
 	}GRAPHIC;
 }GO;
 
@@ -30,7 +31,6 @@ enum CGHNODE_EVENT_FLAGS
 	CGHNODE_EVENT_FLAG_CHILDTREE_CHANGED = 1,
 	CGHNODE_EVENT_FLAG_END = 0xffffffff,
 };
-
 
 
 class CGHNode
@@ -175,11 +175,12 @@ inline T* CGHNode::GetComponent()
 {
 	T* result = nullptr;
 
-	for (auto& iter : m_components)
+	auto typeHashCode = typeid(T).hash_code();
+	for (size_t i = m_components.size() - 1; i >= COMPONENT_CUSTOM; i--)
 	{
-		if (iter->GetTypeHashCode() == typeid(T).hash_code())
+		if (m_components[i]->GetTypeHashCode() == typeHashCode)
 		{
-			result = reinterpret_cast<T*>(iter.get());
+			result = reinterpret_cast<T*>(m_components[i].get());
 			break;
 		}
 	}

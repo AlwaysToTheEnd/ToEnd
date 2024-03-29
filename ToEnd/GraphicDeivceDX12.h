@@ -63,6 +63,14 @@ class GraphicDeviceDX12
 		PIPELINE_WORK_NUM
 	};
 
+	enum PIPELINELIGHTLIST
+	{
+		PIPELINELIGHT_DIR,
+		PIPELINELIGHT_POINT,
+		PIPELINELIGHT_SPOT,
+		PIPELINELIGHT_NUM
+	};
+
 	enum DEFERRED_TEXTURE
 	{
 		DEFERRED_TEXTURE_DIFFUSE,
@@ -103,7 +111,6 @@ public:
 	void RenderMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderUI(CGHNode* node, unsigned int renderFlag);
-
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
@@ -150,6 +157,7 @@ private:
 	DX12RenderQueue					m_meshRenderQueue;
 	DX12RenderQueue					m_skinnedMeshRenderQueue;
 	DX12RenderQueue					m_uiRenderQueue;
+	DX12RenderQueue					m_lightRenderQueue;
 
 	unsigned int					m_rtvSize = 0;
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
@@ -159,6 +167,7 @@ private:
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
 	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
-	std::vector<PipeLineWorkSet>										m_psos;
+	std::vector<PipeLineWorkSet>										m_PSOs;
+	std::vector<PipeLineWorkSet>										m_lightPSOs;
 	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };

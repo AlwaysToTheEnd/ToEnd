@@ -1,10 +1,9 @@
+#include "BaseComponents.h"
 #include <typeinfo>
-#include "Component.h"
 #include "CGHBaseClass.h"
 #include "GraphicDeivceDX12.h"
 #include "DX12GraphicResourceManager.h"
 #include "DX12TextureBuffer.h"
-
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();

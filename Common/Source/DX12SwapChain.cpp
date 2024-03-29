@@ -141,6 +141,11 @@ D3D12_CPU_DESCRIPTOR_HANDLE DX12SwapChain::GetDSV() const
 	return m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
+ID3D12Resource* DX12SwapChain::GetDSResource() const
+{
+	return m_depthStencil.Get();
+}
+
 void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)
 {
 	m_clientHeight = y;

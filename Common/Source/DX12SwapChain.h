@@ -25,6 +25,7 @@ public:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CurrRTV() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const;
+	ID3D12Resource* GetDSResource() const;
 
 private:
 	void CreateResources(unsigned int x, unsigned int y);

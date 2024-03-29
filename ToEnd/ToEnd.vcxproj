@@ -156,6 +156,7 @@
     <ClInclude Include="..\Common\Source\DxException.h" />
     <ClInclude Include="..\Common\Source\GameTimer.h" />
     <ClInclude Include="App.h" />
+    <ClInclude Include="BaseComponents.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
@@ -169,6 +170,7 @@
     <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
     <ClInclude Include="GraphicResourceLoader.h" />
+    <ClInclude Include="LightComponents.h" />
     <ClInclude Include="TestScene.h" />
     <ClInclude Include="Xml.h" />
   </ItemGroup>
@@ -177,10 +179,10 @@
     <ClCompile Include="..\Common\Source\DxException.cpp" />
     <ClCompile Include="..\Common\Source\GameTimer.cpp" />
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="BaseComponents.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="CGHGraphicResource.cpp" />
-    <ClCompile Include="Component.cpp" />
     <ClCompile Include="DX12DefaultBufferCreator.cpp" />
     <ClCompile Include="DX12GarbageFrameResourceMG.cpp" />
     <ClCompile Include="DX12GraphicResourceManager.cpp" />
@@ -205,6 +207,13 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="fontShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Shader\DeferredLightDir.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
