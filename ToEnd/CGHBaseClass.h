@@ -6,7 +6,7 @@
 #include <DirectXMath.h>
 #include <algorithm>
 #include <functional>
-#include "Component.h"
+#include "BaseComponents.h"
 
 static struct GlobalOptions
 {

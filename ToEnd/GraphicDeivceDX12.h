@@ -110,6 +110,7 @@ public:
 	void RenderBegin();
 	void RenderMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
+	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
 	void RenderUI(CGHNode* node, unsigned int renderFlag);
 	void RenderEnd();
 
@@ -157,7 +158,7 @@ private:
 	DX12RenderQueue					m_meshRenderQueue;
 	DX12RenderQueue					m_skinnedMeshRenderQueue;
 	DX12RenderQueue					m_uiRenderQueue;
-	DX12RenderQueue					m_lightRenderQueue;
+	DX12RenderQueue					m_dirLightRenderQueue;
 
 	unsigned int					m_rtvSize = 0;
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};

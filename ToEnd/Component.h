@@ -1,4 +1,5 @@
 #pragma once
+#include <typeinfo>
 #include <DirectXMath.h>
 
 enum COMPONENTPRIORITY

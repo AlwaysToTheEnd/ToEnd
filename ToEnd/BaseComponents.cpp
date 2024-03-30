@@ -1,5 +1,4 @@
 #include "BaseComponents.h"
-#include <typeinfo>
 #include "CGHBaseClass.h"
 #include "GraphicDeivceDX12.h"
 #include "DX12GraphicResourceManager.h"

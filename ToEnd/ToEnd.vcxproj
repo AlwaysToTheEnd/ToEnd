@@ -190,6 +190,7 @@
     <ClCompile Include="DX12TextureBuffer.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
     <ClCompile Include="GraphicResourceLoader.cpp" />
+    <ClCompile Include="LightComponents.cpp" />
     <ClCompile Include="TestScene.cpp" />
     <ClCompile Include="Xml.cpp" />
   </ItemGroup>

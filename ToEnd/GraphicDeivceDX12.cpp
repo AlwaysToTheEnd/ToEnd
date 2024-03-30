@@ -7,6 +7,7 @@
 #include "DX12GarbageFrameResourceMG.h"
 #include "DX12PipelineMG.h"
 #include "BaseComponents.h"
+#include "LightComponents.h"
 #include "Camera.h"
 
 using namespace DirectX;
@@ -90,8 +91,9 @@ void GraphicDeviceDX12::LightRender()
 
 		currPso.baseGraphicCmdFunc(m_cmdList.Get());
 
-		for (auto& currNode : m_lightRenderQueue.queue)
-		{
+		for (auto& currNode : m_dirLightRenderQueue.queue)
+		{	
+
 			currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
 		}
 	}
@@ -287,6 +289,19 @@ void GraphicDeviceDX12::RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag
 	m_skinnedMeshRenderQueue.queue.push_back({ node, renderFlag });
 }
 
+void GraphicDeviceDX12::RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType)
+{
+
+	if (lightType == typeid(COMDirLight).hash_code())
+	{
+		m_dirLightRenderQueue.queue.push_back({ node, lightFlags });
+	}
+	/*else if ()
+	{
+
+	}*/
+}
+
 void GraphicDeviceDX12::RenderUI(CGHNode* node, unsigned int renderFlag)
 {
 	m_uiRenderQueue.queue.push_back({ node, renderFlag });
@@ -300,6 +315,7 @@ void GraphicDeviceDX12::RenderEnd()
 	m_meshRenderQueue.queue.clear();
 	m_skinnedMeshRenderQueue.queue.clear();
 	m_uiRenderQueue.queue.clear();
+	m_dirLightRenderQueue.queue.clear();
 
 	m_swapChain->RenderEnd(m_cmdList.Get());
 
@@ -684,7 +700,7 @@ void GraphicDeviceDX12::BuildPso()
 
 		m_lightPSOs[PIPELINELIGHT_DIR].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
 		{
-			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
 			D3D12_VERTEX_BUFFER_VIEW vbView = {};
 			/*vbView.BufferLocation = currMesh->meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
