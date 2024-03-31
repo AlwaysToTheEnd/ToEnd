@@ -6,6 +6,7 @@
 #include "DX12TextureBuffer.h"
 #include "Xml.h"
 #include <DirectXMath.h>
+#include "LightComponents.h"
 
 TestScene::TestScene()
 {
@@ -95,6 +96,12 @@ void TestScene::Init()
 		texInfo.type = aiTextureType_DIFFUSE;
 		material->SetTexture(&texInfo, 0);
 	}
+
+	auto light = m_rootNode->CreateComponent<COMDirLight>();
+
+	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+	light->m_data.power = 1.0f;
+	light->m_data.dir = DirectX::XMFLOAT3(0, 1.0f, 0.5f);
 }
 
 void TestScene::Update(float delta)

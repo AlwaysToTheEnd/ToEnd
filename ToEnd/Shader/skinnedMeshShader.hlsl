@@ -93,6 +93,8 @@ PSOut PS(VSOut pin)
     pout.color = gTextures[0].Sample(gsamPointWrap, pin.uv0.rg);
     pout.normal = (pin.normal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
     pout.renderID = gRenderID;
+    pout.metal_rough_emis = float3(0, 0, 0);
+    pout.ao_fres_anis = float3(0, 0, 0);
     
     return pout;
 }

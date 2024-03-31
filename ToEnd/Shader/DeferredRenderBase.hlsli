@@ -9,11 +9,11 @@ struct SurfaceData
     float linearDepth;
 };
 
-Texture2D gDiffuseTexture : register(t0, sapce0);
-Texture2D gNormalTexture : register(t1, sapce0);
-Texture2D gMRETexture : register(t2, sapce0);
-Texture2D gAFATexture : register(t3, sapce0);
-Texture2D gDepthTexture : register(t4, sapce0);
+Texture2D<float4> gDiffuseTexture : register(t0);
+Texture2D<float3> gNormalTexture : register(t1);
+Texture2D<float3> gMRETexture : register(t2);
+Texture2D<float3> gAFATexture : register(t3);
+Texture2D<float> gDepthTexture : register(t4);
 
 SurfaceData UnpackGBufferL(int2 location)
 {
@@ -21,13 +21,13 @@ SurfaceData UnpackGBufferL(int2 location)
     
     int3 location3 = int3(location, 0);
     float depth = gDepthTexture.Load(location3).x;
-    result.normal = gNormalTexture.Load(location3).xyz;
+    result.normal = gNormalTexture.Load(location3);
     
     result.linearDepth = gProj._43 / (depth - gProj._33);
     result.color = gDiffuseTexture.Load(location3);
     result.normal = normalize(result.normal * 2.0f - 1.0);
-    result.metal_rough_emis = gMRETexture.Load(location3).rgb;
-    result.ao_fres_anis = gAFATexture.Load(location3).rgb;
+    result.metal_rough_emis = gMRETexture.Load(location3);
+    result.ao_fres_anis = gAFATexture.Load(location3);
     
     return result;
 }

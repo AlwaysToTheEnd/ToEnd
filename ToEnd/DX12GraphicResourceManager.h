@@ -13,7 +13,8 @@ class DX12GraphicResourceManager
 	{
 		unsigned int stride = 0;
 		std::vector<unsigned int> releasedIndices;
-		BYTE* cpuData = nullptr;
+		std::vector<int> refCount;
+		std::vector<BYTE*> cpuDatas;
 		Microsoft::WRL::ComPtr<ID3D12Resource> gpuData;
 	};
 public:
@@ -23,32 +24,31 @@ public:
 public:
 	void Init();
 
-	template<typename T> T* CreateData(unsigned int* indexOut);
-	template<typename T> unsigned int GetIndex(T* data);
-	template<typename T> void ReleaseData(T* data);
-	template<typename T> unsigned int AddRef(T* data);
+	template<typename T> unsigned int CreateData();
+	template<typename T> void ReleaseData(unsigned int index);
+	template<typename T> void AddRef(unsigned int index);
+	template<typename T> void SetData(unsigned int index, const T* data);
 
-	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuStartAddress();
-	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(T* data);
-	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(size_t index);
+	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuStartAddress(unsigned int currFrame);
+	template<typename T> D3D12_GPU_VIRTUAL_ADDRESS GetGpuAddress(size_t index, unsigned int currFrame);
 
 private:
 	DX12GraphicResourceManager() = default;
 	~DX12GraphicResourceManager() = default;
 
 	void CreateResource(unsigned int dataStride, GraphicData* dataOut);
+	void SetElementData(unsigned int index, unsigned int dataSize,const void* data, GraphicData* graphicData);
 
 private:
 	std::unordered_map<size_t, GraphicData> m_datas;
-	std::unordered_map<void*, int> m_refCount;
 	ID3D12Device* m_device = nullptr;
 };
 
 
 template<typename T>
-inline T* DX12GraphicResourceManager::CreateData(unsigned int* indexOut)
+inline unsigned int DX12GraphicResourceManager::CreateData()
 {
-	T* result = nullptr;
+	unsigned int result = 0;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
 
 	if (datas.gpuData == nullptr)
@@ -59,96 +59,56 @@ inline T* DX12GraphicResourceManager::CreateData(unsigned int* indexOut)
 	unsigned int index = datas.releasedIndices.back();
 	datas.releasedIndices.pop_back();
 
-	if (indexOut)
-	{
-		*indexOut = index;
-	}
-
-	result = (T*)(datas.cpuData + index * datas.stride);
-	m_refCount[result] = 1;
-
+	result = index;
+	datas.refCount[result] ++;
 	return result;
 }
 
 template<typename T>
-inline unsigned int DX12GraphicResourceManager::GetIndex(T* data)
+inline void DX12GraphicResourceManager::ReleaseData(unsigned int index)
 {
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
-
-	unsigned int index = ((size_t)data - (size_t)datas.cpuData) / datas.stride;
-	assert(index < baseNumData);
-
-	return index;
-}
-
-template<typename T>
-inline void DX12GraphicResourceManager::ReleaseData(T* data)
-{
-	auto iter = m_refCount.find(data);
-
-	if (iter != m_refCount.end())
+	
+	datas.refCount[index] --;
+	if (datas.refCount[index] <= 0)
 	{
-		iter->second -= 1;
-		
-		if (iter->second < 1)
-		{
-			GraphicData& datas = m_datas[typeid(T).hash_code()];
+		datas.refCount[index] = 0;
 
-			unsigned int index = ((size_t)data - (size_t)datas.cpuData) / datas.stride;
-			assert(index < baseNumData);
-
-			datas.releasedIndices.push_back(index);
-			m_refCount.erase(iter);
-		}
+		datas.releasedIndices.push_back(index);
 	}
 }
 
 template<typename T>
-inline unsigned int DX12GraphicResourceManager::AddRef(T* data)
+inline void DX12GraphicResourceManager::AddRef(unsigned int index)
 {
-	unsigned int result = 0;
+	GraphicData& datas = m_datas[typeid(T).hash_code()];
 
-	auto iter = m_refCount.find(data);
-
-	if (iter != m_refCount.end())
-	{
-		iter->second += 1;
-		result = iter->second;
-	}
-
-	return result;
+	datas.refCount[index]++;
 }
 
 template<typename T>
-inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuStartAddress()
+inline void DX12GraphicResourceManager::SetData(unsigned int index, const T* data)
+{
+	GraphicData& datas = m_datas[typeid(T).hash_code()];
+
+	SetElementData(index, sizeof(T), data, &datas);
+}
+
+template<typename T>
+inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuStartAddress(unsigned int currFrame)
 {
 	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
-	return datas.gpuData->GetGPUVirtualAddress();
+	return datas.gpuData->GetGPUVirtualAddress() + (currFrame * baseNumData * datas.stride);
 }
 
 template<typename T>
-inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(T* data)
-{
-	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
-	GraphicData& datas = m_datas[typeid(T).hash_code()];
-
-	unsigned int index = ((size_t)data - (size_t)datas.cpuData) / datas.stride;
-
-	assert(index < baseNumData);
-
-	result = datas.gpuData->GetGPUVirtualAddress() + (index * datas.stride);
-
-	return result();
-}
-
-template<typename T>
-inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(size_t index)
+inline D3D12_GPU_VIRTUAL_ADDRESS DX12GraphicResourceManager::GetGpuAddress(size_t index, unsigned int currFrame)
 {
 	D3D12_GPU_VIRTUAL_ADDRESS result = 0;
 	GraphicData& datas = m_datas[typeid(T).hash_code()];
 
-	result = datas.gpuData->GetGPUVirtualAddress() + (index * datas.stride);
+	result = datas.gpuData->GetGPUVirtualAddress() + (index * datas.stride) + (currFrame * baseNumData * datas.stride);
 
 	return result;
 }

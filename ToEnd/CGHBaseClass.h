@@ -155,18 +155,6 @@ inline T* CGHNode::CreateComponent()
 	std::unique_ptr<Component> uniqueTemp(result);
 	m_components.push_back(std::move(uniqueTemp));
 
-	for (size_t i = m_components.size() - 1; i >= COMPONENT_CUSTOM; i--)
-	{
-		if (m_components[i - 1]->GetPriority() < m_components[i]->GetPriority())
-		{
-			std::swap(m_components[i - 1], m_components[i]);
-		}
-		else
-		{
-			break;
-		}
-	}
-
 	return result;
 }
 

@@ -163,6 +163,8 @@ private:
 	unsigned int					m_rtvSize = 0;
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
+	ComPtr<ID3D12DescriptorHeap>	m_deferredBaseSRVHeap;
+	ComPtr<ID3D12Resource>			m_lightDummyVertexBuffer;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

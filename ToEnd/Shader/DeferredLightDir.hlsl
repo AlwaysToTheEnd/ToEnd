@@ -13,9 +13,12 @@ struct DLightGSOut
 
 cbuffer LightData : register(b0, space1)
 {
-    float4 gColor;
-    float3 gDir;
+    float3 gPosW;
     float gPower;
+    float3 gColor;
+    float gPad0_;
+    float3 gDir;
+    float gPad1_;
 };
 
 DLightVSOut VS(uint id : SV_VertexID)
@@ -32,13 +35,13 @@ void GS(point DLightVSOut input[1], inout TriangleStream<DLightGSOut> output)
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(-1.0f, -1.0f, 0.00001f, 1.0f);
+    vertices[0].position = float4(-1.0f, -1.0f, 0.99999f, 1.0f);
     vertices[0].index = input[0].index;
-    vertices[1].position = float4(-1.0f, 1.0f, 0.00001f, 1.0f);
+    vertices[1].position = float4(-1.0f, 1.0f, 0.99999f, 1.0f);
     vertices[1].index = input[0].index;
-    vertices[2].position = float4(1.0f, -1.0f, 0.00001f, 1.0f);
+    vertices[2].position = float4(1.0f, -1.0f, 0.99999f, 1.0f);
     vertices[2].index = input[0].index;
-    vertices[3].position = float4(1.0f, 1.0f, 0.00001f, 1.0f);
+    vertices[3].position = float4(1.0f, 1.0f, 0.99999f, 1.0f);
     vertices[3].index = input[0].index;
 
     output.Append(vertices[0]);
@@ -64,7 +67,7 @@ float4 PS(DLightGSOut inDLight) : SV_Target
     float nDoth = saturate(dot(halfWay, gbData.normal));
     finalColor += gColor * pow(nDoth, gbData.metal_rough_emis.b);
     
-    finalColor *= gbData.color;
+    finalColor *= gbData.color.rgb;
     
     return float4(finalColor, gPower);
 }

@@ -66,23 +66,22 @@ public:
 	virtual ~COMMaterial();
 	virtual void Release(CGHNode* node) override;
 	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_MATERIAL; }
 
-	void SetData(const CGHMaterial* material);
+	void SetData(const CGHMaterial* mat);
 	void SetTexture(const TextureInfo* textureInfo, unsigned int index);
-	const CGHMaterial* GetMaterialData() { return m_material; }
-	UINT64 GetMaterialDataGPU();
+	const CGHMaterial* GetMaterialData() { return &m_material; }
+	UINT64 GetMaterialDataGPU(unsigned int currFrameIndex);
 	ID3D12DescriptorHeap* GetTextureHeap() { return m_descHeap.Get(); }
 
 public:
 	void* m_shader = nullptr;
+	CGHMaterial m_material;
 
 private:
 	static size_t s_hashCode;
-	static CGHMaterial* s_baseMaterial;
-	CGHMaterial* m_material = nullptr;
 	unsigned int m_currMaterialIndex = 0;
 	DX12TextureBuffer* m_textureBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap;

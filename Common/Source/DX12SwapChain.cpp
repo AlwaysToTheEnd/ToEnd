@@ -98,19 +98,17 @@ void DX12SwapChain::ReSize(ID3D12GraphicsCommandList* cmd, unsigned int x, unsig
 	CreateResourceViews();
 
 	auto dsBarrier = CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencil.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 	cmd->ResourceBarrier(1, &dsBarrier);
 }
 
 void DX12SwapChain::RenderBegin(ID3D12GraphicsCommandList* cmd, const float clearColor[4])
 {
-	auto present = CurrRTV();
-
 	cmd->ClearDepthStencilView(GetDSV(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[static_cast<size_t>(m_currBackBufferIndex)].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-	cmd->ClearRenderTargetView(present, clearColor, 0, nullptr);
+	cmd->ClearRenderTargetView(CurrRTV(), clearColor, 0, nullptr);
 }
 
 void DX12SwapChain::RenderEnd(ID3D12GraphicsCommandList* cmd)
@@ -160,7 +158,7 @@ void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)
 	dsDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	dsDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 	dsDesc.DepthOrArraySize = 1;
-	dsDesc.MipLevels = 1;
+	dsDesc.MipLevels = 0;
 	dsDesc.Width = x;
 	dsDesc.Height = y;
 	dsDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;

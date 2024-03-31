@@ -42,6 +42,9 @@ D3D12_SHADER_BYTECODE DX12PipelineMG::CreateShader(DX12_SHADER_TYPE type, const 
 	case DX12_SHADER_COMPUTE:
 		target = "cs";
 		break;
+	//case DX12_SHADER_MESH:
+	//	target = "ms";
+	//	break;
 	case DX12_SHADER_TYPE_COUNT:
 	default:
 		assert(false);

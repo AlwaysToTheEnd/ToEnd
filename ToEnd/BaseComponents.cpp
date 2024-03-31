@@ -163,7 +163,7 @@ void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFram
 
 COMMaterial::COMMaterial(CGHNode* node)
 {
-	m_material = DX12GraphicResourceManager::s_insatance.CreateData<CGHMaterial>(&m_currMaterialIndex);
+	m_currMaterialIndex = DX12GraphicResourceManager::s_insatance.CreateData<CGHMaterial>();
 
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.NumDescriptors = CGHMaterial::CGHMaterialTextureNum;
@@ -177,15 +177,13 @@ COMMaterial::COMMaterial(CGHNode* node)
 
 COMMaterial::~COMMaterial()
 {
+
 }
 
 void COMMaterial::Release(CGHNode* node)
 {
-	if (m_material)
-	{
-		DX12GraphicResourceManager::s_insatance.ReleaseData(m_material);
-		m_material = nullptr;
-	}
+	DX12GraphicResourceManager::s_insatance.ReleaseData<CGHMaterial>(m_currMaterialIndex);
+	m_currMaterialIndex = 0;
 
 	if (m_textureBuffer)
 	{
@@ -193,9 +191,14 @@ void COMMaterial::Release(CGHNode* node)
 	}
 }
 
-void COMMaterial::SetData(const CGHMaterial* material)
+void COMMaterial::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
-	*m_material = *material;
+	DX12GraphicResourceManager::s_insatance.SetData<CGHMaterial>(m_currMaterialIndex, &m_material);
+}
+
+void COMMaterial::SetData(const CGHMaterial* mat)
+{
+	m_material = *mat;
 }
 
 void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
@@ -203,24 +206,17 @@ void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
 	if (textureInfo)
 	{
 		m_textureBuffer->SetTexture(TextureInfo::GetTexturePath(textureInfo->textureFilePathID).c_str(), index);
-		m_material->textureInfo[index] = *textureInfo;
+		m_material.textureInfo[index] = *textureInfo;
 
 		m_textureBuffer->CreateSRVs(m_descHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 	else
 	{
-		m_material->textureInfo[index].type = aiTextureType_NONE;
+		m_material.textureInfo[index].type = aiTextureType_NONE;
 	}
 }
 
-UINT64 COMMaterial::GetMaterialDataGPU()
+UINT64 COMMaterial::GetMaterialDataGPU(unsigned int currFrameIndex)
 {
-	UINT64 result = 0;
-
-	if (m_material)
-	{
-		result = DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex);
-	}
-
-	return result;
+	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex, currFrameIndex);
 }

@@ -11,12 +11,14 @@ void DX12GraphicResourceManager::Init()
 
 void DX12GraphicResourceManager::CreateResource(unsigned int dataStride, GraphicData* data)
 {
+	unsigned int numFrameResource = GraphicDeviceDX12::GetGraphic()->GetNumFrameResource();
 	data->stride = (dataStride + 255) & ~255;
+	data->refCount.resize(baseNumData);
 
 	auto hr = m_device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(static_cast<UINT64>(dataStride) * baseNumData),
+		&CD3DX12_RESOURCE_DESC::Buffer(static_cast<UINT64>(data->stride) * baseNumData * numFrameResource),
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
 		IID_PPV_ARGS(data->gpuData.GetAddressOf()));
 
@@ -26,10 +28,28 @@ void DX12GraphicResourceManager::CreateResource(unsigned int dataStride, Graphic
 	}
 
 	data->releasedIndices.reserve(baseNumData);
-	for (int i = baseNumData-1; i >= 0; i--)
+	for (int i = baseNumData - 1; i >= 0; i--)
 	{
 		data->releasedIndices.push_back(i);
 	}
 
-	ThrowIfFailed(data->gpuData->Map(0, nullptr, reinterpret_cast<void**>(&data->cpuData)));
+	BYTE* cpuData = nullptr;
+	ThrowIfFailed(data->gpuData->Map(0, nullptr, reinterpret_cast<void**>(&cpuData)));
+
+	for (int i = 0; i < numFrameResource; i++)
+	{
+		data->cpuDatas.push_back(cpuData);
+		cpuData += data->stride * baseNumData;
+	}
 }
+
+void DX12GraphicResourceManager::SetElementData(unsigned int index, unsigned int dataSize, const void* data, GraphicData* graphicData)
+{
+	if (graphicData->refCount[index])
+	{
+		unsigned int currFrameIndex = GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex();
+		BYTE* cpudata = graphicData->cpuDatas[currFrameIndex];
+		std::memcpy(cpudata + (index * graphicData->stride), data, dataSize);
+	}
+}
+
