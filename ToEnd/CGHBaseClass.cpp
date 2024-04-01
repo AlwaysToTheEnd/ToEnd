@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "CGHBaseClass.h"
 
+
 CGHNode::CGHNode()
 {
 	DirectX::XMStoreFloat4x4(&m_srt, DirectX::XMMatrixIdentity());

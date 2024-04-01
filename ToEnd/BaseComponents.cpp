@@ -199,6 +199,21 @@ void COMMaterial::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 void COMMaterial::SetData(const CGHMaterial* mat)
 {
 	m_material = *mat;
+
+	//for (int i = 0; i < m_material.numTexture; i++)
+	//{
+	//	if (m_material.textureInfo->type != aiTextureType_NONE)
+	//	{
+	//		m_textureBuffer->SetTexture(TextureInfo::GetTexturePath(m_material.textureInfo[i].textureFilePathID).c_str(), i);
+	//	}
+	//	else
+	//	{
+	//		m_textureBuffer->SetNullTexture(i);
+	//	}
+
+	//}
+
+	//m_textureBuffer->CreateSRVs(m_descHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
 void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
@@ -209,6 +224,11 @@ void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
 		m_material.textureInfo[index] = *textureInfo;
 
 		m_textureBuffer->CreateSRVs(m_descHeap->GetCPUDescriptorHandleForHeapStart());
+
+		if (m_material.numTexture <= index)
+		{
+			m_material.numTexture = index + 1;
+		}
 	}
 	else
 	{

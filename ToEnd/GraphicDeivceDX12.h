@@ -63,12 +63,12 @@ class GraphicDeviceDX12
 		PIPELINE_WORK_NUM
 	};
 
-	enum PIPELINELIGHTLIST
+	enum PIPELINELIGHT
 	{
-		PIPELINELIGHT_DIR,
-		PIPELINELIGHT_POINT,
-		PIPELINELIGHT_SPOT,
-		PIPELINELIGHT_NUM
+		PIPELINE_LIGHT_DIR,
+		PIPELINE_LIGHT_POINT,
+		PIPELINE_LIGHT_SPOT,
+		PIPELINE_LIGHT_NUM
 	};
 
 	enum DEFERRED_TEXTURE
@@ -164,7 +164,6 @@ private:
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_deferredBaseSRVHeap;
-	ComPtr<ID3D12Resource>			m_lightDummyVertexBuffer;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

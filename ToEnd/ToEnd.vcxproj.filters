@@ -159,10 +159,10 @@
     <FxCompile Include="Shader\skinnedMeshShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="fontShader.hlsl">
+    <FxCompile Include="Shader\DeferredLightDir.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shader\DeferredLightDir.hlsl">
+    <FxCompile Include="Shader\DeferredLightPoint.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

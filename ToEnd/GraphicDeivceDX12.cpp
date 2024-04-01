@@ -612,16 +612,9 @@ void GraphicDeviceDX12::BuildPso()
 	}
 #pragma endregion
 
-	m_lightPSOs.resize(PIPELINELIGHT_NUM);
+	m_lightPSOs.resize(PIPELINE_LIGHT_NUM);
 #pragma region PIPELINE_DEFERRED_LIGHT
 	{
-		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(sizeof(aiVector3D)),
-			D3D12_RESOURCE_STATE_COMMON, nullptr,
-			IID_PPV_ARGS(m_lightDummyVertexBuffer.GetAddressOf())));
-
 		rootParams.clear();
 		rootParams.insert(rootParams.end(), baseRoot.begin(), baseRoot.end());
 
@@ -634,8 +627,8 @@ void GraphicDeviceDX12::BuildPso()
 		rootParams.push_back(lightBaseTable);
 
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		temp.Descriptor.RegisterSpace = 1;
-		temp.Descriptor.ShaderRegister = 0;
+		temp.Descriptor.RegisterSpace = 0;
+		temp.Descriptor.ShaderRegister = 1;
 		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		rootParams.push_back(temp);
 
@@ -650,7 +643,7 @@ void GraphicDeviceDX12::BuildPso()
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.NodeMask = 0;
-		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("PIPELINE_DEFERRED_LIGHT");
+		psoDesc.pRootSignature = DX12PipelineMG::instance.GetRootSignature("DEFERRED_LIGHT");
 
 		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "DEFERRED_LIGHT_DIR_VS", L"Shader/DeferredLightDir.hlsl", "VS");
 		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, "DEFERRED_LIGHT_DIR_GS", L"Shader/DeferredLightDir.hlsl", "GS");
@@ -666,7 +659,6 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 
-		psoDesc.DepthStencilState.DepthEnable = false;
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
@@ -681,35 +673,62 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
 
-		DX12PipelineMG::instance.CreateGraphicPipeline("PIPELINE_DEFERRED_LIGHT", &psoDesc);
+		DX12PipelineMG::instance.CreateGraphicPipeline("DEFERRED_LIGHT_DIR", &psoDesc);
 
-		m_lightPSOs[PIPELINELIGHT_DIR].pso = DX12PipelineMG::instance.GetGraphicPipeline("PIPELINE_DEFERRED_LIGHT");
-		m_lightPSOs[PIPELINELIGHT_DIR].rootSig = DX12PipelineMG::instance.GetRootSignature("PIPELINE_DEFERRED_LIGHT");
+		m_lightPSOs[PIPELINE_LIGHT_DIR].pso = DX12PipelineMG::instance.GetGraphicPipeline("DEFERRED_LIGHT_DIR");
+		m_lightPSOs[PIPELINE_LIGHT_DIR].rootSig = DX12PipelineMG::instance.GetRootSignature("DEFERRED_LIGHT");
 
-		m_lightPSOs[PIPELINELIGHT_DIR].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+		m_lightPSOs[PIPELINE_LIGHT_DIR].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
 
 			ID3D12DescriptorHeap* heaps[] = { m_deferredBaseSRVHeap.Get() };
 			cmd->SetDescriptorHeaps(1, heaps);
-
 			cmd->SetGraphicsRootDescriptorTable(1, m_deferredBaseSRVHeap->GetGPUDescriptorHandleForHeapStart());
 
-			D3D12_VERTEX_BUFFER_VIEW vbView = {};
-			vbView.BufferLocation = m_lightDummyVertexBuffer->GetGPUVirtualAddress();
-			vbView.SizeInBytes = sizeof(aiVector3D);
-			vbView.StrideInBytes = sizeof(aiVector3D);
-			cmd->IASetVertexBuffers(0, 1, &vbView);
+			cmd->IASetVertexBuffers(0, 0, nullptr);
 		};
 
-		m_lightPSOs[PIPELINELIGHT_DIR].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		m_lightPSOs[PIPELINE_LIGHT_DIR].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
 		{
 
 			COMDirLight* dirLight = node->GetComponent<COMDirLight>();
 
 			cmd->SetGraphicsRootConstantBufferView(2, dirLight->GetLightDataGPU(m_currFrame));
 			cmd->DrawInstanced(1, 1, 0, 0);
+		};
+
+		//////////////////////////////////////////////////////////point light
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		
+		psoDesc.GS = {};
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "DEFERRED_LIGHT_POINT_VS", L"Shader/DeferredLightDir.hlsl", "VS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "DEFERRED_LIGHT_DIR_PS", L"Shader/DeferredLightDir.hlsl", "PS");
+
+		DX12PipelineMG::instance.CreateGraphicPipeline("DEFERRED_LIGHT_POINT", &psoDesc);
+		
+		m_lightPSOs[PIPELINE_LIGHT_POINT].pso = DX12PipelineMG::instance.GetGraphicPipeline("DEFERRED_LIGHT_POINT");
+		m_lightPSOs[PIPELINE_LIGHT_POINT].rootSig = DX12PipelineMG::instance.GetRootSignature("DEFERRED_LIGHT");
+		
+		m_lightPSOs[PIPELINE_LIGHT_POINT].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+		{
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);
+			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+
+			ID3D12DescriptorHeap* heaps[] = { m_deferredBaseSRVHeap.Get() };
+			cmd->SetDescriptorHeaps(1, heaps);
+			cmd->SetGraphicsRootDescriptorTable(1, m_deferredBaseSRVHeap->GetGPUDescriptorHandleForHeapStart());
+
+			cmd->IASetVertexBuffers(0, 0, nullptr);
+		};
+		
+		m_lightPSOs[PIPELINE_LIGHT_POINT].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		{
+			COMDirLight* dirLight = node->GetComponent<COMDirLight>();
+
+			cmd->SetGraphicsRootConstantBufferView(2, dirLight->GetLightDataGPU(m_currFrame));
+			cmd->DrawInstanced(2, 1, 0, 0);
 		};
 	}
 

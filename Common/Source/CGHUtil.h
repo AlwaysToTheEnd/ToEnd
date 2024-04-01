@@ -3,6 +3,8 @@
 #include <intsafe.h>
 #include <DirectXMath.h>
 
+#define GET_NAME(n) #n
+
 namespace CGH
 {
 	inline unsigned int SizeTTransUINT(size_t size)

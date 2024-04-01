@@ -9,6 +9,16 @@ struct SurfaceData
     float linearDepth;
 };
 
+cbuffer LightData : register(b1, space0)
+{
+    float3 gPosW;
+    float gPower;
+    float3 gDir;
+    float gPad0_;
+    float3 gColor;
+    float gPad1_;
+};
+
 Texture2D<float4> gDiffuseTexture : register(t0);
 Texture2D<float3> gNormalTexture : register(t1);
 Texture2D<float3> gMRETexture : register(t2);

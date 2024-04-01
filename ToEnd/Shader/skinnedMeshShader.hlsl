@@ -91,7 +91,22 @@ PSOut PS(VSOut pin)
     PSOut pout;
    
     pout.color = gTextures[0].Sample(gsamPointWrap, pin.uv0.rg);
-    pout.normal = (pin.normal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
+    
+    if (gNumTexture > 1)
+    {
+        float3 tangentNormal = gTextures[1].Sample(gsamPointWrap, pin.uv0.rg).rgb;
+        tangentNormal = normalize(tangentNormal * 2 - 1);
+        float3x3 TBN = float3x3(normalize(pin.tangent), normalize(pin.bitangent), normalize(pin.normal));
+        TBN = transpose(TBN);
+        float3 worldnormal = mul(TBN, tangentNormal);
+        
+        pout.normal = (worldnormal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
+    }
+    else
+    {
+        pout.normal = (pin.normal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
+    }
+    
     pout.renderID = gRenderID;
     pout.metal_rough_emis = float3(0, 0, 0);
     pout.ao_fres_anis = float3(0, 0, 0);

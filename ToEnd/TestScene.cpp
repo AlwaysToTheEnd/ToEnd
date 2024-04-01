@@ -37,6 +37,12 @@ void TestScene::Init()
 		texInfo.uvIndex = 0;
 		texInfo.type = aiTextureType_DIFFUSE;
 		material->SetTexture(&texInfo, 0);
+
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_NORMALS;
+		material->SetTexture(&texInfo, 1);
 	}
 	
 	{
@@ -101,7 +107,6 @@ void TestScene::Init()
 
 	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	light->m_data.power = 1.0f;
-	light->m_data.dir = DirectX::XMFLOAT3(0, 1.0f, 0.5f);
 }
 
 void TestScene::Update(float delta)

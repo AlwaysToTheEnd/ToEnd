@@ -30,6 +30,7 @@ public:
 	static void Init();
 
 	void SetTexture(const char* texturePath, unsigned int index);
+	void SetNullTexture(unsigned int index);
 	void CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle);
 
 	void SetBufferSize(unsigned int size) { m_textures.resize(size); }

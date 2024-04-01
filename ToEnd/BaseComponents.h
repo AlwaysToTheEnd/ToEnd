@@ -78,10 +78,10 @@ public:
 
 public:
 	void* m_shader = nullptr;
-	CGHMaterial m_material;
 
 private:
 	static size_t s_hashCode;
+	CGHMaterial m_material;
 	unsigned int m_currMaterialIndex = 0;
 	DX12TextureBuffer* m_textureBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap;

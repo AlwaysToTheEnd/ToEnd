@@ -1,48 +1,26 @@
 #include "DeferredRenderBase.hlsli"
 
-struct DLightVSOut
+float4 VS() : SV_Position
 {
-    uint index : LIGHTDATAINDEX;
-};
+    return float4(0.0, 0.0, 0.0, 1.0);
+}
 
 struct DLightGSOut
 {
     float4 position : SV_Position;
-    nointerpolation uint index : LIGHTDATAINDEX;
 };
-
-cbuffer LightData : register(b0, space1)
-{
-    float3 gPosW;
-    float gPower;
-    float3 gColor;
-    float gPad0_;
-    float3 gDir;
-    float gPad1_;
-};
-
-DLightVSOut VS(uint id : SV_VertexID)
-{
-    DLightVSOut result;
-    result.index = id;
-    return result;
-}
 
 [maxvertexcount(4)]
-void GS(point DLightVSOut input[1], inout TriangleStream<DLightGSOut> output)
+void GS(point float4 input[1], inout TriangleStream<DLightGSOut> output)
 {
     DLightGSOut vertices[4];
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(-1.0f, -1.0f, 0.99999f, 1.0f);
-    vertices[0].index = input[0].index;
-    vertices[1].position = float4(-1.0f, 1.0f, 0.99999f, 1.0f);
-    vertices[1].index = input[0].index;
-    vertices[2].position = float4(1.0f, -1.0f, 0.99999f, 1.0f);
-    vertices[2].index = input[0].index;
-    vertices[3].position = float4(1.0f, 1.0f, 0.99999f, 1.0f);
-    vertices[3].index = input[0].index;
+    vertices[0].position = float4(-1.0f, -1.0f, 1.0f, 1.0f);
+    vertices[1].position = float4(-1.0f, 1.0f, 1.0f, 1.0f);
+    vertices[2].position = float4(1.0f, -1.0f, 1.0f, 1.0f);
+    vertices[3].position = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
     output.Append(vertices[0]);
     output.Append(vertices[2]);

@@ -59,6 +59,16 @@ struct CGHMaterial
 	unsigned int renderQueue = 0;
 	float pad0[2] = {};
 	TextureInfo textureInfo[CGHMaterialTextureNum];
+
+	void ClearTexture()
+	{
+		numTexture = 0;
+
+		for (int i = 0; i < CGHMaterialTextureNum; i++)
+		{
+			textureInfo[i] = TextureInfo();
+		}
+	}
 };
 #pragma pack(pop)
 

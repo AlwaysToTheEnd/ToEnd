@@ -101,6 +101,16 @@ void DX12TextureBuffer::SetTexture(const char* texturePath, unsigned int index)
 	m_textures[index] = texture;
 }
 
+void DX12TextureBuffer::SetNullTexture(unsigned int index)
+{
+	if (m_textures[index] != nullptr)
+	{
+		EvictTexture(m_textures[index]->filePath);
+	}
+	
+	m_textures[index] = nullptr;
+}
+
 void DX12TextureBuffer::CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle)
 {
 	auto device = GraphicDeviceDX12::GetDevice();
