@@ -14,7 +14,7 @@ cbuffer LightData : register(b1, space0)
     float3 gPosW;
     float gPower;
     float3 gDir;
-    float gPad0_;
+    float gLength;
     float3 gColor;
     float gPad1_;
 };

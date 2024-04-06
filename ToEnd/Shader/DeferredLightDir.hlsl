@@ -11,7 +11,7 @@ struct DLightGSOut
 };
 
 [maxvertexcount(4)]
-void GS(point float4 input[1], inout TriangleStream<DLightGSOut> output)
+void GS(point float4 input[1] : SV_Position, inout TriangleStream<DLightGSOut> output)
 {
     DLightGSOut vertices[4];
     // 1  3
@@ -39,7 +39,7 @@ float4 PS(DLightGSOut inDLight) : SV_Target
     
     float3 worldPos = CalcWorldPos(inDLight.position.xy, gbData.linearDepth);
     float nDotl = dot(-gDir, gbData.normal);
-    float3 finalColor = gColor * saturate(nDotl);
+    float3 finalColor = (gColor * gAmbientLight.rgb) * saturate(nDotl);
     float3 toEye = normalize(gEyePosW - worldPos);
     float3 halfWay = normalize(toEye + -gDir);
     float nDoth = saturate(dot(halfWay, gbData.normal));
@@ -47,5 +47,5 @@ float4 PS(DLightGSOut inDLight) : SV_Target
     
     finalColor *= gbData.color.rgb;
     
-    return float4(finalColor, gPower);
+    return float4(finalColor, 1.0f);
 }

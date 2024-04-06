@@ -95,9 +95,13 @@ void GraphicDeviceDX12::LightRender()
 
 			currPso.baseGraphicCmdFunc(m_cmdList.Get());
 
-			for (auto& currNode : m_dirLightRenderQueue.queue)
+			auto currQeue = currPso.renderQueue;
+			if (currQeue)
 			{
-				currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
+				for (auto& currNode : currQeue->queue)
+				{
+					currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
+				}
 			}
 		}
 	}
@@ -276,13 +280,14 @@ void GraphicDeviceDX12::RenderBegin()
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
-	m_swapChain->RenderBegin(m_cmdList.Get(), DirectX::Colors::Gray);
+	auto backColor = DirectX::Colors::Gray;
+	backColor.f[3] = 0.0f;
+	m_swapChain->RenderBegin(m_cmdList.Get(), backColor);
 
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart() };
-
 	m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &m_swapChain->GetDSV());
 }
 
@@ -298,15 +303,14 @@ void GraphicDeviceDX12::RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag
 
 void GraphicDeviceDX12::RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType)
 {
-
 	if (lightType == typeid(COMDirLight).hash_code())
 	{
 		m_dirLightRenderQueue.queue.push_back({ node, lightFlags });
 	}
-	/*else if ()
+	else if (lightType == typeid(COMPointLight).hash_code())
 	{
-
-	}*/
+		m_pointLightRenderQueue.queue.push_back({ node, lightFlags });
+	}
 }
 
 void GraphicDeviceDX12::RenderUI(CGHNode* node, unsigned int renderFlag)
@@ -322,7 +326,14 @@ void GraphicDeviceDX12::RenderEnd()
 	m_meshRenderQueue.queue.clear();
 	m_skinnedMeshRenderQueue.queue.clear();
 	m_uiRenderQueue.queue.clear();
-	m_dirLightRenderQueue.queue.clear();
+	
+	for (auto& iter : m_lightPSOs)
+	{
+		if (iter.renderQueue)
+		{
+			iter.renderQueue->queue.clear();
+		}
+	}
 
 	m_swapChain->RenderEnd(m_cmdList.Get());
 
@@ -639,7 +650,7 @@ void GraphicDeviceDX12::BuildPso()
 		rootsigDesc.NumParameters = rootParams.size();
 		rootsigDesc.pParameters = rootParams.data();
 
-		DX12PipelineMG::instance.CreateRootSignature("PIPELINE_DEFERRED_LIGHT", &rootsigDesc);
+		DX12PipelineMG::instance.CreateRootSignature("DEFERRED_LIGHT", &rootsigDesc);
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.NodeMask = 0;
@@ -659,6 +670,18 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
+		psoDesc.BlendState.RenderTarget[0].LogicOpEnable = false;
+		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_DEST_ALPHA;
+		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+		psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+		psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
+		psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_MAX;
+		psoDesc.BlendState.RenderTarget[0].LogicOp = D3D12_LOGIC_OP_NOOP;
+		psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+		psoDesc.DepthStencilState.DepthEnable = false;
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
@@ -677,6 +700,7 @@ void GraphicDeviceDX12::BuildPso()
 
 		m_lightPSOs[PIPELINE_LIGHT_DIR].pso = DX12PipelineMG::instance.GetGraphicPipeline("DEFERRED_LIGHT_DIR");
 		m_lightPSOs[PIPELINE_LIGHT_DIR].rootSig = DX12PipelineMG::instance.GetRootSignature("DEFERRED_LIGHT");
+		m_lightPSOs[PIPELINE_LIGHT_DIR].renderQueue = &m_dirLightRenderQueue;
 
 		m_lightPSOs[PIPELINE_LIGHT_DIR].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
@@ -703,13 +727,16 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 		
 		psoDesc.GS = {};
-		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "DEFERRED_LIGHT_POINT_VS", L"Shader/DeferredLightDir.hlsl", "VS");
-		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "DEFERRED_LIGHT_DIR_PS", L"Shader/DeferredLightDir.hlsl", "PS");
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "DEFERRED_LIGHT_POINT_VS", L"Shader/DeferredLightPoint.hlsl", "VS");
+		psoDesc.HS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_HULL, "DEFERRED_LIGHT_POINT_HS", L"Shader/DeferredLightPoint.hlsl", "HS");
+		psoDesc.DS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_DOMAIN, "DEFERRED_LIGHT_POINT_DS", L"Shader/DeferredLightPoint.hlsl", "DS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "DEFERRED_LIGHT_POINT_PS", L"Shader/DeferredLightPoint.hlsl", "PS");
 
 		DX12PipelineMG::instance.CreateGraphicPipeline("DEFERRED_LIGHT_POINT", &psoDesc);
 		
 		m_lightPSOs[PIPELINE_LIGHT_POINT].pso = DX12PipelineMG::instance.GetGraphicPipeline("DEFERRED_LIGHT_POINT");
 		m_lightPSOs[PIPELINE_LIGHT_POINT].rootSig = DX12PipelineMG::instance.GetRootSignature("DEFERRED_LIGHT");
+		m_lightPSOs[PIPELINE_LIGHT_POINT].renderQueue = &m_pointLightRenderQueue;
 		
 		m_lightPSOs[PIPELINE_LIGHT_POINT].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
@@ -725,10 +752,10 @@ void GraphicDeviceDX12::BuildPso()
 		
 		m_lightPSOs[PIPELINE_LIGHT_POINT].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
 		{
-			COMDirLight* dirLight = node->GetComponent<COMDirLight>();
+			COMPointLight* pointLight = node->GetComponent<COMPointLight>();
 
-			cmd->SetGraphicsRootConstantBufferView(2, dirLight->GetLightDataGPU(m_currFrame));
-			cmd->DrawInstanced(2, 1, 0, 0);
+			cmd->SetGraphicsRootConstantBufferView(2, pointLight->GetLightDataGPU(m_currFrame));
+			cmd->DrawInstanced(1, 1, 0, 0);
 		};
 	}
 

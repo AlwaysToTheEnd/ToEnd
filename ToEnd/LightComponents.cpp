@@ -32,3 +32,30 @@ unsigned long long COMDirLight::GetLightDataGPU(unsigned int currFrameIndex)
 {
 	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<LightData>(m_lightIndex, currFrameIndex);
 }
+
+COMPointLight::COMPointLight(CGHNode* node)
+{
+	m_lightIndex = DX12GraphicResourceManager::s_insatance.CreateData<LightData>();
+}
+
+void COMPointLight::Release(CGHNode* ndoe)
+{
+	DX12GraphicResourceManager::s_insatance.ReleaseData<LightData>(m_lightIndex);
+}
+
+void COMPointLight::RateUpdate(CGHNode* node, unsigned int, float delta)
+{
+	auto graphic = GraphicDeviceDX12::GetGraphic();
+
+	DirectX::XMVECTOR pos = { 0.0f, 0.0f, 0.0f, 1.0f };
+	pos = DirectX::XMVector3Transform(pos, DirectX::XMLoadFloat4x4(&node->m_srt));
+	DirectX::XMStoreFloat3(&m_data.pos, pos);
+
+	DX12GraphicResourceManager::s_insatance.SetData<LightData>(m_lightIndex, &m_data);
+	graphic->RenderLight(node, m_lightFlags, s_hashCode);
+}
+
+UINT64 COMPointLight::GetLightDataGPU(unsigned int currFrameIndex)
+{
+	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<LightData>(m_lightIndex, currFrameIndex);
+}

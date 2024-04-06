@@ -50,6 +50,7 @@ class GraphicDeviceDX12
 	{
 		ID3D12PipelineState* pso = nullptr;
 		ID3D12RootSignature* rootSig = nullptr;
+		DX12RenderQueue* renderQueue = nullptr;
 		std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
 		std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)> nodeGraphicCmdFunc;
 	};
@@ -159,6 +160,7 @@ private:
 	DX12RenderQueue					m_skinnedMeshRenderQueue;
 	DX12RenderQueue					m_uiRenderQueue;
 	DX12RenderQueue					m_dirLightRenderQueue;
+	DX12RenderQueue					m_pointLightRenderQueue;
 
 	unsigned int					m_rtvSize = 0;
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};

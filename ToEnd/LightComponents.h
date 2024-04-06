@@ -7,7 +7,7 @@ struct LightData
 	DirectX::XMFLOAT3 pos = {};
 	float power = 1.0f;
 	DirectX::XMFLOAT3 dir = {};
-	float pad0 = 0;
+	float length = 0;
 	DirectX::XMFLOAT3 color = { 1.0f, 1.0f, 1.0f };
 	float pad1 = 0;
 };
@@ -31,6 +31,7 @@ private:
 	unsigned int m_lightIndex = 0;
 	unsigned int m_lightFlags = 0;
 };
+
 
 class COMPointLight : public Component
 {

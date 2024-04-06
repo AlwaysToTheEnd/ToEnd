@@ -49,7 +49,8 @@ void DX12GraphicResourceManager::SetElementData(unsigned int index, unsigned int
 	{
 		unsigned int currFrameIndex = GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex();
 		BYTE* cpudata = graphicData->cpuDatas[currFrameIndex];
-		std::memcpy(cpudata + (index * graphicData->stride), data, dataSize);
+		cpudata += index * graphicData->stride;
+		std::memcpy(cpudata, data, dataSize);
 	}
 }
 

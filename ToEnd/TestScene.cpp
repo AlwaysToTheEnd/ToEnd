@@ -104,9 +104,13 @@ void TestScene::Init()
 	}
 
 	auto light = m_rootNode->CreateComponent<COMDirLight>();
-
 	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	light->m_data.power = 1.0f;
+	light->m_data.power = 1.3f;
+
+	auto point = m_rootNode->CreateComponent<COMPointLight>();
+	point->m_data.color = DirectX::XMFLOAT3(0.3f, 0.3f, 2.0f);
+	point->m_data.power = 1.0f;
+	point->m_data.length = 2.0f;
 }
 
 void TestScene::Update(float delta)
