@@ -41,6 +41,14 @@ struct DX12PassConstants
 
 class GraphicDeviceDX12
 {
+	struct DX12DirLightData
+	{
+		DirectX::XMFLOAT3 dir = { 0.0f, 0.0f, -1.0f };
+		float power = 1.0f;
+		DirectX::XMFLOAT3 color = {};
+		float pad = 0;
+	};
+
 	struct DX12RenderQueue
 	{
 		std::vector<std::pair<CGHNode*,unsigned int>> queue;
@@ -166,6 +174,9 @@ private:
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_deferredBaseSRVHeap;
+	
+	unsigned int					m_numDirLight = 0;
+	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

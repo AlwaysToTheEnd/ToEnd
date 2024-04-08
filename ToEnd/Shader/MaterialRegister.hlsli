@@ -28,8 +28,12 @@ cbuffer MaterialData : register(b1, space0)
     float gShinpercent;
     float3 gReflective;
     float gReflectivity;
+    
+    float gMetalness;
+    float gRoughness;
+    
     uint gNumTexture;
-    float3 pad0;
+    uint renderQueue;
     TextureInfo gTextureInfo[16];
 };
 

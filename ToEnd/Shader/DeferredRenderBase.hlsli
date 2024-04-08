@@ -9,21 +9,15 @@ struct SurfaceData
     float linearDepth;
 };
 
-cbuffer LightData : register(b1, space0)
-{
-    float3 gPosW;
-    float gPower;
-    float3 gDir;
-    float gLength;
-    float3 gColor;
-    float gPad1_;
-};
-
 Texture2D<float4> gDiffuseTexture : register(t0);
 Texture2D<float3> gNormalTexture : register(t1);
 Texture2D<float3> gMRETexture : register(t2);
 Texture2D<float3> gAFATexture : register(t3);
 Texture2D<float> gDepthTexture : register(t4);
+
+static const float3 Fdielectric = 0.04;
+static const float PI = 3.141592;
+static const float Epsilon = 0.00001;
 
 SurfaceData UnpackGBufferL(int2 location)
 {

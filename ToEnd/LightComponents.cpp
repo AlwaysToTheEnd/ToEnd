@@ -7,12 +7,6 @@ size_t COMPointLight::s_hashCode = typeid(COMPointLight).hash_code();
 
 COMDirLight::COMDirLight(CGHNode* node)
 {
-	m_lightIndex = DX12GraphicResourceManager::s_insatance.CreateData<LightData>();
-}
-
-void COMDirLight::Release(CGHNode* ndoe)
-{
-	DX12GraphicResourceManager::s_insatance.ReleaseData<LightData>(m_lightIndex);
 }
 
 void COMDirLight::RateUpdate(CGHNode* node, unsigned int, float delta)
@@ -24,13 +18,7 @@ void COMDirLight::RateUpdate(CGHNode* node, unsigned int, float delta)
 
 	DirectX::XMStoreFloat3(&m_data.dir, dir);
 	
-	DX12GraphicResourceManager::s_insatance.SetData<LightData>(m_lightIndex, &m_data);
 	graphic->RenderLight(node, m_lightFlags, s_hashCode);
-}
-
-unsigned long long COMDirLight::GetLightDataGPU(unsigned int currFrameIndex)
-{
-	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<LightData>(m_lightIndex, currFrameIndex);
 }
 
 COMPointLight::COMPointLight(CGHNode* node)

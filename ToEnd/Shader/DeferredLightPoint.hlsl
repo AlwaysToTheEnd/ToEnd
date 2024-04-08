@@ -1,5 +1,15 @@
 #include "DeferredRenderBase.hlsli"
 
+cbuffer LightData : register(b1, space0)
+{
+    float3 gPosW;
+    float gPower;
+    float3 gDir;
+    float gLength;
+    float3 gColor;
+    float gPad1_;
+};
+
 float4 VS() : SV_Position
 {
     return float4(0.0, 0.0, 0.0, 1.0);

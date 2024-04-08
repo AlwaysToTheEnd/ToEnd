@@ -165,6 +165,8 @@
     <FxCompile Include="Shader\DeferredLightPoint.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="PBR_example.hlsl" />
+    <FxCompile Include="PBR_example.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

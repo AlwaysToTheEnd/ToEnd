@@ -55,9 +55,12 @@ struct CGHMaterial
 	float shinpercent = 1.0f;
 	aiColor3D reflective;
 	float reflectivity = 0.0f;
+	
+	float matalness = 0.0f;
+	float roughness = 0.3f;
+
 	unsigned int numTexture = 0;
 	unsigned int renderQueue = 0;
-	float pad0[2] = {};
 	TextureInfo textureInfo[CGHMaterialTextureNum];
 
 	void ClearTexture()

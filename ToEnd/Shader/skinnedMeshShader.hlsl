@@ -29,9 +29,7 @@ StructuredBuffer<float4x4> gBoneData : register(t2, space2);
 struct VSOut
 {
     float4 posH : SV_POSITION;
-    float3 normal : NORMAL0;
-    float3 tangent : NORMAL1;
-    float3 bitangent : NORMAL2;
+    float3x3 tangentBasis : TANBASIS;
     float3 uv0 : TEXCOORD0;
     float3 uv1 : TEXCOORD1;
     float3 uv2 : TEXCOORD2;
@@ -42,9 +40,9 @@ VSOut VS(VertexIn vin)
     VSOut vout;
    
     vout.posH = float4(vin.PosL, 1.0f);
-    vout.normal = gVertexNormals[vin.id];
-    vout.tangent = gVertexTangents[vin.id];
-    vout.bitangent = gVertexBitans[vin.id];
+    float3 normal = gVertexNormals[vin.id];
+    float3 tangent = gVertexTangents[vin.id];
+    float3 bitangent = gVertexBitans[vin.id];
     
     BoneWeightInfo weightInfo = gBoneWeightInfos[vin.id];
    
@@ -60,22 +58,20 @@ VSOut VS(VertexIn vin)
         boenWeight = gBoneWeights[weightInfo.offsetIndex + i];
         
         sumPosL += boenWeight.weight * mul(vout.posH, gBoneData[boenWeight.boneIndex]).xyz;
-        sumNormalL += boenWeight.weight * mul(vout.normal, (float3x3) gBoneData[boenWeight.boneIndex]);
-        sumTangent += boenWeight.weight * mul(vout.tangent, (float3x3) gBoneData[boenWeight.boneIndex]);
-        sumBitan += boenWeight.weight * mul(vout.bitangent, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumNormalL += boenWeight.weight * mul(normal, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumTangent += boenWeight.weight * mul(tangent, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumBitan += boenWeight.weight * mul(bitangent, (float3x3) gBoneData[boenWeight.boneIndex]);
     }
     
     vout.posH = mul(float4(sumPosL, 1.0f), gViewProj);
-    vout.normal = sumNormalL;
-    vout.tangent = sumTangent;
-    vout.bitangent = sumBitan;
+    vout.tangentBasis = transpose(float3x3(normalize(tangent), normalize(bitangent), normalize(normal)));
+   
     vout.uv0 = gVertexUV0[vin.id];
     vout.uv1 = gVertexUV1[vin.id];
     vout.uv2 = gVertexUV2[vin.id];
     
     return vout;
 }
-
 
 struct PSOut
 {
@@ -96,19 +92,17 @@ PSOut PS(VSOut pin)
     {
         float3 tangentNormal = gTextures[1].Sample(gsamPointWrap, pin.uv0.rg).rgb;
         tangentNormal = normalize(tangentNormal * 2 - 1);
-        float3x3 TBN = float3x3(normalize(pin.tangent), normalize(pin.bitangent), normalize(pin.normal));
-        TBN = transpose(TBN);
-        float3 worldnormal = mul(TBN, tangentNormal);
+        float3 worldnormal = mul(pin.tangentBasis, tangentNormal);
         
         pout.normal = (worldnormal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
     }
     else
     {
-        pout.normal = (pin.normal * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
+        pout.normal = (pin.tangentBasis._13_23_33 * 0.5).xyz + float3(0.5f, 0.5f, 0.5f);
     }
     
     pout.renderID = gRenderID;
-    pout.metal_rough_emis = float3(0, 0, 0);
+    pout.metal_rough_emis = float3(gMetalness, gRoughness, 0);
     pout.ao_fres_anis = float3(0, 0, 0);
     
     return pout;
