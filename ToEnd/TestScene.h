@@ -29,4 +29,5 @@ private:
 	std::vector<CGHMesh> m_bodyMeshs;
 	std::vector<CGHMaterial> m_bodyMats;
 	CGHNode* m_rootNode = nullptr;
+	CGHNode m_dirLight;
 };

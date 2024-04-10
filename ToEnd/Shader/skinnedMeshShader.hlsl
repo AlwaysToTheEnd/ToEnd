@@ -115,7 +115,7 @@ float3 ExcuteTextureOP(float3 dest, float3 src, uint op)
 PSOut PS(VSOut pin)
 {
     PSOut pout;
-    pout.color = float4(float3(0.9f, 0.72f, 0.65f), gDiffuseAlpha);
+    pout.color = float4(gDiffuse, gDiffuseAlpha);
     pout.normal = pin.tangentBasis._31_32_33;
     float normalAlpha = 0.0f;
     pout.metal_rough_ao = float3(gMetalness, gRoughness, 0);

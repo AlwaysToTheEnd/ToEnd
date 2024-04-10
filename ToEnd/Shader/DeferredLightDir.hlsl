@@ -60,7 +60,7 @@ float4 PS(DLightGSOut inDLight) : SV_Target
     {
         LightData currLight = gLightDatas[index];
         float3 revLightDir = -currLight.dir;
-        float3 halfWay = normalize(toEye + revLightDir);
+        float3 halfWay = normalize(revLightDir + toEye);
         
         float cosLight = max(0.0f, dot(gbData.normal, revLightDir));
         float cosHalfWay = max(0.0f, dot(gbData.normal, halfWay));

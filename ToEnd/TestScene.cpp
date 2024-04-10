@@ -27,8 +27,7 @@ void TestScene::Init()
 		auto render = m_rootNode->CreateComponent<COMDX12SkinnedMeshRenderer>();
 		auto material = m_rootNode->CreateComponent<COMMaterial>();
 		auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();
-
-		m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
+		//m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		skinnedMesh->SetMeshData(&m_bodyMeshs.front());
 		material->SetData(&m_bodyMats.front());
 		TextureInfo texInfo;
@@ -47,7 +46,7 @@ void TestScene::Init()
 		material->SetTexture(&texInfo, 1);
 
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap2.bmp");
-		texInfo.blend = 2.0f;
+		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
 		texInfo.textureOp = aiTextureOp_Add;
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
@@ -121,19 +120,24 @@ void TestScene::Init()
 		material->SetTexture(&texInfo, 1);
 	}
 
-	auto light = m_rootNode->CreateComponent<COMDirLight>();
+	auto light = m_dirLight.CreateComponent<COMDirLight>();
 	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	light->m_data.power = 1.0f;
+
+	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
+	//lightTransform->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(0, 0.021, 0));
 }
 
 void TestScene::Update(float delta)
 {
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_dirLight.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::RateUpdate(float delta)
 {
 	m_rootNode->RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_dirLight.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::Render()

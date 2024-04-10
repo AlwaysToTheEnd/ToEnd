@@ -58,7 +58,7 @@ struct CGHMaterial
 	float reflectivity = 0.0f;
 	
 	float matalness = 0.0f;
-	float roughness = 0.8f;
+	float roughness = 0.4f;
 
 	unsigned int numTexture = 0;
 	unsigned int renderQueue = 0;
