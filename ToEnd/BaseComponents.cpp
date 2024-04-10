@@ -221,7 +221,7 @@ void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
 	if (textureInfo)
 	{
 		m_textureBuffer->SetTexture(TextureInfo::GetTexturePath(textureInfo->textureFilePathID).c_str(), index);
-		m_material.textureInfo[index] = *textureInfo;
+		std::memcpy(&m_material.textureInfo[index], textureInfo, sizeof(TextureInfo));
 
 		m_textureBuffer->CreateSRVs(m_descHeap->GetCPUDescriptorHandleForHeapStart());
 

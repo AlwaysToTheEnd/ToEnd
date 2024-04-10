@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include "../Common/Source/CGHUtil.h"
 #include "../Common/Source/d3dx12.h"
+#include "DirectXTK/Keyboard.h"
 
 using namespace DirectX;
 

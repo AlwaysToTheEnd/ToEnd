@@ -127,7 +127,7 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 			currMat->Get(AI_MATKEY_BLEND_FUNC, currDumpMat->blend);
 			currMat->Get(AI_MATKEY_OPACITY, currDumpMat->opacity);
 			currMat->Get(AI_MATKEY_BUMPSCALING, currDumpMat->bumpscaling);
-			currMat->Get(AI_MATKEY_SHININESS, currDumpMat->shininess);
+			//currMat->Get(AI_MATKEY_SHININESS, currDumpMat->shininess);
 			currMat->Get(AI_MATKEY_REFLECTIVITY, currDumpMat->reflectivity);
 			currMat->Get(AI_MATKEY_SHININESS_STRENGTH, currDumpMat->shinpercent);
 			currMat->Get(AI_MATKEY_REFRACTI, currDumpMat->refracti);
@@ -141,14 +141,22 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 			for (int textureType = aiTextureType_NONE; textureType < aiTextureType_UNKNOWN; textureType++)
 			{
 				TextureInfo texView;
-				texView.type = static_cast<aiTextureType>(textureType);
+				texView.type = textureType;
 
 				const unsigned int numTextureCurrType = currMat->GetTextureCount(static_cast<aiTextureType>(textureType));
 				for (unsigned int currTextureIndex = 0; currTextureIndex < numTextureCurrType; currTextureIndex++)
 				{
 					aiString filePath;
-					aiReturn result = currMat->GetTexture(texView.type, currTextureIndex,
-						&filePath, &texView.mapping, &texView.uvIndex, &texView.blend, &texView.textureOp, texView.mapMode);
+					aiTextureMapping mapping;
+					aiTextureOp op;
+					aiTextureMapMode mapmode[3] = {};
+
+					aiReturn result = currMat->GetTexture(static_cast<aiTextureType>(textureType), currTextureIndex,
+						&filePath, &mapping, &texView.uvIndex, &texView.blend, &op, mapmode);
+
+					texView.mapping = mapping;
+					texView.textureOp = op;
+					texView.mapMode = mapmode[0];
 
 					texView.textureFilePathID = TextureInfo::GetTextureFilePathID(filePath.C_Str());
 

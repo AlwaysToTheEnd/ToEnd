@@ -85,9 +85,9 @@ float4 PS(DSOut inDLight) : SV_Target0
         clip(-1);
     }
     
-    float4 worldPosition = float4(inDLight.cpPos * float2(1 / gProj._11, 1 / gProj._22) * gbData.linearDepth, gbData.linearDepth, 1.0f);
-    float3 position = mul(worldPosition, gInvView).xyz;
-    float3 dir = position - gPosW;
+    float4 viewPos = float4(inDLight.cpPos * float2(1 / gProj._11, 1 / gProj._22) * gbData.linearDepth, gbData.linearDepth, 1.0f);
+    float3 positionW = mul(viewPos, gInvView).xyz;
+    float3 dir = positionW - gPosW;
     float dirSqr = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
     
     if (dirSqr > gLength * gLength)
@@ -95,9 +95,27 @@ float4 PS(DSOut inDLight) : SV_Target0
         clip(-1);
     }
     
+    float3 fresRef = lerp(Fdielectric, gbData.color.rgb, gbData.metal_rough_ao.x);
     float dstToLightNormal = 1.0f - saturate(sqrt(dirSqr) / gLength);
-    finalColor = gbData.color;
-    finalColor.rgb *= gColor.rgb * dstToLightNormal;
+    float3 toEye = normalize(gEyePosW - positionW);
+    
+    float3 revLightDir = -dir;
+    float3 halfWay = normalize(toEye + revLightDir);
+    
+    float cosEye = max(0.0f, dot(gbData.normal, toEye));
+    float cosLight = max(0.0f, dot(gbData.normal, revLightDir));
+    float cosHalfWay = max(0.0f, dot(gbData.normal, halfWay));
+        
+    float3 F = FresnelSchlick(fresRef, max(0.0f, dot(halfWay, toEye)));
+    float D = NdfGGX(cosHalfWay, gbData.metal_rough_ao.y);
+    float G = GaSchlickGGX(cosLight, cosEye, gbData.metal_rough_ao.y);
+        
+    float3 kd = lerp(float3(1.0f, 1.0f, 1.0f) - F, float3(0, 0, 0), gbData.metal_rough_ao.x);
+        
+    float3 diffuseBRDF = kd * gbData.color.rgb;
+    float3 specularBRDF = (F * D * G) / max(Epsilon, 4.0f * cosLight * cosEye);
+        
+    finalColor.rgb = (diffuseBRDF + specularBRDF) * gColor * cosLight * dstToLightNormal;
     finalColor.a = gPower;
     
     return finalColor;

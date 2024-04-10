@@ -54,6 +54,11 @@ void DX12TextureBuffer::SetTexture(const char* texturePath, unsigned int index)
 	std::string filePath(texturePath);
 	TEXTURE* texture = ResidentTexture(filePath);
 
+	if (m_textures[index] != nullptr && m_textures[index]->filePath != texturePath)
+	{
+		EvictTexture(m_textures[index]->filePath);
+	}
+
 	if (texture == nullptr)
 	{
 		wstring wFilePath(filePath.begin(), filePath.end());
@@ -93,10 +98,7 @@ void DX12TextureBuffer::SetTexture(const char* texturePath, unsigned int index)
 
 	assert(index < m_textures.size());
 
-	if (m_textures[index] != nullptr)
-	{
-		EvictTexture(filePath);
-	}
+	
 
 	m_textures[index] = texture;
 }

@@ -18,13 +18,13 @@ struct TextureInfo
 {
 public:
 	unsigned int textureFilePathID = 0;
-	aiTextureType type = aiTextureType_NONE;
-	aiTextureMapping mapping = aiTextureMapping_UV;
+	unsigned int type = aiTextureType_NONE;
+	unsigned int mapping = aiTextureMapping_UV;
 	unsigned int uvIndex = 0;
+	unsigned int textureOp = aiTextureOp_Add;
+	unsigned int mapMode = aiTextureMapMode_Wrap;
 	float blend = 1.0f;
-	aiTextureOp textureOp = aiTextureOp_Multiply;
-	aiTextureMapMode mapMode[3] = {};
-	float pad0[3] = {};
+	float pad0 = 0;
 
 public:
 	static size_t GetTextureFilePathID(const char* path);
@@ -36,6 +36,7 @@ private:
 };
 
 #pragma pack(push, 4)
+
 struct CGHMaterial
 {
 	static const int CGHMaterialTextureNum = 16;
@@ -43,12 +44,12 @@ struct CGHMaterial
 	int twosided = false;
 	int wireframe = false;
 	int blend = false;
-	aiColor3D diffuse;
+	aiColor3D diffuse = { 0.9f, 0.4f, 0.4f };
 	float opacity = 1.0f;
 	aiColor3D ambient;
 	float bumpscaling = 1.0f;
 	aiColor3D specular;
-	float shininess = 0.0f;
+	float diffuseAlpha = 1.0f;
 	aiColor3D emissive;
 	float refracti = 1.0f;
 	aiColor3D transparent;
@@ -57,7 +58,7 @@ struct CGHMaterial
 	float reflectivity = 0.0f;
 	
 	float matalness = 0.0f;
-	float roughness = 0.3f;
+	float roughness = 0.8f;
 
 	unsigned int numTexture = 0;
 	unsigned int renderQueue = 0;

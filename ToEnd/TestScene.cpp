@@ -28,21 +28,30 @@ void TestScene::Init()
 		auto material = m_rootNode->CreateComponent<COMMaterial>();
 		auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();
 
+		m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		skinnedMesh->SetMeshData(&m_bodyMeshs.front());
 		material->SetData(&m_bodyMats.front());
-
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
-		texInfo.type = aiTextureType_DIFFUSE;
+		texInfo.type = aiTextureType_BASE_COLOR;
+		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
 
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
-		texInfo.type = aiTextureType_NORMALS;
+		texInfo.textureOp = aiTextureOp_Add;
+		texInfo.type = aiTextureType_NORMAL_CAMERA;
 		material->SetTexture(&texInfo, 1);
+
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap2.bmp");
+		texInfo.blend = 2.0f;
+		texInfo.uvIndex = 0;
+		texInfo.textureOp = aiTextureOp_Add;
+		texInfo.type = aiTextureType_NORMAL_CAMERA;
+		material->SetTexture(&texInfo, 2);
 	}
 	
 	{
@@ -70,7 +79,8 @@ void TestScene::Init()
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_MainTex.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
-		texInfo.type = aiTextureType_DIFFUSE;
+		texInfo.type = aiTextureType_BASE_COLOR;
+		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
 	}
 
@@ -99,18 +109,21 @@ void TestScene::Init()
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/back_MainTex.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
-		texInfo.type = aiTextureType_DIFFUSE;
+		texInfo.type = aiTextureType_BASE_COLOR;
+		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
+
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/back_BumpMap_converted.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_NORMAL_CAMERA;
+		texInfo.textureOp = aiTextureOp_Add;
+		material->SetTexture(&texInfo, 1);
 	}
 
 	auto light = m_rootNode->CreateComponent<COMDirLight>();
 	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	light->m_data.power = 1.3f;
-
-	auto point = m_rootNode->CreateComponent<COMPointLight>();
-	point->m_data.color = DirectX::XMFLOAT3(0.3f, 0.3f, 2.0f);
-	point->m_data.power = 1.0f;
-	point->m_data.length = 2.0f;
+	light->m_data.power = 1.0f;
 }
 
 void TestScene::Update(float delta)
