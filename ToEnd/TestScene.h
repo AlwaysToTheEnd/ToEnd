@@ -21,6 +21,7 @@ private:
 	std::vector<CGHMesh> m_headMeshs;
 	std::vector<CGHMaterial> m_headMats;
 
+	CGHNode				 m_hairsRootNode;
 	std::vector<CGHNode> m_hairNodes;
 	std::vector<CGHMesh> m_hairMeshs;
 	std::vector<CGHMaterial> m_hairMats;

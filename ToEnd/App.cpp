@@ -12,6 +12,7 @@
 #include "DX12DefaultBufferCreator.h"
 #include "DX12GraphicResourceManager.h"
 #include "DX12TextureBuffer.h"
+#include "InputManager.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -24,11 +25,9 @@ HRESULT App::Init()
 {
 	HRESULT result = InitWindow();
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
-	m_mouse = std::make_unique<DirectX::Mouse>();
-	m_keyboard = std::make_unique<DirectX::Keyboard>();
 
 	m_timer.Start();
-	m_mouse->SetWindow(m_hMainWnd);
+	InputManager::Init(m_hMainWnd);
 	
 	DX12GraphicResourceManager::s_insatance.Init();
 	DX12GarbageFrameResourceMG::s_instance.Init();
@@ -94,14 +93,8 @@ App* App::GetApp()
 
 LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch (msg)
-	{
-	case WM_MOUSEACTIVATE:
-		return MA_ACTIVATEANDEAT;
-	}
-
-	m_mouse->ProcessMessage(msg, wParam, lParam);
-	m_keyboard->ProcessMessage(msg, wParam, lParam);
+	DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
+	DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
 	m_camera.WndProc(reinterpret_cast<int*>(hwnd), msg, reinterpret_cast<unsigned int*>(wParam), reinterpret_cast<int*>(lParam));
 
 	switch (msg)
@@ -232,6 +225,7 @@ HRESULT App::InitWindow()
 
 void App::Update(float delta)
 {
+	InputManager::Update();
 	m_camera.Update();
 	GraphicDeviceDX12::GetGraphic()->Update(delta, &m_camera);
 	DX12GarbageFrameResourceMG::s_instance.TryClearJunks();

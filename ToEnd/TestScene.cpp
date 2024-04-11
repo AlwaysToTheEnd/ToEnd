@@ -65,7 +65,7 @@ void TestScene::Init()
 		std::string headRootName = "cf_J_Head_s";
 		for (auto& iter : m_bodyNodes)
 		{
-			if (iter.GetaName() == headRootName)
+			if (iter.GetName() == headRootName)
 			{
 				m_headNodes.front().SetParent(&iter, true);
 				break;
@@ -98,22 +98,27 @@ void TestScene::Init()
 	}
 
 	{
+		
 		dxGraphic->LoadMeshDataFile("MeshData/hair0.fbx", false, &m_hairMeshs, &m_hairMats, &m_hairNodes);
+
 		std::string hairRootName = "cf_J_FaceUp_ty";
 		for (auto& iter : m_headNodes)
 		{
-			if (iter.GetaName() == hairRootName)
+			if (iter.GetName() == hairRootName)
 			{
-				m_hairNodes.front().SetParent(&iter, true);
+				m_hairsRootNode.SetParent(&iter, true);
+				m_hairNodes.front().SetParent(&m_hairsRootNode, true);
+				m_hairsRootNode.CreateComponent<COMTransform>();
+				m_hairsRootNode.SetName("N_hair_Root");
 				break;
 			}
 		}
+		
+		CGHNode* hairRoot = &m_hairNodes.front();
 
-		CGHNode* headRoot = &m_hairNodes.front();
-
-		auto render = headRoot->CreateComponent<COMDX12SkinnedMeshRenderer>();
-		auto material = headRoot->CreateComponent<COMMaterial>();
-		auto skinnedMesh = headRoot->CreateComponent<COMSkinnedMesh>();
+		auto render = hairRoot->CreateComponent<COMDX12SkinnedMeshRenderer>();
+		auto material = hairRoot->CreateComponent<COMMaterial>();
+		auto skinnedMesh = hairRoot->CreateComponent<COMSkinnedMesh>();
 
 		skinnedMesh->SetMeshData(&m_hairMeshs.front());
 		material->SetData(&m_hairMats.front());
@@ -136,9 +141,58 @@ void TestScene::Init()
 
 	auto light = m_dirLight.CreateComponent<COMDirLight>();
 	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	light->m_data.power = 1.0f;
+	light->m_data.power = 1.5f;
 
 	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
+
+	{
+		struct PosnScale
+		{
+			DirectX::XMFLOAT3 pos;
+			DirectX::XMFLOAT3 scale;
+		};
+		std::unordered_map<std::string, PosnScale> nodeDatas;
+
+		XmlDocument* document = new XmlDocument;
+		document->LoadFile("MeshData/nodeTreeData.xml");
+		assert(!document->Error());
+
+		XmlElement* list = nullptr;
+		list = document->FirstChildElement();
+		list = list->FirstChildElement();
+		
+		for (; list != nullptr; list = list->NextSiblingElement())
+		{
+			PosnScale data;
+			std::string name = list->Attribute("name");
+			data.pos.x = -list->FloatAttribute("posX");
+			data.pos.y = list->FloatAttribute("posY");
+			data.pos.z = -list->FloatAttribute("posZ");
+
+			data.scale.x = list->FloatAttribute("scaleX");
+			data.scale.y = list->FloatAttribute("scaleY");
+			data.scale.z = list->FloatAttribute("scaleZ");
+
+			nodeDatas[name] = data;
+		}
+
+		std::vector<CGHNode*> nodeStack;
+		m_rootNode->GetChildNodes(&nodeStack);
+		
+		for (auto& iter : nodeStack)
+		{
+			auto transform = iter->GetComponent<COMTransform>();
+			auto nodeDataIter = nodeDatas.find(iter->GetName());
+			
+			if (nodeDataIter != nodeDatas.end())
+			{
+				transform->SetPos(DirectX::XMLoadFloat3(&nodeDataIter->second.pos));
+				transform->SetScale(DirectX::XMLoadFloat3(&nodeDataIter->second.scale));
+			}
+		}
+
+		delete document;
+	}
 }
 
 void TestScene::Update(float delta)

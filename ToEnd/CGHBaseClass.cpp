@@ -73,7 +73,7 @@ void CGHNode::OnMouseOvered()
 {
 }
 
-void CGHNode::GetChildNodes(std::vector<const CGHNode*>* nodeOut) const
+void CGHNode::GetChildNodes(std::vector<CGHNode*>* nodeOut)
 {
 	nodeOut->push_back(this);
 

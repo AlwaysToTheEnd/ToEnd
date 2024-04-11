@@ -10,6 +10,7 @@
 #include "LightComponents.h"
 #include "Camera.h"
 #include "Mouse.h"
+#include "InputManager.h"
 
 using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
@@ -264,7 +265,9 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 	passCons.samplerIndex = 2;
 	passCons.eyePosW = camera->GetEyePos();
 	passCons.ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f }; //TODO ambientLight
-	passCons.mousePos = camera->GetMousePos();
+	auto mouseState = InputManager::GetMouse().GetLastState();
+	passCons.mousePos.x = mouseState.x;
+	passCons.mousePos.y = mouseState.y;
 
 	m_passCBs[m_currFrame]->CopyData(0, &passCons);
 
@@ -434,12 +437,12 @@ void GraphicDeviceDX12::RenderEnd()
 		dest.PlacedFootprint.Footprint.Depth = 1;
 		dest.SubresourceIndex = 0;
 
-		
+		auto mouseState = InputManager::GetMouse().GetLastState();
 		D3D12_BOX rect = {};
-		rect.left = 0;
-		rect.right = 1;
-		rect.top = 0;
-		rect.bottom = 1;
+		rect.left = mouseState.x;
+		rect.right = mouseState.x + 1;
+		rect.top = mouseState.y;
+		rect.bottom = mouseState.y + 1;
 		rect.front = 0;
 		rect.back = 1;
 
@@ -463,7 +466,7 @@ void GraphicDeviceDX12::RenderEnd()
 	m_fenceCounts[m_currFrame] = m_currentFence;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
-	unsigned int prevFrame = (m_currFrame + 2) % m_numFrameResource;
+	unsigned int prevFrame = (m_currFrame + (m_numFrameResource - 1)) % m_numFrameResource;
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
 
 	if (m_fence->GetCompletedValue() < m_fenceCounts[m_currFrame])

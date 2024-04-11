@@ -3,54 +3,59 @@
 #include <Windows.h>
 #include "../Common/Source/CGHUtil.h"
 #include "../Common/Source/d3dx12.h"
-#include "DirectXTK/Keyboard.h"
+#include "InputManager.h"
+#include "CGHBaseClass.h"
 
 using namespace DirectX;
 
 Camera::Camera()
 {
 	m_viewMat = CGH::IdentityMatrix;
-	m_eyePos = { 0,0,0 };
-	m_offset = { 0,0,0 };
-	m_dir = { 0,0,0 };
-	m_angles = { 0,0 };
+	m_eyePos = { 0,0,-10 };
 	m_currMouse = { 0,0 };
 	m_prevMouse = { 0,0 };
-	m_isRButtonDown = false;
-	m_distance = 5;
-	m_target = nullptr;
+	m_targetPos = {};
+	m_rotateQuater = {};
+	m_distance = 10;
 }
 
 void Camera::Update()
 {
-	XMVECTOR eyePos = DirectX::XMVectorSet(0, 0, -m_distance, 1);
-	XMVECTOR lookAt = DirectX::XMVectorZero();
 
-	eyePos = XMVector3TransformCoord(eyePos, DirectX::XMMatrixRotationRollPitchYawFromVector(XMVectorSet(m_angles.y, m_angles.x, 0, 0)));
-	XMStoreFloat3(&m_dir, DirectX::XMVector3Normalize(-eyePos));
+	auto& mouse = InputManager::GetMouse();
+	auto mouseState = mouse.GetLastState();
+	m_prevMouse = m_currMouse;
+	m_currMouse = { mouseState.x, mouseState.y };
 
-	if (m_target)
+	if (mouse.middleButton == 1)
 	{
-		lookAt = XMLoadFloat3(m_target);
-		eyePos = lookAt + eyePos;
-		
-	}
-	else
-	{
-		eyePos.m128_f32[0] += m_offset.x;
-		eyePos.m128_f32[1] += m_offset.y;
-		eyePos.m128_f32[2] += m_offset.z;
-
-		lookAt = XMVectorSet(m_offset.x, m_offset.y, m_offset.z, 0);
+		m_eyePos.x -= (m_currMouse.x - m_prevMouse.x) * 0.01f;
+		m_eyePos.y += (m_currMouse.y - m_prevMouse.y) * 0.01f;
 	}
 
-	XMStoreFloat3(&m_eyePos, eyePos);
-	XMStoreFloat4x4(&m_viewMat, DirectX::XMMatrixLookAtLH(eyePos, lookAt, { 0,1,0,0 }));
+	XMVECTOR eyePos = DirectX::XMLoadFloat3(&m_eyePos);
+	XMVECTOR target = eyePos;
+	target.m128_f32[2] = m_eyePos.z + m_distance;
+
+	if (mouse.rightButton == 1)
+	{
+	}
+
+	if (mouse.rightButton == 3)
+	{
+		m_targetMouse = m_currMouse;
+	}
+
+	m_distance -= mouseState.scrollWheelValue * 0.00002f;
+
+	
+
+	XMStoreFloat4x4(&m_viewMat, DirectX::XMMatrixLookAtLH(eyePos, target, { 0,1,0,0 }));
 }
 
 void Camera::WndProc(int* hWND, unsigned int message, unsigned int* wParam, int* lParam)
 {
-	switch (message)
+	/*switch (message)
 	{
 	case WM_RBUTTONDOWN	:
 	{
@@ -68,7 +73,7 @@ void Camera::WndProc(int* hWND, unsigned int message, unsigned int* wParam, int*
 	{
 		m_currMouse.x = LOWORD(lParam);
 		m_currMouse.y = HIWORD(lParam);
-		
+
 		if (m_isRButtonDown)
 		{
 			XMFLOAT2 movement(m_currMouse.x - m_prevMouse.x, m_currMouse.y - m_prevMouse.y);
@@ -93,7 +98,7 @@ void Camera::WndProc(int* hWND, unsigned int message, unsigned int* wParam, int*
 		m_distance -= GET_WHEEL_DELTA_WPARAM(wParam) / 100.0f;
 	}
 	break;
-	}
+	}*/
 }
 
 DirectX::XMFLOAT3A Camera::GetViewRay(const DirectX::XMFLOAT4X4& projectionMat, unsigned int viewPortWidth, unsigned int viewPortHeight) const

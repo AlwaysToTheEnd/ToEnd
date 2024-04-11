@@ -170,6 +170,7 @@
     <ClInclude Include="DX12UploadBuffer.h" />
     <ClInclude Include="GraphicDeivceDX12.h" />
     <ClInclude Include="GraphicResourceLoader.h" />
+    <ClInclude Include="InputManager.h" />
     <ClInclude Include="LightComponents.h" />
     <ClInclude Include="TestScene.h" />
     <ClInclude Include="Xml.h" />
@@ -190,6 +191,7 @@
     <ClCompile Include="DX12TextureBuffer.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
     <ClCompile Include="GraphicResourceLoader.cpp" />
+    <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LightComponents.cpp" />
     <ClCompile Include="TestScene.cpp" />
     <ClCompile Include="Xml.cpp" />

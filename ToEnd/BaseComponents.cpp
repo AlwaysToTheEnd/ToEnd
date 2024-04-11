@@ -88,13 +88,13 @@ void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float del
 	if (m_nodeTreeDirty)
 	{
 		m_currNodeTree.clear();
-		std::vector<const CGHNode*> childNodeStack;
+		std::vector<CGHNode*> childNodeStack;
 		childNodeStack.reserve(512);
 		node->GetChildNodes(&childNodeStack);
 
 		for (auto iter : childNodeStack)
 		{
-			m_currNodeTree.insert({ iter->GetaName(), iter });
+			m_currNodeTree.insert({ iter->GetName(), iter });
 		}
 
 		m_nodeTreeDirty = false;

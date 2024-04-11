@@ -18,9 +18,8 @@ static struct GlobalOptions
 
 	struct GraphicOption
 	{
-		const std::wstring	TextureFolderPath = L"./../Common/Texture";
-		const std::wstring	FontFolderPath = L"./../Common/Fonts";
-		const std::wstring	SpriteTextureSuffix = L"sp_";
+		const std::wstring	TextureFolderPath = L"Texture";
+		const std::wstring	FontFolderPath = L"Fonts";
 		float				Shadowlength = 100.0f;
 	}GRAPHIC;
 }GO;
@@ -57,8 +56,8 @@ public:
 
 	bool GetActive() const { return m_active; }
 	CGHNode* GetParent() const { return m_parent; }
-	const char* GetaName() const { return m_name.c_str(); }
-	void GetChildNodes(std::vector<const CGHNode*>* nodeOut) const;
+	const char* GetName() const { return m_name.c_str(); }
+	void GetChildNodes(std::vector<CGHNode*>* nodeOut);
 
 	void AddEvent(std::function<void()> evnet, int flags) { m_evnets.push_back({ evnet, flags }); }
 	void SetActive(bool isActive) const { isActive = m_active; }

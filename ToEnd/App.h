@@ -9,8 +9,7 @@
 #include <string>
 #include <memory>
 #include "Camera.h"
-#include "Mouse.h"
-#include "Keyboard.h"
+
 #include "TestScene.h"
 
 #include "../Common/Source/GameTimer.h"
@@ -49,8 +48,6 @@ private:
 	bool		m_miniMized = false;
 	bool		m_maximized = false;
 
-	std::unique_ptr<DirectX::Mouse>		m_mouse;
-	std::unique_ptr<DirectX::Keyboard>	m_keyboard;
-	Camera								m_camera;
-	GameTimer							m_timer;
+	Camera		m_camera;
+	GameTimer	m_timer;
 };
