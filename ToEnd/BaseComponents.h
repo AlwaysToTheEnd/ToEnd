@@ -99,7 +99,7 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
-	unsigned int GetRenderID() { return m_renderID; }
+	unsigned int GetRenderID() { return m_renderID +1; }
 
 private:
 	static size_t s_hashCode;

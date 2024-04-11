@@ -124,7 +124,7 @@ public:
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
-	void LoadMeshDataFile(const char* filePath, std::vector<CGHMesh>* outMeshSet, 
+	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
 
 private:
@@ -174,9 +174,13 @@ private:
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_deferredBaseSRVHeap;
+
+	UINT16							m_currMouseTargetRednerID = 0;
+	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 	
 	unsigned int					m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
+
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

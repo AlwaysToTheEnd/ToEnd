@@ -151,6 +151,7 @@ void COMSkinnedMesh::NodeTreeDirty()
 
 COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
 {
+	m_renderID = 0;
 }
 
 void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)

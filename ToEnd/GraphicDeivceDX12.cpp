@@ -9,6 +9,7 @@
 #include "BaseComponents.h"
 #include "LightComponents.h"
 #include "Camera.h"
+#include "Mouse.h"
 
 using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
@@ -215,6 +216,27 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	OnResize(windowWidth, windowHeight);
 
 	BuildPso();
+
+	{
+		D3D12_HEAP_PROPERTIES prop = {};
+		D3D12_RESOURCE_DESC reDesc = {};
+		D3D12_HEAP_FLAGS flags = D3D12_HEAP_FLAG_NONE;
+
+		prop.Type = D3D12_HEAP_TYPE_READBACK;
+
+		reDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		reDesc.DepthOrArraySize = 1;
+		reDesc.Height = 1;
+		reDesc.Width = sizeof(UINT16) * m_numFrameResource;
+		reDesc.Format = DXGI_FORMAT_UNKNOWN;
+		reDesc.MipLevels = 1;
+		reDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+		reDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		reDesc.SampleDesc.Count = 1;
+
+		m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_renderIDatMouseRead.GetAddressOf()));
+	}
+
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -292,7 +314,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
-void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, std::vector<CGHMesh>* outMeshSet,
+void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 	std::vector<CGHMaterial>* outMaterials, std::vector<CGHNode>* outNode)
 {
 	DX12GraphicResourceLoader loader;
@@ -300,7 +322,7 @@ void GraphicDeviceDX12::LoadMeshDataFile(const char* filePath, std::vector<CGHMe
 
 	auto allocator = DX12GarbageFrameResourceMG::s_instance.RentCommandAllocator();
 	ThrowIfFailed(m_dataLoaderCmdList->Reset(allocator.Get(), nullptr));
-	loader.LoadAllData(filePath, aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS,
+	loader.LoadAllData(filePath, aiComponent_CAMERAS | aiComponent_TEXTURES | aiComponent_COLORS | aiComponent_LIGHTS, triangleCw,
 		m_dataLoaderCmdList.Get(), &upBuffers, outMeshSet, outMaterials, outNode);
 
 	ThrowIfFailed(m_dataLoaderCmdList->Close());
@@ -329,6 +351,15 @@ void GraphicDeviceDX12::RenderBegin()
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart() };
+	D3D12_CPU_DESCRIPTOR_HANDLE renderIDTexture = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+	renderIDTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
+
+	backColor.f[0] = 0;
+	backColor.f[1] = 0;
+	backColor.f[2] = 0;
+	backColor.f[3] = 0;
+	m_cmdList->ClearRenderTargetView(renderIDTexture, backColor, 0, nullptr);
+
 	m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &m_swapChain->GetDSV());
 }
 
@@ -377,6 +408,50 @@ void GraphicDeviceDX12::RenderEnd()
 		}
 	}
 
+	{
+		auto renderIDTexture = m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get();
+
+		D3D12_RESOURCE_BARRIER bar = {};
+		bar.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		bar.Transition.pResource = renderIDTexture;
+		bar.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		bar.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		bar.Transition.Subresource = 0;
+
+		D3D12_TEXTURE_COPY_LOCATION src = {};
+		src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		src.pResource = renderIDTexture;
+		src.SubresourceIndex = 0;
+
+		D3D12_TEXTURE_COPY_LOCATION dest = {};
+		dest.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		dest.pResource = m_renderIDatMouseRead.Get();
+		dest.PlacedFootprint.Offset = sizeof(UINT16) * m_currFrame;
+		dest.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R16_UINT;
+		dest.PlacedFootprint.Footprint.RowPitch = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+		dest.PlacedFootprint.Footprint.Height = 1;
+		dest.PlacedFootprint.Footprint.Width = sizeof(UINT16);
+		dest.PlacedFootprint.Footprint.Depth = 1;
+		dest.SubresourceIndex = 0;
+
+		
+		D3D12_BOX rect = {};
+		rect.left = 0;
+		rect.right = 1;
+		rect.top = 0;
+		rect.bottom = 1;
+		rect.front = 0;
+		rect.back = 1;
+
+		m_cmdList->ResourceBarrier(1, &bar);
+		m_cmdList->CopyTextureRegion(&dest, 0, 0, 0, &src, &rect);
+
+		bar.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		bar.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		m_cmdList->ResourceBarrier(1, &bar);
+	}
+
+
 	m_swapChain->RenderEnd(m_cmdList.Get());
 
 	ThrowIfFailed(m_cmdList->Close());
@@ -388,6 +463,7 @@ void GraphicDeviceDX12::RenderEnd()
 	m_fenceCounts[m_currFrame] = m_currentFence;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
+	unsigned int prevFrame = (m_currFrame + 2) % m_numFrameResource;
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
 
 	if (m_fence->GetCompletedValue() < m_fenceCounts[m_currFrame])
@@ -405,6 +481,15 @@ void GraphicDeviceDX12::RenderEnd()
 			assert(false);
 		}
 	}
+
+	BYTE* mapped = nullptr;
+	D3D12_RANGE range = {};
+	range.Begin = sizeof(UINT16) * prevFrame;
+	range.End = range.Begin + sizeof(UINT16);
+
+	m_renderIDatMouseRead->Map(0, &range, reinterpret_cast<void**>(&mapped));
+	std::memcpy(&m_currMouseTargetRednerID, mapped, sizeof(UINT16));
+	m_renderIDatMouseRead->Unmap(0, nullptr);
 }
 
 void GraphicDeviceDX12::FlushCommandQueue()
@@ -491,9 +576,9 @@ void GraphicDeviceDX12::BuildPso()
 
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 		temp.Constants.Num32BitValues = 1;
-		temp.Descriptor.RegisterSpace = 1;
-		temp.Descriptor.ShaderRegister = 0;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		temp.Constants.RegisterSpace = 1;
+		temp.Constants.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		rootParams.push_back(temp);
 
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
@@ -573,10 +658,13 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
 
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
+
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_RENDERID].BlendEnable = false;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_RENDERID].LogicOpEnable = false;
 
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -631,7 +719,8 @@ void GraphicDeviceDX12::BuildPso()
 			cmd->IASetVertexBuffers(0, 1, &vbView);
 			cmd->IASetIndexBuffer(&ibView);
 
-			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, renderer->GetRenderID(), 0);
+			unsigned int id = renderer->GetRenderID();
+			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, id, 0);
 			cmd->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
@@ -665,8 +754,8 @@ void GraphicDeviceDX12::BuildPso()
 	}
 #pragma endregion
 
-	m_lightPSOs.resize(PIPELINE_LIGHT_NUM);
 #pragma region PIPELINE_DEFERRED_LIGHT
+	m_lightPSOs.resize(PIPELINE_LIGHT_NUM);
 	{
 		rootParams.clear();
 		rootParams.insert(rootParams.end(), baseRoot.begin(), baseRoot.end());
@@ -826,6 +915,9 @@ void GraphicDeviceDX12::BuildPso()
 	}
 
 #pragma endregion
+
+
+
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
@@ -852,10 +944,16 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 
 	for (unsigned int i = 0; i < DEFERRED_TEXTURE_NUM; i++)
 	{
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Format = m_deferredFormat[i];
+		clearValue.Color[0] = 0;
+		clearValue.Color[1] = 0;
+		clearValue.Color[2] = 0;
+		clearValue.Color[3] = 0;
 		m_deferredResources[i] = nullptr;
 		rDesc.Format = m_deferredFormat[i];
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(m_deferredResources[i].GetAddressOf())));
+			D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, IID_PPV_ARGS(m_deferredResources[i].GetAddressOf())));
 	}
 
 	if (m_deferredRTVHeap == nullptr)

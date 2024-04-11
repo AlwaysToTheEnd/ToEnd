@@ -168,5 +168,6 @@
     <FxCompile Include="PBR_example.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="RenderIDRead.hlsl" />
   </ItemGroup>
 </Project>

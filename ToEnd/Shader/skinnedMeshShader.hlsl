@@ -13,7 +13,10 @@ struct BoneWeight
     float weight;
 };
 
-uint gRenderID : register(b0, space1);
+cbuffer cbsettings : register(b0, space1)
+{
+    uint gRenderID;
+};
 
 StructuredBuffer<float3> gVertexNormals : register(t0, space1);
 StructuredBuffer<float3> gVertexTangents : register(t1, space1);
@@ -116,7 +119,7 @@ PSOut PS(VSOut pin)
 {
     PSOut pout;
     pout.color = float4(gDiffuse, gDiffuseAlpha);
-    pout.normal = pin.tangentBasis._31_32_33;
+    pout.normal = pin.tangentBasis._13_23_33;
     float normalAlpha = 0.0f;
     pout.metal_rough_ao = float3(gMetalness, gRoughness, 0);
     pout.emissionColor = float3(0, 0, 0);
@@ -140,7 +143,7 @@ PSOut PS(VSOut pin)
                 uv = pin.uv2;
                 break;
         }
-       
+        
         switch (currTextureInfo.mapMode)
         {
             case TEXMAPMO_WRAP:
@@ -165,6 +168,7 @@ PSOut PS(VSOut pin)
                         uv.z > 1.0f || uv.z < 0.0f)
                     {
                         currTextureInfo.type = TEXTYPE_UNKNOWN + 1;
+
                     }
                     else
                     {
@@ -184,9 +188,10 @@ PSOut PS(VSOut pin)
                 }
                 break;
             case TEXTYPE_NORMAL:{
-                    float3 normalResult = currTextureValue.rgb * 2 - 1;
+                    float3 normalResult = currTextureValue.xyz * 2 - 1;
+                    normalResult.y = -normalResult.y;
                     normalResult.xy *= blend;
-                    normalResult = mul(normalize(normalResult), pin.tangentBasis);
+                    normalResult = mul(pin.tangentBasis, normalize(normalResult));
                     
                     pout.normal = ExcuteTextureOP(pout.normal * normalAlpha, normalResult, currTextureInfo.textureOp);
                     pout.normal = normalize(pout.normal);
@@ -205,7 +210,8 @@ PSOut PS(VSOut pin)
             case TEXTYPE_AO:
                 pout.metal_rough_ao.z = currTextureValue.x;
                 break;
-            case TEXTYPE_UNKNOWN:
+            case TEXTYPE_UNKNOWN:{
+                }
                 break;
         }
     }

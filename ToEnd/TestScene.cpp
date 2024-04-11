@@ -20,7 +20,7 @@ void TestScene::Init()
 {
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
 
-	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
+	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs,&m_bodyMats, &m_bodyNodes);
 	{
 		m_rootNode = &m_bodyNodes.front();
 
@@ -38,23 +38,30 @@ void TestScene::Init()
 		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
 
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_DetailMainTex.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_BASE_COLOR;
+		texInfo.textureOp = aiTextureOp_Subtract;
+		material->SetTexture(&texInfo, 1);
+
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
 		texInfo.textureOp = aiTextureOp_Add;
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
-		material->SetTexture(&texInfo, 1);
+		material->SetTexture(&texInfo, 2);
 
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_BumpMap2.bmp");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
 		texInfo.textureOp = aiTextureOp_Add;
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
-		material->SetTexture(&texInfo, 2);
+		material->SetTexture(&texInfo, 3);
 	}
 	
 	{
-		dxGraphic->LoadMeshDataFile("MeshData/head0.fbx", &m_headMeshs, &m_headMats, &m_headNodes);
+		dxGraphic->LoadMeshDataFile("MeshData/head0.fbx", true, &m_headMeshs, &m_headMats, &m_headNodes);
 		std::string headRootName = "cf_J_Head_s";
 		for (auto& iter : m_bodyNodes)
 		{
@@ -81,10 +88,17 @@ void TestScene::Init()
 		texInfo.type = aiTextureType_BASE_COLOR;
 		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
+
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_BumpMap2_converted.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.textureOp = aiTextureOp_Add;
+		texInfo.type = aiTextureType_NORMAL_CAMERA;
+		material->SetTexture(&texInfo, 1);
 	}
 
 	{
-		dxGraphic->LoadMeshDataFile("MeshData/hair0.fbx", &m_hairMeshs, &m_hairMats, &m_hairNodes);
+		dxGraphic->LoadMeshDataFile("MeshData/hair0.fbx", false, &m_hairMeshs, &m_hairMats, &m_hairNodes);
 		std::string hairRootName = "cf_J_FaceUp_ty";
 		for (auto& iter : m_headNodes)
 		{
@@ -116,7 +130,7 @@ void TestScene::Init()
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
-		texInfo.textureOp = aiTextureOp_Add;
+		texInfo.textureOp = aiTextureOp_Subtract;
 		material->SetTexture(&texInfo, 1);
 	}
 
@@ -125,11 +139,18 @@ void TestScene::Init()
 	light->m_data.power = 1.0f;
 
 	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
-	//lightTransform->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(0, 0.021, 0));
 }
 
 void TestScene::Update(float delta)
 {
+	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
+
+	static float x, y = 0;
+	//x += delta * 1.0f;
+	//y += delta * 0.8f;
+
+	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
+
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }

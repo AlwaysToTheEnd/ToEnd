@@ -20,16 +20,23 @@ struct BoneWeight
 	float weight = 0.0f;
 };
 
-void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags,
+void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int removeComponentFlags, bool triangleCw,
 	ID3D12GraphicsCommandList* cmd, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut,
 	std::vector<CGHMesh>* meshDataOut, std::vector<CGHMaterial>* materialOut, std::vector<CGHNode>* nodeOut)
 {
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
+
+	if (!triangleCw)
+	{
+		leftHandedConvert ^= aiProcess_FlipWindingOrder;
+	}
+
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeComponentFlags);
 	const aiScene* scene = importer.ReadFile(filePath,
-		aiProcess_Triangulate | aiProcess_RemoveComponent | aiProcess_SortByPType | aiProcess_ConvertToLeftHanded);
+		aiProcess_Triangulate | aiProcess_RemoveComponent | aiProcess_SortByPType | leftHandedConvert);
 	std::string error = importer.GetErrorString();
 
 	assert(scene != nullptr);
@@ -127,7 +134,6 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 			currMat->Get(AI_MATKEY_BLEND_FUNC, currDumpMat->blend);
 			currMat->Get(AI_MATKEY_OPACITY, currDumpMat->opacity);
 			currMat->Get(AI_MATKEY_BUMPSCALING, currDumpMat->bumpscaling);
-			//currMat->Get(AI_MATKEY_SHININESS, currDumpMat->shininess);
 			currMat->Get(AI_MATKEY_REFLECTIVITY, currDumpMat->reflectivity);
 			currMat->Get(AI_MATKEY_SHININESS_STRENGTH, currDumpMat->shinpercent);
 			currMat->Get(AI_MATKEY_REFRACTI, currDumpMat->refracti);

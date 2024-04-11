@@ -24,7 +24,12 @@ HRESULT App::Init()
 {
 	HRESULT result = InitWindow();
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+	m_mouse = std::make_unique<DirectX::Mouse>();
+	m_keyboard = std::make_unique<DirectX::Keyboard>();
+
 	m_timer.Start();
+	m_mouse->SetWindow(m_hMainWnd);
+	
 	DX12GraphicResourceManager::s_insatance.Init();
 	DX12GarbageFrameResourceMG::s_instance.Init();
 	DX12DefaultBufferCreator::instance.Init();
@@ -89,6 +94,14 @@ App* App::GetApp()
 
 LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	switch (msg)
+	{
+	case WM_MOUSEACTIVATE:
+		return MA_ACTIVATEANDEAT;
+	}
+
+	m_mouse->ProcessMessage(msg, wParam, lParam);
+	m_keyboard->ProcessMessage(msg, wParam, lParam);
 	m_camera.WndProc(reinterpret_cast<int*>(hwnd), msg, reinterpret_cast<unsigned int*>(wParam), reinterpret_cast<int*>(lParam));
 
 	switch (msg)
@@ -160,6 +173,8 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
 		return 0;
 	}
+	case WM_MOUSEACTIVATE:
+		return MA_ACTIVATEANDEAT;
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
@@ -172,6 +187,7 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		msg = 0;
 	}
 	}
+
 
 	return DefWindowProc(hwnd, msg, wParam, lParam);
 }

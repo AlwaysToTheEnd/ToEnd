@@ -11,7 +11,7 @@ struct aiScene;
 class DX12GraphicResourceLoader
 {
 public:
-	void LoadAllData(const std::string& filePath, int removeComponentFlags, 
+	void LoadAllData(const std::string& filePath, int removeComponentFlags, bool triangleCw,
 		ID3D12GraphicsCommandList* cmd, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut,
 		std::vector<CGHMesh>* meshDataOut, std::vector<CGHMaterial>* materialOut = nullptr,
 		std::vector<CGHNode>* nodeOut = nullptr);
