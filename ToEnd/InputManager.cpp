@@ -18,6 +18,7 @@ void InputManager::Update()
 {
 	s_instance.m_keyboardTracker.Update(s_instance.m_keyboard->GetState());
 	s_instance.m_mouseTracker.Update(s_instance.m_mouse->GetState());
+	s_instance.m_mouse->ResetScrollWheelValue();
 }
 
 void InputManager::MouseReset()

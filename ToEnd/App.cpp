@@ -95,7 +95,6 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
 	DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
-	m_camera.WndProc(reinterpret_cast<int*>(hwnd), msg, reinterpret_cast<unsigned int*>(wParam), reinterpret_cast<int*>(lParam));
 
 	switch (msg)
 	{
