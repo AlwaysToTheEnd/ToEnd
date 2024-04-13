@@ -91,8 +91,7 @@ class COMDX12SkinnedMeshRenderer : public Component
 {
 public:
 	COMDX12SkinnedMeshRenderer(CGHNode* node);
-	COMDX12SkinnedMeshRenderer() = default;
-	~COMDX12SkinnedMeshRenderer() = default;
+	virtual ~COMDX12SkinnedMeshRenderer() = default;
 
 	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
@@ -100,6 +99,26 @@ public:
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
 	unsigned int GetRenderID() { return m_renderID +1; }
+
+private:
+	static size_t s_hashCode;
+	unsigned int m_renderFlag = 0;
+	unsigned int m_renderID = 0;
+};
+
+
+class COMDX12UIRenderer : public Component
+{
+public:
+	COMDX12UIRenderer(CGHNode* node);
+	virtual ~COMDX12UIRenderer() = default;
+
+	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual size_t GetTypeHashCode() override { return s_hashCode; }
+	virtual unsigned int GetPriority() override { return COMPONENT_UI_RENDERER; }
+
+	unsigned int GetRenderID() { return m_renderID + 1; }
 
 private:
 	static size_t s_hashCode;

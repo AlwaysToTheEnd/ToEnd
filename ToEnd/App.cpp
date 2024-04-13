@@ -25,12 +25,12 @@ HRESULT App::Init()
 {
 	HRESULT result = InitWindow();
 	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+	DX12GarbageFrameResourceMG::s_instance.Init();
 
 	m_timer.Start();
 	InputManager::Init(m_hMainWnd);
 	
 	DX12GraphicResourceManager::s_insatance.Init();
-	DX12GarbageFrameResourceMG::s_instance.Init();
 	DX12DefaultBufferCreator::instance.Init();
 	DX12TextureBuffer::Init();
 
@@ -224,10 +224,10 @@ HRESULT App::InitWindow()
 
 void App::Update(float delta)
 {
+	DX12GarbageFrameResourceMG::s_instance.TryClearJunks();
 	InputManager::Update();
 	m_camera.Update();
 	GraphicDeviceDX12::GetGraphic()->Update(delta, &m_camera);
-	DX12GarbageFrameResourceMG::s_instance.TryClearJunks();
 
 	m_testScene->Update(delta);
 	m_testScene->RateUpdate(delta);

@@ -6,6 +6,8 @@
 #include "DX12TextureBuffer.h"
 #include "Xml.h"
 #include <DirectXMath.h>
+#include "Dx12FontManager.h"
+
 #include "LightComponents.h"
 
 TestScene::TestScene()
@@ -19,6 +21,7 @@ TestScene::~TestScene()
 void TestScene::Init()
 {
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
+	DX12FontManger::LoadFont(L"FontData/baseFont.spritefont");
 
 	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs,&m_bodyMats, &m_bodyNodes);
 	{
@@ -27,9 +30,9 @@ void TestScene::Init()
 		auto render = m_rootNode->CreateComponent<COMDX12SkinnedMeshRenderer>();
 		auto material = m_rootNode->CreateComponent<COMMaterial>();
 		auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();
-		//m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
-		skinnedMesh->SetMeshData(&m_bodyMeshs.front());
+		m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		material->SetData(&m_bodyMats.front());
+		skinnedMesh->SetMeshData(&m_bodyMeshs.front());
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -78,6 +81,7 @@ void TestScene::Init()
 		auto material = headRoot->CreateComponent<COMMaterial>();
 		auto skinnedMesh = headRoot->CreateComponent<COMSkinnedMesh>();
 
+		m_headMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		skinnedMesh->SetMeshData(&m_headMeshs.front());
 		material->SetData(&m_headMats.front());
 

@@ -16,6 +16,9 @@ void DX12GarbageFrameResourceMG::Init()
 		{
 			ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(iter.GetAddressOf())));
 		}
+
+		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_allocators.front().Get(), nullptr, IID_PPV_ARGS(m_baseCmd.GetAddressOf())));
+		ThrowIfFailed(m_baseCmd->Close());
 	}
 }
 
@@ -66,6 +69,7 @@ Microsoft::WRL::ComPtr<ID3D12CommandAllocator> DX12GarbageFrameResourceMG::RentC
 
 	return result;
 }
+
 
 void DX12GarbageFrameResourceMG::TryClearJunks()
 {

@@ -8,6 +8,7 @@ size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
 size_t COMSkinnedMesh::s_hashCode = typeid(COMSkinnedMesh).hash_code();
 size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRenderer).hash_code();
+size_t COMDX12UIRenderer::s_hashCode = typeid(COMDX12UIRenderer).hash_code();
 
 COMTransform::COMTransform(CGHNode* node)
 {
