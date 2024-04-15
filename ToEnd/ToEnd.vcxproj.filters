@@ -189,6 +189,8 @@
     <FxCompile Include="PBR_example.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="RenderIDRead.hlsl" />
+    <FxCompile Include="Shader\FontRender.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

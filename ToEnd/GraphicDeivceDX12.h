@@ -39,6 +39,20 @@ struct DX12PassConstants
 	DirectX::XMFLOAT2		pad = {};
 };
 
+struct DX12RenderQueue
+{
+	std::vector<std::pair<CGHNode*, unsigned int>> queue;
+};
+
+struct PipeLineWorkSet
+{
+	ID3D12PipelineState* pso = nullptr;
+	ID3D12RootSignature* rootSig = nullptr;
+	DX12RenderQueue* renderQueue = nullptr;
+	std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
+	std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)> nodeGraphicCmdFunc;
+};
+
 class GraphicDeviceDX12
 {
 	struct DX12DirLightData
@@ -47,20 +61,6 @@ class GraphicDeviceDX12
 		float power = 1.0f;
 		DirectX::XMFLOAT3 color = {};
 		float pad = 0;
-	};
-
-	struct DX12RenderQueue
-	{
-		std::vector<std::pair<CGHNode*,unsigned int>> queue;
-	};
-
-	struct PipeLineWorkSet
-	{
-		ID3D12PipelineState* pso = nullptr;
-		ID3D12RootSignature* rootSig = nullptr;
-		DX12RenderQueue* renderQueue = nullptr;
-		std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
-		std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)> nodeGraphicCmdFunc;
 	};
 
 	enum PIPELINEWORKLIST
@@ -188,5 +188,6 @@ private:
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
 	std::vector<PipeLineWorkSet>										m_PSOs;
 	std::vector<PipeLineWorkSet>										m_lightPSOs;
+	std::vector<PipeLineWorkSet>										m_customPSOs;
 	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };

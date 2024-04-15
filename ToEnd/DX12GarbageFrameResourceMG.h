@@ -19,7 +19,7 @@ public:
 	void Init();
 	void TryClearJunks();
 	void RegistGarbege(ID3D12CommandQueue* cmdQueue, Microsoft::WRL::ComPtr<ID3D12Resource> resource, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc);
-	void RegistGarbeges(ID3D12CommandQueue* cmdQueue, std::vector< Microsoft::WRL::ComPtr<ID3D12Resource>>& resources, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc);
+	void RegistGarbeges(ID3D12CommandQueue* cmdQueue, std::vector< Microsoft::WRL::ComPtr<ID3D12Resource>> resources, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc);
 
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>	RentCommandAllocator();
 	ID3D12GraphicsCommandList*						GetGraphicsCmd() { return m_baseCmd.Get(); }

@@ -42,7 +42,7 @@ void DX12GarbageFrameResourceMG::RegistGarbege(ID3D12CommandQueue* cmdQueue, Mic
 }
 
 void DX12GarbageFrameResourceMG::RegistGarbeges(ID3D12CommandQueue* cmdQueue, 
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& resources, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc)
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources, Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc)
 {
 	m_fenceValue++;
 	ThrowIfFailed(cmdQueue->Signal(m_fence.Get(), m_fenceValue));

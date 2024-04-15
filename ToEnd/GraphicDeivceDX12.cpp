@@ -96,8 +96,6 @@ void GraphicDeviceDX12::LightRender()
 			m_cmdList->SetPipelineState(currPso.pso);
 			m_cmdList->SetGraphicsRootSignature(currPso.rootSig);
 
-			currPso.baseGraphicCmdFunc(m_cmdList.Get());
-
 			auto currQeue = currPso.renderQueue;
 			if (currQeue)
 			{
@@ -118,11 +116,7 @@ void GraphicDeviceDX12::LightRender()
 					}
 				}
 
-				for (auto& currNode : currQeue->queue)
-				{
-					currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
-					break;
-				}
+				currPso.baseGraphicCmdFunc(m_cmdList.Get());
 			}
 		}
 	}
@@ -847,25 +841,27 @@ void GraphicDeviceDX12::BuildPso()
 
 		m_lightPSOs[PIPELINE_LIGHT_DIR].baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+			if (m_numDirLight)
+			{
+				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+				cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
 
-			ID3D12DescriptorHeap* heaps[] = { m_deferredBaseSRVHeap.Get() };
-			cmd->SetDescriptorHeaps(1, heaps);
-			cmd->SetGraphicsRootDescriptorTable(1, m_deferredBaseSRVHeap->GetGPUDescriptorHandleForHeapStart());
+				ID3D12DescriptorHeap* heaps[] = { m_deferredBaseSRVHeap.Get() };
+				cmd->SetDescriptorHeaps(1, heaps);
+				cmd->SetGraphicsRootDescriptorTable(1, m_deferredBaseSRVHeap->GetGPUDescriptorHandleForHeapStart());
 
-			cmd->IASetVertexBuffers(0, 0, nullptr);
+				cmd->IASetVertexBuffers(0, 0, nullptr);
+
+				auto gpuStart = m_dirLightDatas->Resource()->GetGPUVirtualAddress();
+				gpuStart += (m_dirLightDatas->GetBufferSize() / m_numFrameResource) * m_currFrame;
+
+				cmd->SetGraphicsRoot32BitConstant(2, m_numDirLight, 0);
+				cmd->SetGraphicsRootShaderResourceView(3, gpuStart);
+				cmd->DrawInstanced(1, 1, 0, 0);
+			}
 		};
 
-		m_lightPSOs[PIPELINE_LIGHT_DIR].nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
-		{
-			auto gpuStart = m_dirLightDatas->Resource()->GetGPUVirtualAddress();
-			gpuStart += (m_dirLightDatas->GetBufferSize() / m_numFrameResource) * m_currFrame;
-
-			cmd->SetGraphicsRoot32BitConstant(2, m_numDirLight, 0);
-			cmd->SetGraphicsRootShaderResourceView(3, gpuStart);
-			cmd->DrawInstanced(1, 1, 0, 0);
-		};
+		m_lightPSOs[PIPELINE_LIGHT_DIR].nodeGraphicCmdFunc = nullptr;
 
 		//////////////////////////////////////////////////////////point light
 		rootParams.clear();

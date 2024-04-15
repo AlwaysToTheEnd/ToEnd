@@ -9,7 +9,7 @@ class DX12DefaultBufferCreator
 	DX12DefaultBufferCreator();
 	~DX12DefaultBufferCreator();
 public:
-	static DX12DefaultBufferCreator instance;
+	static DX12DefaultBufferCreator s_instance;
 
 	void Init();
 	void CreateDefaultBuffer(const void* data, const D3D12_RESOURCE_DESC& desc,  D3D12_RESOURCE_STATES endState, ID3D12Resource** out);

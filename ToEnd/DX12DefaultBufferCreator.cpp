@@ -4,7 +4,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-DX12DefaultBufferCreator DX12DefaultBufferCreator::instance;
+DX12DefaultBufferCreator DX12DefaultBufferCreator::s_instance;
 
 DX12DefaultBufferCreator::DX12DefaultBufferCreator()
 {

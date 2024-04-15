@@ -13,6 +13,7 @@
 #include "DX12GraphicResourceManager.h"
 #include "DX12TextureBuffer.h"
 #include "InputManager.h"
+#include "Dx12FontManager.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -31,7 +32,9 @@ HRESULT App::Init()
 	InputManager::Init(m_hMainWnd);
 	
 	DX12GraphicResourceManager::s_insatance.Init();
-	DX12DefaultBufferCreator::instance.Init();
+	DX12DefaultBufferCreator::s_instance.Init();
+	DX12FontManger::s_instance.Init();
+	
 	DX12TextureBuffer::Init();
 
 	m_testScene = new TestScene();

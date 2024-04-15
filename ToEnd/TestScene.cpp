@@ -21,7 +21,7 @@ TestScene::~TestScene()
 void TestScene::Init()
 {
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
-	DX12FontManger::LoadFont(L"FontData/baseFont.spritefont");
+	DX12FontManger::s_instance.LoadFont(L"FontData/baseFont.spritefont");
 
 	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs,&m_bodyMats, &m_bodyNodes);
 	{
