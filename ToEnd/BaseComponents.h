@@ -106,7 +106,6 @@ private:
 	unsigned int m_renderID = 0;
 };
 
-
 class COMDX12UIRenderer : public Component
 {
 public:

@@ -7,46 +7,24 @@ SamplerState gsamAnisotropicClamp : register(s5);
 
 struct CharInfo
 {
-    float xOffsetInString;
-    uint stringIndex;
-    uint glyphID;
-    uint stringInfoID;
-};
-
-struct StringInfo
-{
     float4 color;
-    float3 pos;
-    float size;
+    float2 ltP;
+    float2 rbP;
+    float depth;
+    uint glyphID;
     uint renderID;
-    float3 pad0;
+    float pad0;
 };
 
 struct Glyph
 {
-    int pad0;
-    int subrect_left;
-    int subrect_top;
-    int subrect_right;
-    int subrect_bottom;
-    float xOffset;
-    float yOffset;
-    float xAdvance;
+    float2 uvLT;
+    float2 uvRB;
 };
 
-cbuffer FontRenderConst : register(b0)
-{
-    float gLineSpacing;
-    float gWindowWidthReciprocal;
-    float gWindowHeightReciprocal;
-    float gTextureWidthReciprocal;
-    float gTextureHeightReciprocal;
-};
-
-Texture2D<float4> gSpriteTexture : register(t0);
-StructuredBuffer<CharInfo> gCharInfos : register(t1);
-StructuredBuffer<StringInfo> gStringInfos : register(t2);
-StructuredBuffer<Glyph> gGlyphs : register(t3);
+StructuredBuffer<CharInfo> gCharInfos : register(t0);
+StructuredBuffer<Glyph> gGlyphs : register(t1);
+Texture2D<float4> gSpriteTexture : register(t2);
 
 struct VSOut
 {
@@ -69,8 +47,9 @@ VSOut VS(uint vIndex : SV_VertexID)
 struct GSOut
 {
     float4 position : SV_position;
+    float4 color : COLOR0;
     float2 uv : TEXCOORD0;
-    nointerpolation uint stringInfoID : TEXCOORD1;
+    nointerpolation uint renderID : TEXCOORD1;
 };
 
 [maxvertexcount(4)]
@@ -78,34 +57,30 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 {
     CharInfo cInfo = gCharInfos[input[0].vIndex];
     Glyph currGlyph = gGlyphs[cInfo.glyphID];
-    StringInfo sInfo = gStringInfos[cInfo.stringInfoID];
-    
-    float2 uvLT = float2(float(currGlyph.subrect_left) * gTextureWidthReciprocal, float(currGlyph.subrect_right) * gTextureHeightReciprocal);
-    float2 uvRB = float2(float(currGlyph.subrect_left) * gTextureWidthReciprocal, float(currGlyph.subrect_right) * gTextureHeightReciprocal);
-    
-    float2 size = float2(gWindowWidthReciprocal, gWindowHeightReciprocal) * 2.0f * sInfo.size;
-    float2 fontSize = float2(currGlyph.subrect_right - currGlyph.subrect_left, currGlyph.subrect_bottom - currGlyph.subrect_top) * size;
-    float2 posLT = float2(sInfo.pos.x * gWindowWidthReciprocal, sInfo.pos.y * gWindowHeightReciprocal) * 2.0f - 1.0f;
-    float2 posRB = float2(posLT.x + fontSize.x + (size.x * cInfo.xOffsetInString), posLT.y - fontSize.y);
-    
+  
     GSOut vertices[4];
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(posLT.x, posRB.y, sInfo.pos.z, 1.0f);
-    vertices[1].position = float4(posLT.x, posLT.y, sInfo.pos.z, 1.0f);
-    vertices[2].position = float4(posRB.x, posRB.y, sInfo.pos.z, 1.0f);
-    vertices[3].position = float4(posRB.x, posLT.y, sInfo.pos.z, 1.0f);
+    vertices[0].position = float4(cInfo.ltP.x, cInfo.rbP.y, cInfo.depth, 1.0f);
+    vertices[1].position = float4(cInfo.ltP.x, cInfo.ltP.y, cInfo.depth, 1.0f);
+    vertices[2].position = float4(cInfo.rbP.x, cInfo.rbP.y, cInfo.depth, 1.0f);
+    vertices[3].position = float4(cInfo.rbP.x, cInfo.ltP.y, cInfo.depth, 1.0f);
     
-    vertices[0].uv = float2(uvLT.x, uvRB.y);
-    vertices[1].uv = float2(uvLT.x, uvLT.y);
-    vertices[2].uv = float2(uvRB.x, uvRB.y);
-    vertices[3].uv = float2(uvRB.x, uvLT.y);
+    vertices[0].uv = float2(currGlyph.uvLT.x, currGlyph.uvRB.y);
+    vertices[1].uv = float2(currGlyph.uvLT.x, currGlyph.uvLT.y);
+    vertices[2].uv = float2(currGlyph.uvRB.x, currGlyph.uvRB.y);
+    vertices[3].uv = float2(currGlyph.uvRB.x, currGlyph.uvLT.y);
     
-    vertices[0].stringInfoID = cInfo.stringInfoID;
-    vertices[1].stringInfoID = cInfo.stringInfoID;
-    vertices[2].stringInfoID = cInfo.stringInfoID;
-    vertices[3].stringInfoID = cInfo.stringInfoID;
+    vertices[0].renderID = cInfo.renderID;
+    vertices[1].renderID = cInfo.renderID;
+    vertices[2].renderID = cInfo.renderID;
+    vertices[3].renderID = cInfo.renderID;
+    
+    vertices[0].color = cInfo.color;
+    vertices[1].color = cInfo.color;
+    vertices[2].color = cInfo.color;
+    vertices[3].color = cInfo.color;
 
     output.Append(vertices[0]);
     output.Append(vertices[2]);
@@ -116,14 +91,12 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 PSOut PS(GSOut pin)
 {
     PSOut result;
-    StringInfo sInfo = gStringInfos[pin.stringInfoID];
     result.color = gSpriteTexture.Sample(gsamLinearWrap, pin.uv);
-    result.renderID = sInfo.renderID;
-    result.color = sInfo.color;
+    result.renderID = pin.renderID;
     
     if (result.color.a != 0.0f)
     {
-        result.color = sInfo.color;
+        result.color = pin.color;
     }
     
     return result;

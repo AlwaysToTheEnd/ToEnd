@@ -13,10 +13,52 @@ namespace CGH
 	struct FontGlyph
 	{
 		uint32_t character;
-		RECT subrect_left;
+		RECT subrect;
 		float xOffset;
 		float yOffset;
 		float xAdvance;
+	};
+
+	struct CharInfo
+	{
+		DirectX::XMFLOAT4 color;
+		DirectX::XMFLOAT2 leftTopP;
+		DirectX::XMFLOAT2 rightBottomP;
+		float depth = 0;
+		uint32_t glyphID = 0;
+		uint32_t renderID = 0;
+		float pad0 = 0;
+	};
+
+	struct DX12Font;
+
+	class DX12RenderString
+	{
+	public:
+		DX12RenderString(unsigned int index)
+			:m_Index(index)
+		{
+		}
+		~DX12RenderString();
+
+		void SetRenderString(const wchar_t* str,
+			const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float size, float rowPitch, uint32_t renderID);
+		void ReroadDataFromCurrFont();
+		bool GetActive() { return m_isActive; }
+		unsigned int GetStringSize() { return m_charInfos.size(); }
+		const CGH::CharInfo* GetCharInfoDatas() { return m_charInfos.data(); }
+
+		void SetActive(bool active) { m_isActive = active; }
+		void SetIndex(unsigned int index) { m_Index = index; }
+
+	private:
+		std::wstring				m_string;
+		DirectX::XMFLOAT3			m_pos = {};
+		float						m_rowPitch = 100.0f;
+		float						m_size = 1.0f;
+		bool						m_isActive = true;
+		unsigned int				m_Index = 0;
+		std::vector<CGH::CharInfo>	m_charInfos;
 	};
 
 	struct DX12Font
@@ -28,7 +70,13 @@ namespace CGH
 			uint16_t charNum = UINT16_MAX;
 		};
 
-		unsigned int GetGlyphIndex(uint32_t charCode)
+		struct GlyphForDX12
+		{
+			DirectX::XMFLOAT2 uvLT = {};
+			DirectX::XMFLOAT2 uvRB = {};
+		};
+
+		unsigned int GetGlyphIndex(uint32_t charCode) const
 		{
 			unsigned int result = 0;
 
@@ -51,49 +99,40 @@ namespace CGH
 		uint32_t textureHeight = 0;
 		std::vector<FontGlyph> glyphs;
 		std::vector<CharSubCategory> category;
+
 		Microsoft::WRL::ComPtr<ID3D12Resource> texture;
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> textureHeap;
 		Microsoft::WRL::ComPtr<ID3D12Resource> glyphDatas;
 	};
 }
 
 class DX12FontManger
 {
-	struct CharInfo
-	{
-		float xOffsetInString;
-		uint32_t stringIndex;
-		uint32_t glyphID;
-		uint32_t stringInfoID;
-	};
-
-	struct StringInfo
-	{
-		DirectX::XMFLOAT4 color;
-		DirectX::XMFLOAT3 pos;
-		float size = 1.0f;
-		uint32_t renderID = UINT32_MAX;
-		float pad[3] = {};
-	};
 public:
 	void Init();
+	void AllStringFontReroad();
+
 	const CGH::DX12Font* LoadFont(const wchar_t* filePath);
+	const CGH::DX12Font* GetCurrFont() { return m_currfont; }
+
+	CGH::DX12RenderString* CreateRenderString();
+	void ReleaseRenderString(unsigned int index);
 
 private:
 	DX12FontManger() = default;
-	~DX12FontManger() = default;
-	void CreateFontData(const wchar_t* filePath);
+	~DX12FontManger();
+	CGH::DX12Font* CreateFontData(const wchar_t* filePath);
 
 public:
 	static DX12FontManger s_instance;
 
 private:
 	const unsigned int								m_maxNumChar = 4096;
-	const unsigned int								m_maxNumString = 1024;
 	const std::string								m_fontToken = "DXTKfont";
 	CGH::DX12Font*									m_currfont = nullptr;
 	std::unordered_map<std::wstring, CGH::DX12Font> m_fonts;
 
-	unsigned int									m_numRenderChar = 0;
-	Microsoft::WRL::ComPtr<ID3D12Resource>			m_stringInfos;
-	Microsoft::WRL::ComPtr<ID3D12Resource>			m_charInfos;
+	Microsoft::WRL::ComPtr<ID3D12Resource>	m_charInfos;
+	std::vector<CGH::CharInfo*>				m_charInfoMapped;
+	std::vector<CGH::DX12RenderString*>		m_renderStrings;
 };

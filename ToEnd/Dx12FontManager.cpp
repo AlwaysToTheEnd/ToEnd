@@ -3,6 +3,7 @@
 #include "DX12GarbageFrameResourceMG.h"
 #include "GraphicDeivceDX12.h"
 #include "DX12PipelineMG.h"
+#include <ppl.h>
 
 using namespace DirectX;
 
@@ -12,22 +13,45 @@ void DX12FontManger::Init()
 {
 	auto Graphic = GraphicDeviceDX12::GetGraphic();
 
+	{
+		D3D12_HEAP_PROPERTIES prop = {};
+		D3D12_RESOURCE_DESC desc = {};
+		unsigned int frameNum = Graphic->GetNumFrameResource();
+
+		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+		desc.DepthOrArraySize = 1;
+		desc.Height = 1;
+		desc.MipLevels = 1;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		desc.Width = sizeof(CGH::CharInfo) * m_maxNumChar * frameNum;
+
+		ThrowIfFailed(Graphic->GetDevice()->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE,&desc, 
+			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_charInfos.GetAddressOf())));
+
+		CGH::CharInfo* mapped = nullptr;
+		ThrowIfFailed(m_charInfos->Map(0, nullptr,reinterpret_cast<void**>(&mapped)));
+		
+		m_charInfoMapped.resize(frameNum);
+
+		for (auto& iter : m_charInfoMapped)
+		{
+			iter = mapped;
+			mapped += m_maxNumChar;
+		}
+	}
+
 #pragma region PIPELINE_FONT
 	D3D12_ROOT_PARAMETER temp = {};
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	std::string pipeLineName = "PIPELINE_FONT";
 	{
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		temp.Constants.Num32BitValues = 5;
-		temp.Constants.RegisterSpace = 0;
-		temp.Constants.ShaderRegister = 0;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		rootParams.push_back(temp);
-
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 		temp.Descriptor.RegisterSpace = 0;
 		temp.Descriptor.ShaderRegister = 0;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
 		rootParams.push_back(temp);
 
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
@@ -36,16 +60,17 @@ void DX12FontManger::Init()
 		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
 		rootParams.push_back(temp);
 
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 0;
-		temp.Descriptor.ShaderRegister = 2;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		rootParams.push_back(temp);
+		D3D12_DESCRIPTOR_RANGE textureTableRange[1] = {};
+		textureTableRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		textureTableRange[0].RegisterSpace = 0;
+		textureTableRange[0].BaseShaderRegister = 2;
+		textureTableRange[0].NumDescriptors = 1;
+		textureTableRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 0;
-		temp.Descriptor.ShaderRegister = 3;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		temp.DescriptorTable.NumDescriptorRanges = 1;
+		temp.DescriptorTable.pDescriptorRanges = textureTableRange;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		rootParams.push_back(temp);
 
 		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
@@ -101,30 +126,45 @@ void DX12FontManger::Init()
 
 		fontWorkSet.baseGraphicCmdFunc = [this, Graphic](ID3D12GraphicsCommandList* cmd)
 		{
-			if (m_currfont && m_numRenderChar)
+			if (m_currfont && m_renderStrings.size())
 			{
 				auto currFrame = Graphic->GetCurrFrameIndex();
-				auto charInfoGPU = m_charInfos->GetGPUVirtualAddress();
-				auto stringInfoGPU = m_stringInfos->GetGPUVirtualAddress();
+				unsigned int numRenderChar = 0;
+				unsigned int charInfoStructSize = sizeof(CGH::CharInfo);
 
-				charInfoGPU += m_maxNumChar * sizeof(CharInfo) * currFrame;
-				stringInfoGPU += m_maxNumString * sizeof(StringInfo) * currFrame;
+				CGH::CharInfo* mapped = m_charInfoMapped[currFrame];
+				for (auto currString : m_renderStrings)
+				{
+					if (currString->GetActive())
+					{
+						auto stringSize = currString->GetStringSize();
+						std::memcpy(mapped, currString->GetCharInfoDatas(), stringSize * charInfoStructSize);
 
-				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-				cmd->SetGraphicsRoot32BitConstant(0, m_currfont->lineSpacing, 0);
-				cmd->SetGraphicsRoot32BitConstant(0, 1.0f / m_currfont->textureWidth, 0);
-				cmd->SetGraphicsRoot32BitConstant(0, 1.0f / m_currfont->textureHeight, 0);
-				cmd->SetGraphicsRoot32BitConstant(0, 1.0f / GO.WIN.WindowsizeX, 1);
-				cmd->SetGraphicsRoot32BitConstant(0, 1.0f / GO.WIN.WindowsizeY, 2);
-				cmd->SetGraphicsRootShaderResourceView(1, m_currfont->texture->GetGPUVirtualAddress());
-				cmd->SetGraphicsRootShaderResourceView(2, charInfoGPU);
-				cmd->SetGraphicsRootShaderResourceView(3, stringInfoGPU);
-				cmd->SetGraphicsRootShaderResourceView(4, m_currfont->glyphDatas->GetGPUVirtualAddress());
+						numRenderChar += stringSize;
+						mapped += stringSize;
+					}
+				}
 
-				cmd->IASetVertexBuffers(0, 0, nullptr);
-				cmd->IASetIndexBuffer(nullptr);
+				if (numRenderChar)
+				{
+					auto charInfoGPU = m_charInfos->GetGPUVirtualAddress();
 
-				cmd->DrawInstanced(m_numRenderChar, 1, 0, 0);
+					charInfoGPU += m_maxNumChar * sizeof(CGH::CharInfo) * currFrame;
+
+					ID3D12DescriptorHeap* heaps[] = { m_currfont->textureHeap.Get() };
+
+					cmd->SetDescriptorHeaps(1, heaps);
+
+					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					cmd->SetGraphicsRootShaderResourceView(0, charInfoGPU);
+					cmd->SetGraphicsRootShaderResourceView(1, m_currfont->glyphDatas->GetGPUVirtualAddress());
+					cmd->SetGraphicsRootDescriptorTable(2, m_currfont->textureHeap->GetGPUDescriptorHandleForHeapStart());
+
+					cmd->IASetVertexBuffers(0, 0, nullptr);
+					cmd->IASetIndexBuffer(nullptr);
+
+					cmd->DrawInstanced(numRenderChar, 1, 0, 0);
+				}
 			}
 		};
 
@@ -135,17 +175,33 @@ void DX12FontManger::Init()
 const CGH::DX12Font* DX12FontManger::LoadFont(const wchar_t* filePath)
 {
 	auto iter = s_instance.m_fonts.find(filePath);
+	CGH::DX12Font* result = nullptr;
 
 	if (iter == s_instance.m_fonts.end())
 	{
-		s_instance.CreateFontData(filePath);
-		iter = s_instance.m_fonts.find(filePath);
+		result = s_instance.CreateFontData(filePath);
+	}
+	else
+	{
+		result = &iter->second;
 	}
 
-	return &iter->second;
+	if (m_currfont != result)
+	{
+
+		m_currfont = result;
+		AllStringFontReroad();
+	}
+
+	return result;
 }
 
-void DX12FontManger::CreateFontData(const wchar_t* filePath)
+DX12FontManger::~DX12FontManger()
+{
+	m_charInfos->Unmap(0, nullptr);
+}
+
+CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 {
 	auto& currFont = m_fonts[filePath];
 	BinaryReader reader(filePath);
@@ -243,7 +299,7 @@ void DX12FontManger::CreateFontData(const wchar_t* filePath)
 		ThrowIfFailed(device->CreateCommittedResource(&upProp, D3D12_HEAP_FLAG_NONE,
 			&upDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(textureUploadBuffer.GetAddressOf())));
 
-		upDesc.Width = sizeof(CGH::FontGlyph) * glyphCount;
+		upDesc.Width = sizeof(CGH::DX12Font::GlyphForDX12) * glyphCount;
 		ThrowIfFailed(device->CreateCommittedResource(&upProp, D3D12_HEAP_FLAG_NONE,
 			&upDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(glyphUploadBuffer.GetAddressOf())));
 
@@ -300,8 +356,27 @@ void DX12FontManger::CreateFontData(const wchar_t* filePath)
 		glyphDataBar.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 		glyphDataBar.Transition.Subresource = 0;
 
-		subData.pData = currFont.glyphs.data();
-		subData.RowPitch = sizeof(CGH::FontGlyph) * glyphCount;
+		std::vector<CGH::DX12Font::GlyphForDX12> dx12GlyphDatas;
+		dx12GlyphDatas.resize(glyphCount);
+
+		double textureWidthReciprocal = 1.0f / textureWidth;
+		double textureHeightReciprocal = 1.0f / textureHeight;
+
+		Concurrency::parallel_for(uint32_t(0), glyphCount, [&dx12GlyphDatas, &currFont, textureWidthReciprocal, textureHeightReciprocal](uint32_t index)
+			{
+				auto& currGlyph = currFont.glyphs[index];
+				dx12GlyphDatas[index].uvLT = { (float)(currGlyph.subrect.left * textureWidthReciprocal), (float)(currGlyph.subrect.top * textureHeightReciprocal) };
+				dx12GlyphDatas[index].uvRB = { (float)(currGlyph.subrect.right * textureWidthReciprocal),(float)(currGlyph.subrect.bottom * textureHeightReciprocal) };
+			});
+		/*for (size_t i = 0; i < glyphCount; i++)
+		{
+			auto& currGlyph = currFont.glyphs[i];
+			dx12GlyphDatas[i].uvLT = {  (float)(currGlyph.subrect.left * textureWidthReciprocal), (float)(currGlyph.subrect.top * textureHeightReciprocal) };
+			dx12GlyphDatas[i].uvRB = { (float)(currGlyph.subrect.right * textureWidthReciprocal),(float)(currGlyph.subrect.bottom * textureHeightReciprocal) };
+		}*/
+
+		subData.pData = dx12GlyphDatas.data();
+		subData.RowPitch = sizeof(CGH::DX12Font::GlyphForDX12) * glyphCount;
 		subData.SlicePitch = subData.RowPitch;
 		cmd->ResourceBarrier(1, &glyphDataBar);
 		UpdateSubresources<1>(cmd, currFont.glyphDatas.Get(), glyphUploadBuffer.Get(), 0, 0, 1, &subData);
@@ -312,5 +387,124 @@ void DX12FontManger::CreateFontData(const wchar_t* filePath)
 		ID3D12CommandList* cmds[] = { cmd };
 		queue->ExecuteCommandLists(1, cmds);
 		DX12GarbageFrameResourceMG::s_instance.RegistGarbeges(queue, { textureUploadBuffer, glyphUploadBuffer }, alloc);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		desc.NumDescriptors = 1;
+
+		ThrowIfFailed(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(currFont.textureHeap.GetAddressOf())));
+	}
+
+	return &currFont;
+}
+
+void DX12FontManger::AllStringFontReroad()
+{
+	for (auto iter : m_renderStrings)
+	{
+		iter->ReroadDataFromCurrFont();
+	}
+}
+
+CGH::DX12RenderString* DX12FontManger::CreateRenderString()
+{
+	CGH::DX12RenderString* result = new CGH::DX12RenderString(m_renderStrings.size());
+	m_renderStrings.push_back(result);
+	return result;
+}
+
+void DX12FontManger::ReleaseRenderString(unsigned int index)
+{
+	m_renderStrings.back()->SetIndex(index);
+	m_renderStrings[index] = m_renderStrings.back();
+	m_renderStrings.pop_back();
+}
+
+CGH::DX12RenderString::~DX12RenderString()
+{
+	DX12FontManger::s_instance.ReleaseRenderString(m_Index);
+}
+
+void CGH::DX12RenderString::SetRenderString(const wchar_t* str,
+	const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float _size, float rowPitch, uint32_t renderID)
+{
+	m_string = str;
+	m_charInfos.resize(m_string.length());
+
+	auto currFont = DX12FontManger::s_instance.GetCurrFont();
+	const auto& glyphs = currFont->glyphs;
+	XMFLOAT2 winSizeReciprocal;
+	winSizeReciprocal.x = 1.0f / GO.WIN.WindowsizeX;
+	winSizeReciprocal.y = 1.0f / GO.WIN.WindowsizeY;
+
+	XMFLOAT2 size = { winSizeReciprocal.x * 2.0f * _size, winSizeReciprocal.y * 2.0f * _size };
+
+	size_t index = 0;
+	float offsetInString = 0.0f;
+	for (auto& iter : m_charInfos)
+	{
+		iter.glyphID = currFont->GetGlyphIndex(str[index]);
+		auto& currGlyph = glyphs[iter.glyphID];
+		XMFLOAT2 fontSize = { (currGlyph.subrect.right - currGlyph.subrect.right) * size.x,(currGlyph.subrect.bottom - currGlyph.subrect.top) * size.y };
+
+		iter.depth = pos.z;
+		iter.renderID = renderID;
+		iter.color = color;
+		iter.leftTopP = { pos.x + offsetInString, pos.y };
+		iter.rightBottomP = { iter.leftTopP.x + fontSize.x, iter.leftTopP.y - fontSize.y };
+
+		iter.leftTopP.x = iter.leftTopP.x * winSizeReciprocal.x * 2.0f - 1.0f;
+		iter.leftTopP.y = iter.leftTopP.y * winSizeReciprocal.y * 2.0f - 1.0f;
+		iter.rightBottomP.x = iter.rightBottomP.x * winSizeReciprocal.x * 2.0f - 1.0f;
+		iter.rightBottomP.y = iter.rightBottomP.y * winSizeReciprocal.y * 2.0f - 1.0f;
+
+		offsetInString += fontSize.x + (currGlyph.xAdvance * fontSize.x / 100);
+		index++;
+	}
+
+	m_pos = pos;
+	m_rowPitch = rowPitch;
+	m_size = _size;
+}
+
+void CGH::DX12RenderString::ReroadDataFromCurrFont()
+{
+	if (m_charInfos.size())
+	{
+		auto currFont = DX12FontManger::s_instance.GetCurrFont();
+		const auto& glyphs = currFont->glyphs;
+		XMFLOAT2 winSizeReciprocal;
+		winSizeReciprocal.x = 1.0f / GO.WIN.WindowsizeX;
+		winSizeReciprocal.y = 1.0f / GO.WIN.WindowsizeY;
+
+		XMFLOAT2 size = { winSizeReciprocal.x * 2.0f * m_size, winSizeReciprocal.y * 2.0f * m_size };
+		unsigned int renderID = m_charInfos.front().renderID;
+		XMFLOAT4 color = m_charInfos.front().color;
+
+		m_charInfos.resize(m_string.length());
+		size_t index = 0;
+		float offsetInString = 0.0f;
+		for (auto& iter : m_charInfos)
+		{
+			iter.glyphID = currFont->GetGlyphIndex(m_string[index]);
+			auto& currGlyph = glyphs[iter.glyphID];
+			XMFLOAT2 fontSize = { (currGlyph.subrect.right - currGlyph.subrect.right) * size.x,(currGlyph.subrect.bottom - currGlyph.subrect.top) * size.y };
+
+			iter.depth = m_pos.z;
+			iter.renderID = renderID;
+			iter.color = color;
+			iter.leftTopP = { m_pos.x + offsetInString, m_pos.y };
+			iter.rightBottomP = { iter.leftTopP.x + fontSize.x, iter.leftTopP.y - fontSize.y };
+
+			iter.leftTopP.x = iter.leftTopP.x * winSizeReciprocal.x * 2.0f - 1.0f;
+			iter.leftTopP.y = iter.leftTopP.y * winSizeReciprocal.y * 2.0f - 1.0f;
+			iter.rightBottomP.x = iter.rightBottomP.x * winSizeReciprocal.x * 2.0f - 1.0f;
+			iter.rightBottomP.y = iter.rightBottomP.y * winSizeReciprocal.y * 2.0f - 1.0f;
+
+			offsetInString += fontSize.x + (currGlyph.xAdvance * fontSize.x / 100);
+			index++;
+		}
 	}
 }
