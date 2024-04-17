@@ -22,6 +22,7 @@ public:
 	void RenderBegin(ID3D12GraphicsCommandList* cmd, const float clearColor[4]);
 	void RenderEnd(ID3D12GraphicsCommandList* cmd);
 	void Present();
+	void ClearDS(ID3D12GraphicsCommandList* cmd);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CurrRTV() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const;

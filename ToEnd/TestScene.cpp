@@ -7,6 +7,7 @@
 #include "Xml.h"
 #include <DirectXMath.h>
 #include "Dx12FontManager.h"
+#include <DirectXColors.h>
 
 #include "LightComponents.h"
 
@@ -143,12 +144,6 @@ void TestScene::Init()
 		material->SetTexture(&texInfo, 1);
 	}
 
-	auto light = m_dirLight.CreateComponent<COMDirLight>();
-	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	light->m_data.power = 1.5f;
-
-	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
-
 	{
 		struct PosnScale
 		{
@@ -197,6 +192,17 @@ void TestScene::Init()
 
 		delete document;
 	}
+
+	auto light = m_dirLight.CreateComponent<COMDirLight>();
+	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+	light->m_data.power = 1.5f;
+
+	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
+
+	auto fontrender = m_dirLight.CreateComponent<COMFontRenderer>();
+	DirectX::XMVECTOR color = DirectX::Colors::Black;
+	color.m128_f32[3] = 0.5f;
+	fontrender->SetRenderString(L"Test Rendering", color, { 10.0f,10.0f, 0.1f }, 1.0f, 350.0f);
 }
 
 void TestScene::Update(float delta)

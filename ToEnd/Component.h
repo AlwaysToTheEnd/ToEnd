@@ -25,5 +25,9 @@ public:
 	virtual size_t GetTypeHashCode() = 0;
 	virtual unsigned int GetPriority() { return COMPONENT_CUSTOM; }
 
+	void SetActvie(bool value) { m_active = value; }
+	bool GetActive() { return m_active; }
+
 protected:
+	bool m_active = true;
 };

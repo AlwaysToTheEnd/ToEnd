@@ -96,10 +96,6 @@ void DX12SwapChain::ReSize(ID3D12GraphicsCommandList* cmd, unsigned int x, unsig
 
 	CreateResources(x, y);
 	CreateResourceViews();
-
-	auto dsBarrier = CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencil.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
-	cmd->ResourceBarrier(1, &dsBarrier);
 }
 
 void DX12SwapChain::RenderBegin(ID3D12GraphicsCommandList* cmd, const float clearColor[4])
@@ -124,6 +120,11 @@ void DX12SwapChain::Present()
 {
 	ThrowIfFailed(m_swapChain->Present(0, 0));
 	m_currBackBufferIndex = (m_currBackBufferIndex + 1) % m_numSwapBuffer;
+}
+
+void DX12SwapChain::ClearDS(ID3D12GraphicsCommandList* cmd)
+{
+	cmd->ClearDepthStencilView(GetDSV(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DX12SwapChain::CurrRTV() const
@@ -181,7 +182,7 @@ void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)
 
 	ThrowIfFailed(m_device->CreateCommittedResource(
 		&heapProperties, D3D12_HEAP_FLAG_NONE, &dsDesc,
-		D3D12_RESOURCE_STATE_COMMON, &clearValue, IID_PPV_ARGS(m_depthStencil.GetAddressOf())));
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(m_depthStencil.GetAddressOf())));
 }
 
 

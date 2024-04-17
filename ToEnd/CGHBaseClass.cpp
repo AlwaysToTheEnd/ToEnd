@@ -32,7 +32,7 @@ void CGHNode::Update(unsigned int currFrame, float delta)
 	{
 		for (auto& iter : m_components)
 		{
-			if (iter.get())
+			if (iter.get() && iter->GetActive())
 			{
 				iter->Update(this, currFrame, delta);
 			}
@@ -51,7 +51,7 @@ void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 	{
 		for (auto& iter : m_components)
 		{
-			if (iter.get())
+			if (iter.get() && iter->GetActive())
 			{
 				iter->RateUpdate(this, currFrame, delta);
 			}

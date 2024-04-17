@@ -4,6 +4,9 @@ SamplerState gsamLinearWrap : register(s2);
 SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
+SamplerComparisonState gsamShadow : register(s6);
+
+float epsion = 0.000001f;
 
 struct CharInfo
 {
@@ -22,9 +25,9 @@ struct Glyph
     float2 uvRB;
 };
 
-StructuredBuffer<CharInfo> gCharInfos : register(t0);
-StructuredBuffer<Glyph> gGlyphs : register(t1);
-Texture2D<float4> gSpriteTexture : register(t2);
+StructuredBuffer<CharInfo> gCharInfos : register(t0, space0);
+StructuredBuffer<Glyph> gGlyphs : register(t1, space0);
+Texture2D<float4> gSpriteTexture : register(t2, space0);
 
 struct VSOut
 {
@@ -33,8 +36,8 @@ struct VSOut
 
 struct PSOut
 {
-    uint renderID : SV_Target0;
-    float4 color : SV_Target1;
+    float4 color : SV_Target0;
+    uint renderID : SV_Target1;
 };
 
 VSOut VS(uint vIndex : SV_VertexID)
@@ -47,9 +50,9 @@ VSOut VS(uint vIndex : SV_VertexID)
 struct GSOut
 {
     float4 position : SV_position;
-    float4 color : COLOR0;
-    float2 uv : TEXCOORD0;
-    nointerpolation uint renderID : TEXCOORD1;
+    float4 color : TEXCOORD0;
+    float2 uv : TEXCOORD1;
+    nointerpolation uint renderID : TEXCOORD2;
 };
 
 [maxvertexcount(4)]
@@ -91,12 +94,13 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 PSOut PS(GSOut pin)
 {
     PSOut result;
-    result.color = gSpriteTexture.Sample(gsamLinearWrap, pin.uv);
     result.renderID = pin.renderID;
-    
-    if (result.color.a != 0.0f)
+    result.color = pin.color;
+    float4 textureColor = gSpriteTexture.Sample(gsamLinearClamp, pin.uv);
+ 
+    if (textureColor.r < 0.1f)
     {
-        result.color = pin.color;
+        result.color.a = 0.0f;
     }
     
     return result;

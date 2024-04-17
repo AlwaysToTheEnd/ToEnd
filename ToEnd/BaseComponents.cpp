@@ -3,12 +3,14 @@
 #include "GraphicDeivceDX12.h"
 #include "DX12GraphicResourceManager.h"
 #include "DX12TextureBuffer.h"
+#include "Dx12FontManager.h"
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
 size_t COMSkinnedMesh::s_hashCode = typeid(COMSkinnedMesh).hash_code();
 size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRenderer).hash_code();
-size_t COMDX12UIRenderer::s_hashCode = typeid(COMDX12UIRenderer).hash_code();
+size_t COMUIRenderer::s_hashCode = typeid(COMUIRenderer).hash_code();
+size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
 
 COMTransform::COMTransform(CGHNode* node)
 {
@@ -241,4 +243,49 @@ void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
 UINT64 COMMaterial::GetMaterialDataGPU(unsigned int currFrameIndex)
 {
 	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex, currFrameIndex);
+}
+
+COMFontRenderer::COMFontRenderer(CGHNode* node)
+{
+}
+
+void COMFontRenderer::SetRenderString(const wchar_t* str, 
+	DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch)
+{
+	m_renderString.SetRenderString(str, color, pos, scale, rowPitch, m_renderID);
+}
+
+void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+{
+	DX12FontManger::s_instance.RenderString(m_renderString, currFrame);
+}
+
+void COMFontRenderer::SetPos(const DirectX::XMFLOAT3& pos)
+{
+	m_renderString.pos = pos;
+	m_renderString.ReroadDataFromCurrFont();
+}
+
+void COMFontRenderer::SetText(const wchar_t* str)
+{
+	m_renderString.str = str;
+	m_renderString.ReroadDataFromCurrFont();
+}
+
+void COMFontRenderer::SetColor(const DirectX::XMFLOAT4& color)
+{
+	m_renderString.color = color;
+	m_renderString.ReroadDataFromCurrFont();
+}
+
+void COMFontRenderer::SetSize(float size)
+{
+	m_renderString.scaleSize = size;
+	m_renderString.ReroadDataFromCurrFont();
+}
+
+void COMFontRenderer::SetRowPitch(float rowPitch)
+{
+	m_renderString.rowPitch = rowPitch;
+	m_renderString.ReroadDataFromCurrFont();
 }

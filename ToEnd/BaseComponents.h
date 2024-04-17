@@ -3,6 +3,7 @@
 #include <vector>
 #include "Component.h"
 #include "CGHGraphicResource.h"
+#include "DX12FontStructs.h"
 
 class COMTransform : public Component
 {
@@ -87,7 +88,17 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap;
 };
 
-class COMDX12SkinnedMeshRenderer : public Component
+class CGHRenderer
+{
+public:
+	unsigned int GetRenderID() { return m_renderID + 1; }
+
+protected:
+	unsigned int m_renderID = 0;
+	unsigned int m_renderFlag = 0;
+};
+
+class COMDX12SkinnedMeshRenderer : public Component, public CGHRenderer
 {
 public:
 	COMDX12SkinnedMeshRenderer(CGHNode* node);
@@ -98,29 +109,46 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
-	unsigned int GetRenderID() { return m_renderID +1; }
-
 private:
 	static size_t s_hashCode;
-	unsigned int m_renderFlag = 0;
-	unsigned int m_renderID = 0;
 };
 
-class COMDX12UIRenderer : public Component
+class COMUIRenderer : public Component, public CGHRenderer
 {
 public:
-	COMDX12UIRenderer(CGHNode* node);
-	virtual ~COMDX12UIRenderer() = default;
+	COMUIRenderer(CGHNode* node);
+	virtual ~COMUIRenderer() = default;
 
 	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_UI_RENDERER; }
 
-	unsigned int GetRenderID() { return m_renderID + 1; }
+private:
+	static size_t s_hashCode;
+};
+
+class COMFontRenderer : public Component, public CGHRenderer
+{
+public:
+	COMFontRenderer(CGHNode* node);
+	virtual ~COMFontRenderer() = default;
+
+	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual size_t GetTypeHashCode() override { return s_hashCode; }
+	virtual unsigned int GetPriority() override { return COMPONENT_CUSTOM; }
+
+	void SetRenderString(const wchar_t* str,
+		DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch);
+	void SetPos(const DirectX::XMFLOAT3& pos);
+	void SetText(const wchar_t* str);
+	void SetColor(const DirectX::XMFLOAT4& color);
+	void SetSize(float size);
+	void SetRowPitch(float rowPitch);
+
 
 private:
 	static size_t s_hashCode;
-	unsigned int m_renderFlag = 0;
-	unsigned int m_renderID = 0;
+	CGH::DX12RenderString m_renderString;
 };

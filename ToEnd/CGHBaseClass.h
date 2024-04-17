@@ -149,9 +149,9 @@ inline COMDX12SkinnedMeshRenderer* CGHNode::GetComponent()
 
 
 template<>
-inline COMDX12UIRenderer* CGHNode::CreateComponent()
+inline COMUIRenderer* CGHNode::CreateComponent()
 {
-	COMDX12UIRenderer* result = new COMDX12UIRenderer(this);
+	COMUIRenderer* result = new COMUIRenderer(this);
 	std::unique_ptr<Component> uniqueTemp(result);
 
 	m_components[COMPONENT_UI_RENDERER] = std::move(uniqueTemp);
@@ -160,9 +160,9 @@ inline COMDX12UIRenderer* CGHNode::CreateComponent()
 }
 
 template<>
-inline COMDX12UIRenderer* CGHNode::GetComponent()
+inline COMUIRenderer* CGHNode::GetComponent()
 {
-	return reinterpret_cast<COMDX12UIRenderer*>(m_components[COMPONENT_UI_RENDERER].get());
+	return reinterpret_cast<COMUIRenderer*>(m_components[COMPONENT_UI_RENDERER].get());
 }
 
 template<typename T>

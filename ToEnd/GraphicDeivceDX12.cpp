@@ -275,6 +275,11 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 	XMStoreFloat3(&m_rayOrigin, rayOrigin);
 }
 
+void GraphicDeviceDX12::SetFontRenderPsoWorkSet(const PipeLineWorkSet& workset)
+{
+	m_fontPSO = workset;
+}
+
 void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 {
 	FlushCommandQueue();
@@ -337,9 +342,6 @@ void GraphicDeviceDX12::RenderBegin()
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
 
-	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-
 	auto backColor = DirectX::Colors::Gray;
 	backColor.f[3] = 0.0f;
 	m_swapChain->RenderBegin(m_cmdList.Get(), backColor);
@@ -391,6 +393,28 @@ void GraphicDeviceDX12::RenderEnd()
 {
 	BaseRender();
 	LightRender();
+
+	{
+		m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+		auto renderIDSrv = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+		renderIDSrv.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV(), renderIDSrv };
+		m_swapChain->ClearDS(m_cmdList.Get());
+		m_cmdList->OMSetRenderTargets(2, rtvs, false, &m_swapChain->GetDSV());
+
+		if (m_fontPSO.pso != nullptr)
+		{
+			m_cmdList->SetPipelineState(m_fontPSO.pso);
+			m_cmdList->SetGraphicsRootSignature(m_fontPSO.rootSig);
+
+			if (m_fontPSO.baseGraphicCmdFunc != nullptr)
+			{
+				m_fontPSO.baseGraphicCmdFunc(m_cmdList.Get());
+			}
+		}
+	}
 
 	m_meshRenderQueue.queue.clear();
 	m_skinnedMeshRenderQueue.queue.clear();
@@ -662,6 +686,7 @@ void GraphicDeviceDX12::BuildPso()
 
 		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_RENDERID].BlendEnable = false;
 		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_RENDERID].LogicOpEnable = false;
+		psoDesc.BlendState.IndependentBlendEnable = true;
 
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;

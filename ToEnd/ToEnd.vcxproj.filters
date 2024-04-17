@@ -98,6 +98,9 @@
     <ClInclude Include="Dx12FontManager.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="DX12FontStructs.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -161,6 +164,9 @@
       <Filter>헤더 파일</Filter>
     </ClCompile>
     <ClCompile Include="Dx12FontManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12FontStructs.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

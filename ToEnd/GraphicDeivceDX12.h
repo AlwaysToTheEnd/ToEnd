@@ -123,6 +123,7 @@ public:
 	void RenderUI(CGHNode* node, unsigned int renderFlag);
 	void RenderEnd();
 
+	void SetFontRenderPsoWorkSet(const PipeLineWorkSet& workset);
 	void OnResize(int windowWidth, int windowHeight);
 	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
@@ -188,6 +189,7 @@ private:
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
 	std::vector<PipeLineWorkSet>										m_PSOs;
 	std::vector<PipeLineWorkSet>										m_lightPSOs;
-	std::vector<PipeLineWorkSet>										m_customPSOs;
+	PipeLineWorkSet														m_fontPSO;
+	std::vector<PipeLineWorkSet>										m_uiPSOs;
 	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };
