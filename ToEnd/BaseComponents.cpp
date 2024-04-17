@@ -269,7 +269,9 @@ void COMFontRenderer::SetPos(const DirectX::XMFLOAT3& pos)
 void COMFontRenderer::SetText(const wchar_t* str)
 {
 	m_renderString.str = str;
-	m_renderString.ReroadDataFromCurrFont();
+
+	SetRenderString(m_renderString.str.c_str(), DirectX::XMLoadFloat4(&m_renderString.color), 
+		m_renderString.pos, m_renderString.scaleSize, m_renderString.rowPitch);
 }
 
 void COMFontRenderer::SetColor(const DirectX::XMFLOAT4& color)

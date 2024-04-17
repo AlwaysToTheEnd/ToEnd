@@ -96,7 +96,7 @@ PSOut PS(GSOut pin)
     PSOut result;
     result.renderID = pin.renderID;
     result.color = pin.color;
-    float4 textureColor = gSpriteTexture.Sample(gsamLinearClamp, pin.uv);
+    float4 textureColor = gSpriteTexture.Sample(gsamAnisotropicClamp, pin.uv);
  
     if (textureColor.r < 0.1f)
     {

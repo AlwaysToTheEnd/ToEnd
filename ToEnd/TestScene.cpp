@@ -209,10 +209,15 @@ void TestScene::Update(float delta)
 {
 	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
 
+
 	static float x, y = 0;
 	//x += delta * 1.0f;
-	//y += delta * 0.8f;
+	y += delta * 0.8f;
 
+	auto fontrender = m_dirLight.GetComponent<COMFontRenderer>();
+	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y* 180/3.141592));
+	fontrender->SetText(rotXvalue.c_str());
+	
 	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
 
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
