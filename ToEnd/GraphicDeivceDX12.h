@@ -63,6 +63,18 @@ class GraphicDeviceDX12
 		float pad = 0;
 	};
 
+	struct UIInfo
+	{
+		unsigned int uiGraphicType = 0;
+		DirectX::XMFLOAT3 pos;
+		DirectX::XMFLOAT4 color;
+		DirectX::XMFLOAT2 uvLT;
+		DirectX::XMFLOAT2 uvRB;
+		DirectX::XMFLOAT2 size;
+		unsigned int renderID = 0;
+		float pad0;
+	};
+
 	enum PIPELINEWORKLIST
 	{
 		PIPELINE_MESH,
@@ -179,9 +191,8 @@ private:
 	UINT16							m_currMouseTargetRednerID = 0;
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 	
-	unsigned int					m_numDirLight = 0;
+	unsigned int										m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
-
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
@@ -190,6 +201,6 @@ private:
 	std::vector<PipeLineWorkSet>										m_PSOs;
 	std::vector<PipeLineWorkSet>										m_lightPSOs;
 	PipeLineWorkSet														m_fontPSO;
-	std::vector<PipeLineWorkSet>										m_uiPSOs;
+	PipeLineWorkSet														m_uiPSO;
 	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };

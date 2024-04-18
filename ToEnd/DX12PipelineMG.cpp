@@ -102,7 +102,7 @@ ID3D12RootSignature* DX12PipelineMG::CreateRootSignature(const char* name, const
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> error = nullptr;
 	
-	HRESULT hr = D3D12SerializeRootSignature(desc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), error.GetAddressOf());
+	HRESULT hr =  D3D12SerializeRootSignature(desc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), error.GetAddressOf());
 	
 	if (error != nullptr)
 	{

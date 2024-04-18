@@ -154,7 +154,6 @@ void COMSkinnedMesh::NodeTreeDirty()
 
 COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
 {
-	m_renderID = 0;
 }
 
 void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
@@ -252,7 +251,7 @@ COMFontRenderer::COMFontRenderer(CGHNode* node)
 void COMFontRenderer::SetRenderString(const wchar_t* str, 
 	DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch)
 {
-	m_renderString.SetRenderString(str, color, pos, scale, rowPitch, m_renderID);
+	m_renderString.SetRenderString(str, color, pos, scale, rowPitch);
 }
 
 void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
@@ -274,10 +273,9 @@ void COMFontRenderer::SetText(const wchar_t* str)
 		m_renderString.pos, m_renderString.scaleSize, m_renderString.rowPitch);
 }
 
-void COMFontRenderer::SetColor(const DirectX::XMFLOAT4& color)
+void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
 {
-	m_renderString.color = color;
-	m_renderString.ReroadDataFromCurrFont();
+	m_renderString.ChangeColor(color);
 }
 
 void COMFontRenderer::SetSize(float size)
@@ -290,4 +288,14 @@ void COMFontRenderer::SetRowPitch(float rowPitch)
 {
 	m_renderString.rowPitch = rowPitch;
 	m_renderString.ReroadDataFromCurrFont();
+}
+
+COMUIRenderer::COMUIRenderer(CGHNode* node)
+{
+
+}
+
+void COMUIRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+{
+
 }

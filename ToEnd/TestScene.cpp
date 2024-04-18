@@ -201,14 +201,13 @@ void TestScene::Init()
 
 	auto fontrender = m_dirLight.CreateComponent<COMFontRenderer>();
 	DirectX::XMVECTOR color = DirectX::Colors::Black;
-	color.m128_f32[3] = 0.5f;
+	//color.m128_f32[3] = 0.5f;
 	fontrender->SetRenderString(L"Test Rendering", color, { 10.0f,10.0f, 0.1f }, 1.0f, 350.0f);
 }
 
 void TestScene::Update(float delta)
 {
 	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
-
 
 	static float x, y = 0;
 	//x += delta * 1.0f;

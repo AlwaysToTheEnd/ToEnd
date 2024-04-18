@@ -143,7 +143,7 @@ public:
 		DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch);
 	void SetPos(const DirectX::XMFLOAT3& pos);
 	void SetText(const wchar_t* str);
-	void SetColor(const DirectX::XMFLOAT4& color);
+	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color);
 	void SetSize(float size);
 	void SetRowPitch(float rowPitch);
 

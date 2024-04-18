@@ -351,13 +351,16 @@ void GraphicDeviceDX12::RenderBegin()
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart() };
 	D3D12_CPU_DESCRIPTOR_HANDLE renderIDTexture = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE renderDiffuseTexture = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	renderIDTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
+	renderDiffuseTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_DIFFUSE;
 
 	backColor.f[0] = 0;
 	backColor.f[1] = 0;
 	backColor.f[2] = 0;
 	backColor.f[3] = 0;
 	m_cmdList->ClearRenderTargetView(renderIDTexture, backColor, 0, nullptr);
+	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, backColor, 0, nullptr);
 
 	m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &m_swapChain->GetDSV());
 }
@@ -398,11 +401,9 @@ void GraphicDeviceDX12::RenderEnd()
 		m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
-		auto renderIDSrv = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
-		renderIDSrv.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV(), renderIDSrv };
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV() };
 		m_swapChain->ClearDS(m_cmdList.Get());
-		m_cmdList->OMSetRenderTargets(2, rtvs, false, &m_swapChain->GetDSV());
+		m_cmdList->OMSetRenderTargets(1, rtvs, false, &m_swapChain->GetDSV());
 
 		if (m_fontPSO.pso != nullptr)
 		{
@@ -684,9 +685,18 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 
+		psoDesc.BlendState.IndependentBlendEnable = true;
+
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].BlendEnable = true;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].BlendOp = D3D12_BLEND_OP_ADD;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].BlendOpAlpha = D3D12_BLEND_OP_MAX;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].SrcBlend = D3D12_BLEND_ONE;
+		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_DIFFUSE].DestBlendAlpha = D3D12_BLEND_ONE;
+
 		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_RENDERID].BlendEnable = false;
 		psoDesc.BlendState.RenderTarget[DEFERRED_TEXTURE_RENDERID].LogicOpEnable = false;
-		psoDesc.BlendState.IndependentBlendEnable = true;
 
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -940,8 +950,97 @@ void GraphicDeviceDX12::BuildPso()
 
 #pragma endregion
 
+#pragma region UIRenderPipeLine
+	{
+		std::string pipeLineName = "PIPELINE_UI";
+		rootParams.clear();
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		temp.Constants.Num32BitValues = 2;
+		temp.Constants.RegisterSpace = 0;
+		temp.Constants.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+		rootParams.push_back(temp);
 
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 0;
+		temp.Descriptor.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+		rootParams.push_back(temp);
 
+		D3D12_DESCRIPTOR_RANGE textureTableRange = {};
+		textureTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		textureTableRange.RegisterSpace = 0;
+		textureTableRange.BaseShaderRegister = 1;
+		textureTableRange.NumDescriptors = 1;
+		textureTableRange.OffsetInDescriptorsFromTableStart = 0;
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		temp.DescriptorTable.NumDescriptorRanges = 1;
+		temp.DescriptorTable.pDescriptorRanges = &textureTableRange;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParams.push_back(temp);
+
+		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
+		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootsigDesc.pStaticSamplers = s_StaticSamplers;
+		rootsigDesc.NumStaticSamplers = _countof(s_StaticSamplers);
+		rootsigDesc.NumParameters = rootParams.size();
+		rootsigDesc.pParameters = rootParams.data();
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		psoDesc.NodeMask = 0;
+
+		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
+
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/UIShader.hlsl", "VS");
+		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName).c_str(), L"Shader/UIShader.hlsl", "GS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName).c_str(), L"Shader/UIShader.hlsl", "PS");
+
+		//IA Set
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		psoDesc.InputLayout.NumElements = 0;
+		psoDesc.InputLayout.pInputElementDescs = nullptr;
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.SampleMask = UINT_MAX;
+
+		psoDesc.BlendState.IndependentBlendEnable = true;
+
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
+		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+		psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_MAX;
+		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
+		psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
+
+		//OM Set
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		psoDesc.NumRenderTargets = 2;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.RTVFormats[1] = DXGI_FORMAT_R16_UINT;
+
+		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
+
+		m_uiPSO.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
+		m_uiPSO.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+
+		m_uiPSO.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+		{
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+		};
+
+		m_uiPSO.nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		{
+			
+		};
+	}
+#pragma endregion
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)

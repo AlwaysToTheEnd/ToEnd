@@ -5,7 +5,7 @@
 using namespace DirectX;
 
 void CGH::DX12RenderString::SetRenderString(const wchar_t* _str,
-	DirectX::FXMVECTOR _color, const DirectX::XMFLOAT3& _pos, float _scale, float _rowPitch, uint32_t renderID)
+	DirectX::FXMVECTOR _color, const DirectX::XMFLOAT3& _pos, float _scale, float _rowPitch)
 {
 	str = _str;
 	DirectX::XMStoreFloat4(&color, _color);
@@ -27,8 +27,8 @@ void CGH::DX12RenderString::SetRenderString(const wchar_t* _str,
 			auto& currGlyph = glyphs[iter.glyphID];
 			XMFLOAT2 fontSize = { float(currGlyph.subrect.right - currGlyph.subrect.left) * _scale,float(currGlyph.subrect.bottom - currGlyph.subrect.top) * _scale };
 			iter.depth = _pos.z;
-			iter.renderID = renderID;
 			iter.color = color;
+			offsetInString += currGlyph.xOffset * _scale;
 			iter.leftTopP = { _pos.x + offsetInString, _pos.y + (currGlyph.yOffset + (currFont->lineSpacing * currLine)) * _scale };
 			iter.rightBottomP = { iter.leftTopP.x + fontSize.x, iter.leftTopP.y + fontSize.y };
 
@@ -44,7 +44,7 @@ void CGH::DX12RenderString::SetRenderString(const wchar_t* _str,
 			}
 			else
 			{
-				offsetInString += (float(currGlyph.subrect.right) - float(currGlyph.subrect.left) + currGlyph.xAdvance + currGlyph.xOffset) * _scale;
+				offsetInString += (float(currGlyph.subrect.right) - float(currGlyph.subrect.left) + currGlyph.xAdvance) * _scale;
 			}
 
 			index++;
@@ -96,5 +96,13 @@ void CGH::DX12RenderString::ReroadDataFromCurrFont()
 
 			index++;
 		}
+	}
+}
+
+void XM_CALLCONV CGH::DX12RenderString::ChangeColor(DirectX::FXMVECTOR color)
+{
+	for(auto & currInfo : charInfos)
+	{
+		DirectX::XMStoreFloat4(&currInfo.color, color);
 	}
 }

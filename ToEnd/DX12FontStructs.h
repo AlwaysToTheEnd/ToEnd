@@ -24,8 +24,8 @@ namespace CGH
 		DirectX::XMFLOAT2 rightBottomP;
 		float depth = 0;
 		uint32_t glyphID = 0;
-		uint32_t renderID = 0;
 		float pad0 = 0;
+		float pad1 = 0;
 	};
 
 	struct DX12Font
@@ -80,10 +80,11 @@ namespace CGH
 		}
 
 		void SetRenderString(const wchar_t* str,
-			DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch, uint32_t renderID);
+			DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch);
 		void ReroadDataFromCurrFont();
+		void XM_CALLCONV ChangeColor(DirectX::FXMVECTOR color);
 
-		const DX12Font* currFont;
+		const DX12Font*				currFont;
 		std::wstring				str;
 		DirectX::XMFLOAT3			pos = {};
 		DirectX::XMFLOAT4			color = {};

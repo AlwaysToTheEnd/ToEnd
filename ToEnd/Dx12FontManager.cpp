@@ -98,9 +98,9 @@ void DX12FontManger::Init()
 		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		psoDesc.SampleMask = UINT_MAX;
 
-		psoDesc.BlendState.IndependentBlendEnable = true;
 
 		psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
 		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -110,12 +110,10 @@ void DX12FontManger::Init()
 		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
 		psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
 
-		psoDesc.BlendState.RenderTarget[1].BlendEnable = false;
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		psoDesc.NumRenderTargets = 2;
+		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		psoDesc.RTVFormats[1] = DXGI_FORMAT_R16_UINT;
 
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
@@ -183,7 +181,10 @@ const CGH::DX12Font* DX12FontManger::LoadFont(const wchar_t* filePath)
 
 DX12FontManger::~DX12FontManger()
 {
-	m_charInfos->Unmap(0, nullptr);
+	if (m_charInfos != nullptr)
+	{
+		m_charInfos->Unmap(0, nullptr);
+	}
 }
 
 CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
