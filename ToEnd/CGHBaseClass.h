@@ -146,6 +146,23 @@ inline COMDX12SkinnedMeshRenderer* CGHNode::GetComponent()
 	return reinterpret_cast<COMDX12SkinnedMeshRenderer*>(m_components[COMPONENT_SKINNEDMESH_RENDERER].get());
 }
 
+template<>
+inline COMUITransform* CGHNode::CreateComponent()
+{
+	COMUITransform* result = new COMUITransform(this);
+	std::unique_ptr<Component> uniqueTemp(result);
+
+	m_components[COMPONENT_UITRANSFORM] = std::move(uniqueTemp);
+
+	return result;
+}
+
+template<>
+inline COMUITransform* CGHNode::GetComponent()
+{
+	return reinterpret_cast<COMUITransform*>(m_components[COMPONENT_UITRANSFORM].get());
+}
+
 template<typename T>
 inline T* CGHNode::CreateComponent()
 {

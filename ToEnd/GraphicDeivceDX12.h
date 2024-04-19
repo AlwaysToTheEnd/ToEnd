@@ -12,6 +12,7 @@
 #include "DX12UploadBuffer.h"
 #include "CGHGraphicResource.h"
 #include "CGHBaseClass.h"
+#include "DX12FontStructs.h"
 
 #include "../Common/Source/CGHUtil.h"
 
@@ -136,6 +137,7 @@ public:
 	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
 	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID);
 	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, unsigned int renderID);
+	void RenderString(const wchar_t* str, const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float size, float rowPitch);
 	void RenderEnd();
 
 	void SetFontRenderPsoWorkSet(const PipeLineWorkSet& workset);
@@ -145,6 +147,7 @@ public:
 
 private:
 	GraphicDeviceDX12();
+	~GraphicDeviceDX12();
 	void BaseRender();
 	void LightRender();
 
@@ -198,6 +201,11 @@ private:
 	ComPtr<ID3D12Resource>			m_uiInfoDatas;
 	ComPtr<ID3D12Resource>			m_uiSpriteTexture;
 	ComPtr<ID3D12DescriptorHeap>	m_uiSpriteSRVHeap;
+
+	const unsigned int						m_maxNumChar = 4096;
+	unsigned int							m_numRenderChar = 0;
+	std::vector<CGH::CharInfo*>				m_charInfoMapped;
+	Microsoft::WRL::ComPtr<ID3D12Resource>	m_charInfos;
 
 	unsigned int										m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;

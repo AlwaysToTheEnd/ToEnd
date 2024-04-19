@@ -139,9 +139,6 @@
     <ClCompile Include="DX12GraphicResourceManager.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
-    <ClCompile Include="DX12FontStructs.cpp">
-      <Filter>Graphic</Filter>
-    </ClCompile>
     <ClCompile Include="Dx12FontManager.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>

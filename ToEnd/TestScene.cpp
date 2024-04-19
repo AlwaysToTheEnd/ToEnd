@@ -198,15 +198,20 @@ void TestScene::Init()
 
 	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
 
-	auto fontrender = m_dirLight.CreateComponent<COMFontRenderer>();
-	auto testUI = m_dirLight.CreateComponent<COMUIRenderer>();
+	auto fontrender = m_stringNode.CreateComponent<COMFontRenderer>();
+	auto fontTrans = m_stringNode.CreateComponent<COMUITransform>();
 	DirectX::XMVECTOR color = DirectX::Colors::Black;
 	//color.m128_f32[3] = 0.5f;
-	fontrender->SetRenderString(L"Test Rendering", color, { 10.0f,10.0f, 0.1f }, 1.0f, 350.0f);
-	
-	testUI->SetPos({ 3.2f,10.0f,0.11f });
-	testUI->SetColor({ 1.0f,0.0f,0.0f,0.5f });
-	testUI->SetSize({ 150.0f, 30.0f });
+	fontrender->SetRenderString(L"Test Rendering", color, 350.0f);
+	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
+	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
+
+	auto uiRender = m_uiNode.CreateComponent<COMUIRenderer>();
+	auto uiTrans = m_uiNode.CreateComponent<COMUITransform>();
+
+	uiRender->SetColor(DirectX::Colors::Pink);
+	uiTrans->SetSize(DirectX::XMVectorSet(100, 100, 0, 0));
+	uiTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.11f, 0));
 }
 
 void TestScene::Update(float delta)
@@ -217,7 +222,7 @@ void TestScene::Update(float delta)
 	//x += delta * 1.0f;
 	y += delta * 0.8f;
 
-	auto fontrender = m_dirLight.GetComponent<COMFontRenderer>();
+	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
 	fontrender->SetText(rotXvalue.c_str());
 
@@ -225,12 +230,16 @@ void TestScene::Update(float delta)
 
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_stringNode.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_uiNode.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::RateUpdate(float delta)
 {
 	m_rootNode->RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_stringNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_uiNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::Render()

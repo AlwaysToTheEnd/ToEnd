@@ -10,6 +10,7 @@ size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
 size_t COMSkinnedMesh::s_hashCode = typeid(COMSkinnedMesh).hash_code();
 size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRenderer).hash_code();
 size_t COMUIRenderer::s_hashCode = typeid(COMUIRenderer).hash_code();
+size_t COMUITransform::s_hashCode = typeid(COMUITransform).hash_code();
 size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
 
 COMTransform::COMTransform(CGHNode* node)
@@ -244,67 +245,90 @@ UINT64 COMMaterial::GetMaterialDataGPU(unsigned int currFrameIndex)
 	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex, currFrameIndex);
 }
 
-COMFontRenderer::COMFontRenderer(CGHNode* node)
+void COMUITransform::Update(CGHNode* node, unsigned int, float delta)
 {
+	DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScaling(m_scale.x, m_scale.y, 1.0f);
+	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
+
+	CGHNode* parentNode = node->GetParent();
+	if (parentNode != nullptr)
+	{
+		DirectX::XMStoreFloat4x4(&node->m_srt, scaleMat * transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
+	}
+	else
+	{
+		DirectX::XMStoreFloat4x4(&node->m_srt, scaleMat * transMat);
+	}
+
+	m_size = { m_sizeL.x * node->m_srt._11 , m_sizeL.y * node->m_srt._22 };
 }
 
-void COMFontRenderer::SetRenderString(const wchar_t* str,
-	DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch)
+void XM_CALLCONV COMUITransform::SetPos(DirectX::FXMVECTOR pos)
 {
-	m_renderString.SetRenderString(str, color, pos, scale, rowPitch);
+	DirectX::XMStoreFloat3(&m_pos, pos);
 }
 
-void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+void XM_CALLCONV COMUITransform::SetScale(DirectX::FXMVECTOR scale)
 {
-	DX12FontManger::s_instance.RenderString(m_renderString, currFrame);
+	DirectX::XMStoreFloat2(&m_scale, scale);
 }
 
-void COMFontRenderer::SetPos(const DirectX::XMFLOAT3& pos)
+void XM_CALLCONV COMUITransform::SetSize(DirectX::FXMVECTOR size)
 {
-	m_renderString.pos = pos;
-	m_renderString.ReroadDataFromCurrFont();
-}
-
-void COMFontRenderer::SetText(const wchar_t* str)
-{
-	m_renderString.str = str;
-
-	SetRenderString(m_renderString.str.c_str(), DirectX::XMLoadFloat4(&m_renderString.color),
-		m_renderString.pos, m_renderString.scaleSize, m_renderString.rowPitch);
-}
-
-void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
-{
-	m_renderString.ChangeColor(color);
-}
-
-void COMFontRenderer::SetSize(float size)
-{
-	m_renderString.scaleSize = size;
-	m_renderString.ReroadDataFromCurrFont();
-}
-
-void COMFontRenderer::SetRowPitch(float rowPitch)
-{
-	m_renderString.rowPitch = rowPitch;
-	m_renderString.ReroadDataFromCurrFont();
+	DirectX::XMStoreFloat2(&m_sizeL, size);
 }
 
 COMUIRenderer::COMUIRenderer(CGHNode* node)
 {
 	m_color = { 0.0f,0.0f,0.0f, 1.0f };
-	m_pos = { 0.0f,0.0f,1.0f };
-	m_size = { 1.0f, 1.0f };
 }
 
 void COMUIRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
+	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
+	DirectX::XMFLOAT2 size = node->GetComponent<COMUITransform>()->GetSize();
 	if (m_isTextureBackGound)
 	{
-		GraphicDeviceDX12::GetGraphic()->RenderUI(m_pos, m_size, m_spriteSubIndex, m_color.z, GetRenderID());
+		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_spriteSubIndex, m_color.z, GetRenderID());
 	}
 	else
 	{
-		GraphicDeviceDX12::GetGraphic()->RenderUI(m_pos, m_size, m_color, GetRenderID());
+		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_color, GetRenderID());
 	}
+}
+
+
+COMFontRenderer::COMFontRenderer(CGHNode* node)
+{
+}
+
+void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+{
+	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
+	DirectX::XMFLOAT2 size = node->GetComponent<COMUITransform>()->GetSize();
+
+	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, size.x, m_rowPitch);
+}
+
+void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
+{
+	DirectX::XMStoreFloat4(&m_color, color);
+}
+
+
+void COMFontRenderer::SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch)
+{
+	m_str = str;
+	DirectX::XMStoreFloat4(&m_color, color);
+	m_rowPitch = rowPitch;
+}
+
+void COMFontRenderer::SetText(const wchar_t* str)
+{
+	m_str = str;
+}
+
+void COMFontRenderer::SetRowPitch(float rowPitch)
+{
+	m_rowPitch = rowPitch;
 }

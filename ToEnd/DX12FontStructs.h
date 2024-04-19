@@ -2,9 +2,7 @@
 #include <d3d12.h>
 #include <windef.h>
 #include <DirectXMath.h>
-#include <vector>
 #include <wrl.h>
-#include <string>
 
 namespace CGH
 {
@@ -70,26 +68,5 @@ namespace CGH
 		Microsoft::WRL::ComPtr<ID3D12Resource> texture;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> textureHeap;
 		Microsoft::WRL::ComPtr<ID3D12Resource> glyphDatas;
-	};
-
-	struct DX12RenderString
-	{
-		DX12RenderString()
-			:currFont(nullptr)
-		{
-		}
-
-		void SetRenderString(const wchar_t* str,
-			DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch);
-		void ReroadDataFromCurrFont();
-		void XM_CALLCONV ChangeColor(DirectX::FXMVECTOR color);
-
-		const DX12Font*				currFont;
-		std::wstring				str;
-		DirectX::XMFLOAT3			pos = {};
-		DirectX::XMFLOAT4			color = {};
-		float						rowPitch = 100.0f;
-		float						scaleSize = 1.0f;
-		std::vector<CGH::CharInfo>	charInfos;
 	};
 }

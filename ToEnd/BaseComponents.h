@@ -1,9 +1,12 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <d3d12.h>
+#include <windef.h>
+#include <DirectXMath.h>
+#include <wrl.h>
 #include "Component.h"
 #include "CGHGraphicResource.h"
-#include "DX12FontStructs.h"
 
 class COMTransform : public Component
 {
@@ -18,6 +21,9 @@ public:
 	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
 	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
 	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR quterRotate);
+	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
+	void SetScale(const DirectX::XMFLOAT3& scale) { m_scale = scale; }
+	void SetRotation(const DirectX::XMFLOAT4& quter) { m_queternion = quter; }
 
 	DirectX::FXMVECTOR XM_CALLCONV GetRotateQuter() { return DirectX::XMLoadFloat4(&m_queternion); }
 
@@ -46,8 +52,6 @@ public:
 	const CGHMesh* GetMeshData() const { return m_data; }
 	D3D12_GPU_VIRTUAL_ADDRESS GetBoneData(unsigned int currFrame);
 	void NodeTreeDirty();
-
-private:
 
 private:
 	static size_t s_hashCode;
@@ -113,6 +117,34 @@ private:
 	static size_t s_hashCode;
 };
 
+class COMUITransform : public Component
+{
+public:
+	COMUITransform(CGHNode* node) {};
+
+	virtual void Update(CGHNode* node, unsigned int, float delta) override;
+	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override {}
+	virtual size_t GetTypeHashCode() override { return s_hashCode; }
+	virtual unsigned int GetPriority() override { return COMPONENT_UITRANSFORM; }
+
+	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
+	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
+	void XM_CALLCONV SetSize(DirectX::FXMVECTOR size);
+	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
+	void SetScale(const DirectX::XMFLOAT2& scale) { m_scale = scale; }
+	void SetSize(const DirectX::XMFLOAT2& size) { m_sizeL = size; }
+
+	DirectX::XMFLOAT2 GetSize() { return m_size; }
+
+
+private:
+	static size_t s_hashCode;
+	DirectX::XMFLOAT3 m_pos = {};
+	DirectX::XMFLOAT2 m_scale = { 1.0f, 1.0f };
+	DirectX::XMFLOAT2 m_sizeL = {};
+	DirectX::XMFLOAT2 m_size = {};
+};
+
 class COMUIRenderer : public Component, public CGHRenderer
 {
 public:
@@ -123,16 +155,12 @@ public:
 	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
-	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
-	void SetSize(const DirectX::XMFLOAT2& size) { m_size = size; }
-	void SetColor(const DirectX::XMFLOAT4& color) { m_color = color; m_isTextureBackGound = false; }
+	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color) { DirectX::XMStoreFloat4(&m_color, color); m_isTextureBackGound = false; }
 	void SetSpriteSubIndex(unsigned int index) { m_spriteSubIndex = index; m_isTextureBackGound = true; }
 
 private:
 	static size_t s_hashCode;
 	bool m_isTextureBackGound = false;
-	DirectX::XMFLOAT3 m_pos;
-	DirectX::XMFLOAT2 m_size;
 	DirectX::XMFLOAT4 m_color;
 	unsigned int m_spriteSubIndex = 0;
 };
@@ -147,16 +175,14 @@ public:
 	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
-	void SetRenderString(const wchar_t* str,
-		DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch);
-	void SetPos(const DirectX::XMFLOAT3& pos);
+	void SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch);
 	void SetText(const wchar_t* str);
 	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color);
-	void SetSize(float size);
 	void SetRowPitch(float rowPitch);
-
 
 private:
 	static size_t s_hashCode;
-	CGH::DX12RenderString m_renderString;
+	std::wstring m_str;
+	DirectX::XMFLOAT4 m_color = { 0.0f,0.0f, 0.0f, 1.0f };
+	float m_rowPitch = 100.0f;
 };
