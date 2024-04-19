@@ -122,10 +122,19 @@ public:
 	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
-	virtual unsigned int GetPriority() override { return COMPONENT_UI_RENDERER; }
+
+	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
+	void SetSize(const DirectX::XMFLOAT2& size) { m_size = size; }
+	void SetColor(const DirectX::XMFLOAT4& color) { m_color = color; m_isTextureBackGound = false; }
+	void SetSpriteSubIndex(unsigned int index) { m_spriteSubIndex = index; m_isTextureBackGound = true; }
 
 private:
 	static size_t s_hashCode;
+	bool m_isTextureBackGound = false;
+	DirectX::XMFLOAT3 m_pos;
+	DirectX::XMFLOAT2 m_size;
+	DirectX::XMFLOAT4 m_color;
+	unsigned int m_spriteSubIndex = 0;
 };
 
 class COMFontRenderer : public Component, public CGHRenderer
@@ -137,7 +146,6 @@ public:
 	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
-	virtual unsigned int GetPriority() override { return COMPONENT_CUSTOM; }
 
 	void SetRenderString(const wchar_t* str,
 		DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch);

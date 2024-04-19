@@ -24,7 +24,7 @@ void TestScene::Init()
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
 	DX12FontManger::s_instance.LoadFont(L"FontData/baseFont.spritefont");
 
-	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs,&m_bodyMats, &m_bodyNodes);
+	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
 	{
 		m_rootNode = &m_bodyNodes.front();
 
@@ -63,7 +63,7 @@ void TestScene::Init()
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
 		material->SetTexture(&texInfo, 3);
 	}
-	
+
 	{
 		dxGraphic->LoadMeshDataFile("MeshData/head0.fbx", true, &m_headMeshs, &m_headMats, &m_headNodes);
 		std::string headRootName = "cf_J_Head_s";
@@ -97,13 +97,12 @@ void TestScene::Init()
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_BumpMap2_converted.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
-		texInfo.textureOp = aiTextureOp_Add;
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
+		texInfo.textureOp = aiTextureOp_Add;
 		material->SetTexture(&texInfo, 1);
 	}
 
 	{
-		
 		dxGraphic->LoadMeshDataFile("MeshData/hair0.fbx", false, &m_hairMeshs, &m_hairMats, &m_hairNodes);
 
 		std::string hairRootName = "cf_J_FaceUp_ty";
@@ -118,7 +117,7 @@ void TestScene::Init()
 				break;
 			}
 		}
-		
+
 		CGHNode* hairRoot = &m_hairNodes.front();
 
 		auto render = hairRoot->CreateComponent<COMDX12SkinnedMeshRenderer>();
@@ -159,7 +158,7 @@ void TestScene::Init()
 		XmlElement* list = nullptr;
 		list = document->FirstChildElement();
 		list = list->FirstChildElement();
-		
+
 		for (; list != nullptr; list = list->NextSiblingElement())
 		{
 			PosnScale data;
@@ -177,12 +176,12 @@ void TestScene::Init()
 
 		std::vector<CGHNode*> nodeStack;
 		m_rootNode->GetChildNodes(&nodeStack);
-		
+
 		for (auto& iter : nodeStack)
 		{
 			auto transform = iter->GetComponent<COMTransform>();
 			auto nodeDataIter = nodeDatas.find(iter->GetName());
-			
+
 			if (nodeDataIter != nodeDatas.end())
 			{
 				transform->SetPos(DirectX::XMLoadFloat3(&nodeDataIter->second.pos));
@@ -200,9 +199,14 @@ void TestScene::Init()
 	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
 
 	auto fontrender = m_dirLight.CreateComponent<COMFontRenderer>();
+	auto testUI = m_dirLight.CreateComponent<COMUIRenderer>();
 	DirectX::XMVECTOR color = DirectX::Colors::Black;
 	//color.m128_f32[3] = 0.5f;
 	fontrender->SetRenderString(L"Test Rendering", color, { 10.0f,10.0f, 0.1f }, 1.0f, 350.0f);
+	
+	testUI->SetPos({ 3.2f,10.0f,0.11f });
+	testUI->SetColor({ 1.0f,0.0f,0.0f,0.5f });
+	testUI->SetSize({ 150.0f, 30.0f });
 }
 
 void TestScene::Update(float delta)
@@ -214,9 +218,9 @@ void TestScene::Update(float delta)
 	y += delta * 0.8f;
 
 	auto fontrender = m_dirLight.GetComponent<COMFontRenderer>();
-	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y* 180/3.141592));
+	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
 	fontrender->SetText(rotXvalue.c_str());
-	
+
 	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
 
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);

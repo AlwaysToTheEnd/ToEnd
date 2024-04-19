@@ -65,6 +65,8 @@ class GraphicDeviceDX12
 
 	struct UIInfo
 	{
+		static const unsigned int maxNumUI = 4096;
+
 		unsigned int uiGraphicType = 0;
 		DirectX::XMFLOAT3 pos;
 		DirectX::XMFLOAT4 color;
@@ -132,7 +134,8 @@ public:
 	void RenderMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
-	void RenderUI(CGHNode* node, unsigned int renderFlag);
+	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID);
+	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, unsigned int renderID);
 	void RenderEnd();
 
 	void SetFontRenderPsoWorkSet(const PipeLineWorkSet& workset);
@@ -141,7 +144,7 @@ public:
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
 
 private:
-	GraphicDeviceDX12() = default;
+	GraphicDeviceDX12();
 	void BaseRender();
 	void LightRender();
 
@@ -179,7 +182,6 @@ private:
 	ID3D12PipelineState*			m_currPipeline = nullptr;
 	DX12RenderQueue					m_meshRenderQueue;
 	DX12RenderQueue					m_skinnedMeshRenderQueue;
-	DX12RenderQueue					m_uiRenderQueue;
 	DX12RenderQueue					m_dirLightRenderQueue;
 	DX12RenderQueue					m_pointLightRenderQueue;
 
@@ -191,6 +193,12 @@ private:
 	UINT16							m_currMouseTargetRednerID = 0;
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 	
+	std::vector<UIInfo>				m_reservedUIInfos;
+	std::vector<UIInfo*>			m_uiInfoMapped;
+	ComPtr<ID3D12Resource>			m_uiInfoDatas;
+	ComPtr<ID3D12Resource>			m_uiSpriteTexture;
+	ComPtr<ID3D12DescriptorHeap>	m_uiSpriteSRVHeap;
+
 	unsigned int										m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
 
@@ -202,5 +210,6 @@ private:
 	std::vector<PipeLineWorkSet>										m_lightPSOs;
 	PipeLineWorkSet														m_fontPSO;
 	PipeLineWorkSet														m_uiPSO;
+	PipeLineWorkSet														m_uiRenderIDPSO;
 	ComPtr<ID3D12CommandQueue>											m_commandQueue;
 };

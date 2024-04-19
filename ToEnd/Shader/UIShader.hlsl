@@ -24,7 +24,7 @@ cbuffer window : register(b0, space0)
 };
 
 StructuredBuffer<UIInfo> gUIInfos : register(t0, space0);
-Texture2D<float4> gBackgourndTextures : register(t1, space0);
+//Texture2D<float4> gBackgourndTexture : register(t1, space0);
 
 struct VSOut
 {
@@ -37,13 +37,12 @@ struct GSOut
     float4 color : TEXCOORD0;
     float2 uv : TEXCOORD1;
     nointerpolation uint uiGraphicType : UITYPE;
-    nointerpolation uint renderID : RENDERID;
 };
 
 struct PSOut
 {
     float4 color : SV_Target0;
-    uint renderID : SV_Target1;
+    float depth : SV_Depth;
 };
 
 VSOut VS(uint vIndex : SV_VertexID)
@@ -78,7 +77,6 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
         vertices[index].position.x = vertices[index].position.x * gWinSizeReciprocal.x * 2.0f - 1.0f;
         vertices[index].position.y = 1.0f - (vertices[index].position.y * gWinSizeReciprocal.y * 2.0f);
         vertices[index].color = info.color;
-        vertices[index].renderID = info.renderID;
         vertices[index].uiGraphicType = info.uiGraphicType;
     }
     
@@ -93,16 +91,22 @@ PSOut PS(GSOut pin)
     PSOut result;
     result.color = pin.color;
     
-    switch (pin.uiGraphicType)
+    //switch (pin.uiGraphicType)
+    //{
+    //    case 1:{
+    //            result.color = gBackgourndTexture.Sample(gsamLinearWrap, pin.uv);
+    //        }
+    //        break;
+    //}
+    
+    if(result.color.a ==0.0f)
     {
-        case 1:{
-                result.color = gBackgourndTextures.Sample(gsamLinearWrap, pin.uv);
-            }
-            break;
+        result.depth = 1.0f;
     }
-    
-    result.renderID = pin.renderID;
-    
+    else
+    {
+        result.depth = pin.position.z;
+    }
     
     return result;
 }

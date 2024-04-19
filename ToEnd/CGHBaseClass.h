@@ -31,7 +31,6 @@ enum CGHNODE_EVENT_FLAGS
 	CGHNODE_EVENT_FLAG_END = 0xffffffff,
 };
 
-
 class CGHNode
 {
 	struct CGHNodeEvent
@@ -64,13 +63,13 @@ public:
 	void SetParent(CGHNode* parent, bool denyEvent = false);
 	void SetName(const char* name) { m_name = name; }
 
-private:
+protected:
 	void ExcuteEvent(CGHNODE_EVENT_FLAGS flag);
 
 public:
 	DirectX::XMFLOAT4X4 m_srt;
 
-private:
+protected:
 	std::string m_name;
 	bool m_active = true;
 	CGHNode* m_parent = nullptr;
@@ -145,24 +144,6 @@ template<>
 inline COMDX12SkinnedMeshRenderer* CGHNode::GetComponent()
 {
 	return reinterpret_cast<COMDX12SkinnedMeshRenderer*>(m_components[COMPONENT_SKINNEDMESH_RENDERER].get());
-}
-
-
-template<>
-inline COMUIRenderer* CGHNode::CreateComponent()
-{
-	COMUIRenderer* result = new COMUIRenderer(this);
-	std::unique_ptr<Component> uniqueTemp(result);
-
-	m_components[COMPONENT_UI_RENDERER] = std::move(uniqueTemp);
-
-	return result;
-}
-
-template<>
-inline COMUIRenderer* CGHNode::GetComponent()
-{
-	return reinterpret_cast<COMUIRenderer*>(m_components[COMPONENT_UI_RENDERER].get());
 }
 
 template<typename T>

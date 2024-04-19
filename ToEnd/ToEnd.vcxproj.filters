@@ -15,24 +15,18 @@
     <Filter Include="Shader">
       <UniqueIdentifier>{786c279f-49e6-4c4a-8a65-7138d7793e37}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Component">
+      <UniqueIdentifier>{70fbf65a-b7d1-4d78-b841-d7d1c169fff5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BaseUtil">
+      <UniqueIdentifier>{dad26c21-7bd9-472b-b3ec-ee87d7d4d1cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Nodes">
+      <UniqueIdentifier>{0466979f-0ba3-4ac5-a3e1-10c20b48f677}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Source\GameTimer.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Source\CGHUtil.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Source\DxException.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Component.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Source\DX12SwapChain.h">
@@ -56,9 +50,6 @@
     <ClInclude Include="CGHGraphicResource.h">
       <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="CGHBaseClass.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="TestScene.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -71,51 +62,54 @@
     <ClInclude Include="DX12GarbageFrameResourceMG.h">
       <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="DX12PSODefine.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="DX12GraphicResourceManager.h">
       <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="Xml.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BaseComponents.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="LightComponents.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="InputManager.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BinaryReader.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="PlatformHelpers.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="DX12FontStructs.h">
+      <Filter>Graphic</Filter>
     </ClInclude>
     <ClInclude Include="Dx12FontManager.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="DX12FontStructs.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Component.h">
+      <Filter>Component</Filter>
+    </ClInclude>
+    <ClInclude Include="LightComponents.h">
+      <Filter>Component</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseComponents.h">
+      <Filter>Component</Filter>
+    </ClInclude>
+    <ClInclude Include="BinaryReader.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="PlatformHelpers.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="InputManager.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\GameTimer.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="CGHBaseClass.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\CGHUtil.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="Xml.h">
+      <Filter>BaseUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Source\DxException.h">
+      <Filter>BaseUtil</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Common\Source\GameTimer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Common\Source\DxException.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="CGHBaseClass.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp">
@@ -142,32 +136,44 @@
     <ClCompile Include="DX12GarbageFrameResourceMG.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
-    <ClCompile Include="CGHGraphicResource.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="DX12GraphicResourceManager.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
-    <ClCompile Include="Xml.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BaseComponents.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="LightComponents.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="InputManager.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BinaryReader.cpp">
-      <Filter>헤더 파일</Filter>
+    <ClCompile Include="DX12FontStructs.cpp">
+      <Filter>Graphic</Filter>
     </ClCompile>
     <ClCompile Include="Dx12FontManager.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>Graphic</Filter>
     </ClCompile>
-    <ClCompile Include="DX12FontStructs.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="CGHGraphicResource.cpp">
+      <Filter>Graphic</Filter>
+    </ClCompile>
+    <ClCompile Include="LightComponents.cpp">
+      <Filter>Component</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseComponents.cpp">
+      <Filter>Component</Filter>
+    </ClCompile>
+    <ClCompile Include="BinaryReader.cpp">
+      <Filter>BaseUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\Source\DxException.cpp">
+      <Filter>BaseUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\Source\GameTimer.cpp">
+      <Filter>BaseUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="InputManager.cpp">
+      <Filter>BaseUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>BaseUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="CGHBaseClass.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="Xml.cpp">
+      <Filter>BaseUtil</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +205,9 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shader\UIShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\UIRenderIDShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

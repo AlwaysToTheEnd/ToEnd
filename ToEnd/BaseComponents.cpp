@@ -248,7 +248,7 @@ COMFontRenderer::COMFontRenderer(CGHNode* node)
 {
 }
 
-void COMFontRenderer::SetRenderString(const wchar_t* str, 
+void COMFontRenderer::SetRenderString(const wchar_t* str,
 	DirectX::FXMVECTOR color, const DirectX::XMFLOAT3& pos, float scale, float rowPitch)
 {
 	m_renderString.SetRenderString(str, color, pos, scale, rowPitch);
@@ -269,7 +269,7 @@ void COMFontRenderer::SetText(const wchar_t* str)
 {
 	m_renderString.str = str;
 
-	SetRenderString(m_renderString.str.c_str(), DirectX::XMLoadFloat4(&m_renderString.color), 
+	SetRenderString(m_renderString.str.c_str(), DirectX::XMLoadFloat4(&m_renderString.color),
 		m_renderString.pos, m_renderString.scaleSize, m_renderString.rowPitch);
 }
 
@@ -292,10 +292,19 @@ void COMFontRenderer::SetRowPitch(float rowPitch)
 
 COMUIRenderer::COMUIRenderer(CGHNode* node)
 {
-
+	m_color = { 0.0f,0.0f,0.0f, 1.0f };
+	m_pos = { 0.0f,0.0f,1.0f };
+	m_size = { 1.0f, 1.0f };
 }
 
 void COMUIRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
-
+	if (m_isTextureBackGound)
+	{
+		GraphicDeviceDX12::GetGraphic()->RenderUI(m_pos, m_size, m_spriteSubIndex, m_color.z, GetRenderID());
+	}
+	else
+	{
+		GraphicDeviceDX12::GetGraphic()->RenderUI(m_pos, m_size, m_color, GetRenderID());
+	}
 }

@@ -11,6 +11,7 @@
 #include "Camera.h"
 #include "Mouse.h"
 #include "InputManager.h"
+#include <algorithm>
 
 using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
@@ -61,6 +62,14 @@ void GraphicDeviceDX12::DeleteDeivce()
 	}
 }
 
+GraphicDeviceDX12::GraphicDeviceDX12()
+{
+	if (m_uiInfoDatas != nullptr)
+	{
+		m_uiInfoDatas->Unmap(0, nullptr);
+	}
+}
+
 void GraphicDeviceDX12::BaseRender()
 {
 	auto& currPso = m_PSOs[PIPELINE_SKINNEDMESH];
@@ -76,6 +85,8 @@ void GraphicDeviceDX12::BaseRender()
 		{
 			currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
 		}
+
+		m_skinnedMeshRenderQueue.queue.clear();
 	}
 }
 
@@ -117,6 +128,7 @@ void GraphicDeviceDX12::LightRender()
 				}
 
 				currPso.baseGraphicCmdFunc(m_cmdList.Get());
+				currQeue->queue.clear();
 			}
 		}
 	}
@@ -139,6 +151,8 @@ void GraphicDeviceDX12::LightRender()
 				{
 					currPso.nodeGraphicCmdFunc(m_cmdList.Get(), currNode.first, currNode.second);
 				}
+
+				currQeue->queue.clear();
 			}
 		}
 	}
@@ -229,9 +243,60 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		reDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		reDesc.SampleDesc.Count = 1;
 
-		m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_renderIDatMouseRead.GetAddressOf()));
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_renderIDatMouseRead.GetAddressOf())));
 	}
 
+	{
+		D3D12_HEAP_PROPERTIES prop = {};
+		D3D12_RESOURCE_DESC reDesc = {};
+		D3D12_HEAP_FLAGS flags = D3D12_HEAP_FLAG_NONE;
+
+		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+		reDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		reDesc.DepthOrArraySize = 1;
+		reDesc.Height = 1;
+		reDesc.Width = sizeof(UIInfo) * UIInfo::maxNumUI * m_numFrameResource;
+		reDesc.Format = DXGI_FORMAT_UNKNOWN;
+		reDesc.MipLevels = 1;
+		reDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+		reDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		reDesc.SampleDesc.Count = 1;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_uiInfoDatas.GetAddressOf())));
+
+		UIInfo* mapped = nullptr;
+		ThrowIfFailed(m_uiInfoDatas->Map(0, nullptr, reinterpret_cast<void**>(&mapped)));
+
+		for (int i = 0; i < m_numFrameResource; i++)
+		{
+			m_uiInfoMapped.push_back(mapped);
+			mapped += UIInfo::maxNumUI;
+		}
+
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		heapDesc.NumDescriptors = 1;
+		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_uiSpriteSRVHeap.GetAddressOf())));
+
+		if (m_uiSpriteTexture != nullptr)
+		{
+			auto textureDesc = m_uiSpriteTexture->GetDesc();
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Format = textureDesc.Format;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0;
+			srvDesc.Texture2D.PlaneSlice = 0;
+
+			m_d3dDevice->CreateShaderResourceView(m_uiSpriteTexture.Get(), &srvDesc, m_uiSpriteSRVHeap->GetCPUDescriptorHandleForHeapStart());
+		}
+	}
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -387,9 +452,29 @@ void GraphicDeviceDX12::RenderLight(CGHNode* node, unsigned int lightFlags, size
 	}
 }
 
-void GraphicDeviceDX12::RenderUI(CGHNode* node, unsigned int renderFlag)
+void GraphicDeviceDX12::RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID)
 {
-	m_uiRenderQueue.queue.push_back({ node, renderFlag });
+	UIInfo temp = {};
+	temp.uiGraphicType = 0;
+	temp.pos = pos;
+	temp.size = size;
+	temp.color = color;
+	temp.renderID = renderID;
+
+	m_reservedUIInfos.emplace_back(temp);
+}
+
+void GraphicDeviceDX12::RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, unsigned int renderID)
+{
+	UIInfo temp = {};
+	temp.uiGraphicType = 1;
+	temp.pos = pos;
+	temp.size = size;
+	temp.color.z = alpha;
+
+	temp.renderID = renderID;
+
+	m_reservedUIInfos.emplace_back(temp);
 }
 
 void GraphicDeviceDX12::RenderEnd()
@@ -403,7 +488,7 @@ void GraphicDeviceDX12::RenderEnd()
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV() };
 		m_swapChain->ClearDS(m_cmdList.Get());
-		m_cmdList->OMSetRenderTargets(1, rtvs, false, &m_swapChain->GetDSV());
+		m_cmdList->OMSetRenderTargets(1, rtvs, true, &m_swapChain->GetDSV());
 
 		if (m_fontPSO.pso != nullptr)
 		{
@@ -415,19 +500,42 @@ void GraphicDeviceDX12::RenderEnd()
 				m_fontPSO.baseGraphicCmdFunc(m_cmdList.Get());
 			}
 		}
-	}
 
-	m_meshRenderQueue.queue.clear();
-	m_skinnedMeshRenderQueue.queue.clear();
-	m_uiRenderQueue.queue.clear();
-	m_numDirLight = 0;
+		std::sort(m_reservedUIInfos.begin(), m_reservedUIInfos.end(), [](const UIInfo& left, const UIInfo& right)
+			{
+				return left.pos.z > right.pos.z;
+			});
 
-	for (auto& iter : m_lightPSOs)
-	{
-		if (iter.renderQueue)
+		std::memcpy(m_uiInfoMapped[m_currFrame], m_reservedUIInfos.data(), m_reservedUIInfos.size() * sizeof(UIInfo));
+
+		if (m_uiPSO.pso != nullptr)
 		{
-			iter.renderQueue->queue.clear();
+			m_cmdList->SetPipelineState(m_uiPSO.pso);
+			m_cmdList->SetGraphicsRootSignature(m_uiPSO.rootSig);
+
+			if (m_uiPSO.baseGraphicCmdFunc != nullptr)
+			{
+				m_uiPSO.baseGraphicCmdFunc(m_cmdList.Get());
+			}
 		}
+
+		m_swapChain->ClearDS(m_cmdList.Get());
+		rtvs[0] = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+		rtvs[0].ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
+		m_cmdList->OMSetRenderTargets(1, rtvs, true, &m_swapChain->GetDSV());
+
+		if (m_uiRenderIDPSO.pso != nullptr)
+		{
+			m_cmdList->SetPipelineState(m_uiRenderIDPSO.pso);
+			m_cmdList->SetGraphicsRootSignature(m_uiRenderIDPSO.rootSig);
+
+			if (m_uiRenderIDPSO.baseGraphicCmdFunc != nullptr)
+			{
+				m_uiRenderIDPSO.baseGraphicCmdFunc(m_cmdList.Get());
+			}
+		}
+
+		m_reservedUIInfos.clear();
 	}
 
 	{
@@ -485,10 +593,11 @@ void GraphicDeviceDX12::RenderEnd()
 	m_fenceCounts[m_currFrame] = m_currentFence;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_currentFence));
 
-	unsigned int prevFrame = (m_currFrame + (m_numFrameResource - 1)) % m_numFrameResource;
+	unsigned int currExcuteFrame = m_currFrame;
 	m_currFrame = (m_currFrame + 1) % m_numFrameResource;
 
-	if (m_fence->GetCompletedValue() < m_fenceCounts[m_currFrame])
+	auto completedValue = m_fence->GetCompletedValue();
+	if (completedValue < m_fenceCounts[m_currFrame])
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceCounts[m_currFrame], eventHandle));
@@ -497,6 +606,7 @@ void GraphicDeviceDX12::RenderEnd()
 		{
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
+			completedValue = m_fenceCounts[m_currFrame];
 		}
 		else
 		{
@@ -504,14 +614,24 @@ void GraphicDeviceDX12::RenderEnd()
 		}
 	}
 
-	BYTE* mapped = nullptr;
-	D3D12_RANGE range = {};
-	range.Begin = sizeof(UINT16) * prevFrame;
-	range.End = range.Begin + sizeof(UINT16);
+	unsigned int targetFrame = currExcuteFrame;
+	for (unsigned int i = 0; i < m_numFrameResource; i++)
+	{
+		if (completedValue >= m_fenceCounts[targetFrame])
+		{
+			BYTE* mapped = nullptr;
+			D3D12_RANGE range = {};
+			range.Begin = sizeof(UINT16) * targetFrame;
+			range.End = range.Begin + sizeof(UINT16);
 
-	m_renderIDatMouseRead->Map(0, &range, reinterpret_cast<void**>(&mapped));
-	std::memcpy(&m_currMouseTargetRednerID, mapped, sizeof(UINT16));
-	m_renderIDatMouseRead->Unmap(0, nullptr);
+			m_renderIDatMouseRead->Map(0, &range, reinterpret_cast<void**>(&mapped));
+			std::memcpy(&m_currMouseTargetRednerID, mapped, sizeof(UINT16));
+			m_renderIDatMouseRead->Unmap(0, nullptr);
+			break;
+		}
+
+		targetFrame = (targetFrame + m_numFrameResource - 1) % m_numFrameResource;
+	}
 }
 
 void GraphicDeviceDX12::FlushCommandQueue()
@@ -1007,8 +1127,6 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 
-		psoDesc.BlendState.IndependentBlendEnable = true;
-
 		psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
 		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 		psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
@@ -1019,9 +1137,8 @@ void GraphicDeviceDX12::BuildPso()
 
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		psoDesc.NumRenderTargets = 2;
+		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		psoDesc.RTVFormats[1] = DXGI_FORMAT_R16_UINT;
 
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
@@ -1033,12 +1150,111 @@ void GraphicDeviceDX12::BuildPso()
 		{
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
+			DirectX::XMUINT2 windowReciprocal = {};
+			float windowXReciprocal = 1.0f / GO.WIN.WindowsizeX;
+			float windowYReciprocal = 1.0f / GO.WIN.WindowsizeY;
+
+			std::memcpy(&windowReciprocal.x, &windowXReciprocal, sizeof(float));
+			std::memcpy(&windowReciprocal.y, &windowYReciprocal, sizeof(float));
+
+			ID3D12DescriptorHeap* heaps[] = { m_uiSpriteSRVHeap.Get() };
+
+			cmd->SetDescriptorHeaps(_countof(heaps), heaps);
+
+			cmd->SetGraphicsRoot32BitConstant(0, windowReciprocal.x, 0);
+			cmd->SetGraphicsRoot32BitConstant(0, windowReciprocal.y, 1);
+
+			auto uiInfoDataGPU = m_uiInfoDatas->GetGPUVirtualAddress();
+			uiInfoDataGPU += sizeof(UIInfo) * UIInfo::maxNumUI * m_currFrame;
+			cmd->SetGraphicsRootShaderResourceView(1, uiInfoDataGPU);
+			cmd->SetGraphicsRootDescriptorTable(2, m_uiSpriteSRVHeap->GetGPUDescriptorHandleForHeapStart());
+
+			cmd->DrawInstanced(m_reservedUIInfos.size(), 1, 0, 0);
 		};
 
-		m_uiPSO.nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)
+		m_uiPSO.nodeGraphicCmdFunc = nullptr;
+	}
+#pragma endregion
+
+#pragma region UIRENDERID_PIPELINE
+	{
+		std::string pipeLineName = "PIPELINE_UIRENDERID";
+		rootParams.clear();
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		temp.Constants.Num32BitValues = 2;
+		temp.Constants.RegisterSpace = 0;
+		temp.Constants.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+		rootParams.push_back(temp);
+
+		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		temp.Descriptor.RegisterSpace = 0;
+		temp.Descriptor.ShaderRegister = 0;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+		rootParams.push_back(temp);
+
+		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
+		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootsigDesc.pStaticSamplers = nullptr;
+		rootsigDesc.NumStaticSamplers = 0;
+		rootsigDesc.NumParameters = rootParams.size();
+		rootsigDesc.pParameters = rootParams.data();
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		psoDesc.NodeMask = 0;
+
+		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
+
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "VS");
+		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "GS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "PS");
+
+		//IA Set
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		psoDesc.InputLayout.NumElements = 0;
+		psoDesc.InputLayout.pInputElementDescs = nullptr;
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.SampleMask = UINT_MAX;
+
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
+
+		//OM Set
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R16_UINT;
+
+		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
+
+		m_uiRenderIDPSO.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
+		m_uiRenderIDPSO.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+
+		m_uiRenderIDPSO.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+			DirectX::XMUINT2 windowReciprocal = {};
+			float windowXReciprocal = 1.0f / GO.WIN.WindowsizeX;
+			float windowYReciprocal = 1.0f / GO.WIN.WindowsizeY;
+
+			std::memcpy(&windowReciprocal.x, &windowXReciprocal, sizeof(float));
+			std::memcpy(&windowReciprocal.y, &windowYReciprocal, sizeof(float));
+
+			cmd->SetGraphicsRoot32BitConstant(0, windowReciprocal.x, 0);
+			cmd->SetGraphicsRoot32BitConstant(0, windowReciprocal.y, 1);
+
+			auto uiInfoDataGPU = m_uiInfoDatas->GetGPUVirtualAddress();
+			uiInfoDataGPU += sizeof(UIInfo) * UIInfo::maxNumUI * m_currFrame;
+			cmd->SetGraphicsRootShaderResourceView(1, uiInfoDataGPU);
+
+			cmd->DrawInstanced(m_reservedUIInfos.size(), 1, 0, 0);
 		};
+
+		m_uiRenderIDPSO.nodeGraphicCmdFunc = nullptr;
 	}
 #pragma endregion
 }
