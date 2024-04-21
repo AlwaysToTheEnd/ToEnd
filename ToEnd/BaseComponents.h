@@ -95,6 +95,15 @@ private:
 class CGHRenderer
 {
 public:
+	enum RENDER_FLAGS
+	{
+		RENDER_FLAG_NONE = 0,
+		RENDER_FLAG_NON_TARGET_SHADOW = 1,
+		RENDER_FLAG_NON_RECEIVE_SHADOW = 2,
+		RENDER_FLAG_SHADOW_TWOSIDE = 4,
+	};
+
+public:
 	unsigned int GetRenderID() { return m_renderID + 1; }
 
 protected:

@@ -16,6 +16,7 @@ struct BoneWeight
 cbuffer cbsettings : register(b0, space1)
 {
     uint gRenderID;
+    bool gIsShadowGen;
 };
 
 StructuredBuffer<float3> gVertexNormals : register(t0, space1);
@@ -28,6 +29,8 @@ StructuredBuffer<float3> gVertexUV2 : register(t5, space1);
 StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t0, space2);
 StructuredBuffer<BoneWeight> gBoneWeights : register(t1, space2);
 StructuredBuffer<float4x4> gBoneData : register(t2, space2);
+
+RWStructuredBuffer<float3> gResultVertices : register(u0, space1);
 
 struct VSOut
 {
@@ -49,8 +52,8 @@ VSOut VS(VertexIn vin)
     
     BoneWeightInfo weightInfo = gBoneWeightInfos[vin.id];
    
-    float3 sumPosL = float3(0.0f, 0.0f, 0.0f);
-    float3 sumNormalL = float3(0.0f, 0.0f, 0.0f);
+    float3 sumPos = float3(0.0f, 0.0f, 0.0f);
+    float3 sumNormal = float3(0.0f, 0.0f, 0.0f);
     float3 sumTangent = float3(0.0f, 0.0f, 0.0f);
     float3 sumBitan = float3(0.0f, 0.0f, 0.0f);
     
@@ -60,18 +63,23 @@ VSOut VS(VertexIn vin)
     {
         boenWeight = gBoneWeights[weightInfo.offsetIndex + i];
         
-        sumPosL += boenWeight.weight * mul(vout.posH, gBoneData[boenWeight.boneIndex]).xyz;
-        sumNormalL += boenWeight.weight * mul(normal, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumPos += boenWeight.weight * mul(vout.posH, gBoneData[boenWeight.boneIndex]).xyz;
+        sumNormal += boenWeight.weight * mul(normal, (float3x3) gBoneData[boenWeight.boneIndex]);
         sumTangent += boenWeight.weight * mul(tangent, (float3x3) gBoneData[boenWeight.boneIndex]);
         sumBitan += boenWeight.weight * mul(bitangent, (float3x3) gBoneData[boenWeight.boneIndex]);
     }
     
-    vout.posH = mul(float4(sumPosL, 1.0f), gViewProj);
-    vout.tangentBasis = transpose(float3x3(normalize(sumTangent), normalize(sumBitan), normalize(sumNormalL)));
+    vout.posH = mul(float4(sumPos, 1.0f), gViewProj);
+    vout.tangentBasis = transpose(float3x3(normalize(sumTangent), normalize(sumBitan), normalize(sumNormal)));
    
     vout.uv0 = gVertexUV0[vin.id];
     vout.uv1 = gVertexUV1[vin.id];
     vout.uv2 = gVertexUV2[vin.id];
+    
+    if (gIsShadowGen)
+    {
+        gResultVertices[vin.id] = sumPos;
+    }
     
     return vout;
 }
@@ -109,6 +117,23 @@ float3 ExcuteTextureOP(float3 dest, float3 src, uint op)
             break;
         case TEXOP_SIGNEDADD:
             result = dest + (src - 0.5);
+            break;
+    }
+    
+    return result;
+}
+
+float3 ExcuteSrcAlphaOP(float3 color, float alpha, uint op)
+{
+    float3 result = color.rgb;
+   
+    switch (op)
+    {
+        case ALPHAOP_MULTIPLY:
+            result *= alpha;
+            break;
+        case ALPHAOP_INV_MULTIPLY:
+            result *= (1.0f - alpha);
             break;
     }
     
@@ -183,7 +208,7 @@ PSOut PS(VSOut pin)
         {
             case TEXTYPE_BASE_COLOR:{
                     float3 srcColor = currTextureValue.rgb * blend;
-                    pout.color.rgb = ExcuteTextureOP(pout.color.rgb * pout.color.a, srcColor, currTextureInfo.textureOp);
+                    pout.color.rgb = ExcuteTextureOP(pout.color.rgb * pout.color.a, ExcuteSrcAlphaOP(srcColor, currTextureValue.a, currTextureInfo.srcAlphaOP), currTextureInfo.textureOp);
                     pout.color.a = 1.0f;
                 }
                 break;

@@ -12,7 +12,19 @@ struct LightData
 	float pad1 = 0;
 };
 
-class COMDirLight : public Component
+class CGHLight
+{
+public:
+	enum LIGHT_FLAGS
+	{
+		LIGHT_FLAG_NONE =0,
+		LIGHT_FLAG_SHADOW = 1,
+	};
+
+protected:
+};
+
+class COMDirLight : public Component, public CGHLight
 {
 public:
 	COMDirLight(CGHNode* node);
@@ -30,7 +42,7 @@ private:
 };
 
 
-class COMPointLight : public Component
+class COMPointLight : public Component, public CGHLight
 {
 public:
 	COMPointLight(CGHNode* node);

@@ -9,6 +9,7 @@
 #include <dxgi1_4.h>
 #include <DirectXMath.h>
 #include <functional>
+#include <DirectXHelpers.h>
 #include "DX12UploadBuffer.h"
 #include "CGHGraphicResource.h"
 #include "CGHBaseClass.h"
@@ -119,6 +120,7 @@ public:
 	ID3D12CommandQueue* GetCommandQueue() { return m_commandQueue.Get(); }
 	unsigned int GetNumFrameResource() { return m_numFrameResource; }
 	unsigned int GetCurrFrameIndex() { return m_currFrame; }
+	UINT16 GetCurrMouseTargetRenderID() { return m_currMouseTargetRenderID; }
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrPresentRTV();
 	D3D12_CPU_DESCRIPTOR_HANDLE GetPresentDSV();
@@ -131,13 +133,13 @@ public:
 
 	void Update(float delta, const Camera* camera);
 
-	void RenderBegin();
 	void RenderMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
 	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID);
 	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, unsigned int renderID);
 	void RenderString(const wchar_t* str, const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float size, float rowPitch);
+	void RenderBegin();
 	void RenderEnd();
 
 	void SetFontRenderPsoWorkSet(const PipeLineWorkSet& workset);
@@ -193,7 +195,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_deferredBaseSRVHeap;
 
-	UINT16							m_currMouseTargetRednerID = 0;
+	UINT16							m_currMouseTargetRenderID = 0;
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 	
 	std::vector<UIInfo>				m_reservedUIInfos;
@@ -210,12 +212,16 @@ private:
 	unsigned int										m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
 
+	std::unordered_map<void*,std::pair<char, ComPtr<ID3D12Resource>>>	m_resultVertexPosBuffers;
+	ComPtr<ID3D12Resource>												m_resultVertexPosUABuffer;
+
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
 	std::vector<ComPtr<ID3D12CommandAllocator>>							m_cmdListAllocs;
 	std::vector<std::unique_ptr<DX12UploadBuffer<DX12PassConstants>>>	m_passCBs;
 	std::vector<PipeLineWorkSet>										m_PSOs;
 	std::vector<PipeLineWorkSet>										m_lightPSOs;
+	PipeLineWorkSet														m_shadowMapWritePSO;
 	PipeLineWorkSet														m_fontPSO;
 	PipeLineWorkSet														m_uiPSO;
 	PipeLineWorkSet														m_uiRenderIDPSO;

@@ -107,6 +107,9 @@
     <ClInclude Include="..\Common\Source\DxException.h">
       <Filter>BaseUtil</Filter>
     </ClInclude>
+    <ClInclude Include="CGHUIButton.h">
+      <Filter>Nodes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -172,6 +175,9 @@
     <ClCompile Include="Xml.cpp">
       <Filter>BaseUtil</Filter>
     </ClCompile>
+    <ClCompile Include="CGHUIButton.cpp">
+      <Filter>Nodes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -195,9 +201,6 @@
     <FxCompile Include="Shader\DeferredLightPoint.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="PBR_example.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
     <FxCompile Include="Shader\FontRender.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
@@ -205,6 +208,12 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shader\UIRenderIDShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\ShadowMapGenShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\ComputBoneDataToVertex.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

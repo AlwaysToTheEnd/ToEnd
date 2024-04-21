@@ -7,8 +7,12 @@ struct TextureInfo
     uint textureOp;
     uint mapMode;
     float blend;
-    float pad1;
+    uint srcAlphaOP;
 };
+
+#define ALPHAOP_ONE 0
+#define ALPHAOP_MULTIPLY 1
+#define ALPHAOP_INV_MULTIPLY 2
 
 #define TEXTYPE_BASE_COLOR 12
 #define TEXTYPE_NORMAL 13

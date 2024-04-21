@@ -16,6 +16,13 @@ enum CGHRENDER_FLAG
 
 struct TextureInfo
 {
+	enum ALPHAOP
+	{
+		ALPHAOP_ONE =0,
+		ALPHAOP_MULTIPLY,
+		ALPHAOP_INV_MULTIPLY
+	};
+
 public:
 	unsigned int textureFilePathID = 0;
 	unsigned int type = aiTextureType_NONE;
@@ -24,7 +31,7 @@ public:
 	unsigned int textureOp = aiTextureOp_Add;
 	unsigned int mapMode = aiTextureMapMode_Wrap;
 	float blend = 1.0f;
-	float pad0 = 0;
+	ALPHAOP srcAlphaOp = ALPHAOP_ONE;
 
 public:
 	static size_t GetTextureFilePathID(const char* path);

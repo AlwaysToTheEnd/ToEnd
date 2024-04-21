@@ -41,7 +41,7 @@ void TestScene::Init()
 		texInfo.type = aiTextureType_BASE_COLOR;
 		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
-
+		
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_DetailMainTex.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
@@ -94,12 +94,21 @@ void TestScene::Init()
 		texInfo.textureOp = aiTextureOp_SignedAdd;
 		material->SetTexture(&texInfo, 0);
 
+		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_DetailMainTex.png");
+		texInfo.blend = 1.0f;
+		texInfo.uvIndex = 0;
+		texInfo.type = aiTextureType_BASE_COLOR;
+		texInfo.textureOp = aiTextureOp_Subtract;
+		texInfo.srcAlphaOp = TextureInfo::ALPHAOP_MULTIPLY;
+		material->SetTexture(&texInfo, 1);
+
+
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_BumpMap2_converted.png");
 		texInfo.blend = 1.0f;
 		texInfo.uvIndex = 0;
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
 		texInfo.textureOp = aiTextureOp_Add;
-		material->SetTexture(&texInfo, 1);
+		material->SetTexture(&texInfo, 2);
 	}
 
 	{
@@ -205,13 +214,6 @@ void TestScene::Init()
 	fontrender->SetRenderString(L"Test Rendering", color, 350.0f);
 	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
 	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
-
-	auto uiRender = m_uiNode.CreateComponent<COMUIRenderer>();
-	auto uiTrans = m_uiNode.CreateComponent<COMUITransform>();
-
-	uiRender->SetColor(DirectX::Colors::Pink);
-	uiTrans->SetSize(DirectX::XMVectorSet(100, 100, 0, 0));
-	uiTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.11f, 0));
 }
 
 void TestScene::Update(float delta)
@@ -220,7 +222,7 @@ void TestScene::Update(float delta)
 
 	static float x, y = 0;
 	//x += delta * 1.0f;
-	y += delta * 0.8f;
+	//y += delta * 0.8f;
 
 	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
@@ -231,7 +233,6 @@ void TestScene::Update(float delta)
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_stringNode.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_uiNode.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::RateUpdate(float delta)
@@ -239,7 +240,6 @@ void TestScene::RateUpdate(float delta)
 	m_rootNode->RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_stringNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_uiNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::Render()

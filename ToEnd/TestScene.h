@@ -32,5 +32,4 @@ private:
 	CGHNode* m_rootNode = nullptr;
 	CGHNode m_dirLight;
 	CGHNode	m_stringNode;
-	CGHNode m_uiNode;
 };
