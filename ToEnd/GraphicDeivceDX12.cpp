@@ -357,8 +357,8 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
 			D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(m_resultVertexPosUABuffer.GetAddressOf())));
-		
-		m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_resultVertexPosUABuffer.Get(), 
+
+		m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_resultVertexPosUABuffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE));
 	}
 
@@ -449,7 +449,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, 0.1f, 1000.0f);
 	XMStoreFloat4x4(&m_projMat, proj);
-	
+
 	FlushCommandQueue();
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
@@ -506,29 +506,88 @@ void GraphicDeviceDX12::RenderBegin()
 	{
 		if (!(currNode.second & CGHRenderer::RENDER_FLAG_NON_TARGET_SHADOW))
 		{
-			auto iter = m_resultVertexPosBuffers.find(currNode.first);
-
-			if (iter == m_resultVertexPosBuffers.end())
+			auto meshCom = currNode.first->GetComponent<COMSkinnedMesh>();
+			if (meshCom != nullptr)
 			{
-				auto mesh = currNode.first->GetComponent<COMSkinnedMesh>();
-				auto& currPair = m_resultVertexPosBuffers[currNode.first];
+				auto iter = m_resultVertexPosBuffers.find(meshCom);
 
-				D3D12_RESOURCE_DESC desc = mesh->GetMeshData()->meshData[MESHDATA_POSITION]->GetDesc();
-				D3D12_HEAP_PROPERTIES prop = {};
-				prop.Type = D3D12_HEAP_TYPE_DEFAULT;
+				if (iter == m_resultVertexPosBuffers.end())
+				{
+					auto& currBuffer = m_resultVertexPosBuffers[meshCom];
 
-				ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
-					D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(currPair.second.GetAddressOf())));
+					D3D12_RESOURCE_DESC desc = meshCom->GetMeshData()->meshData[MESHDATA_POSITION]->GetDesc();
+					D3D12_HEAP_PROPERTIES prop = {};
+					prop.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-				m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(currPair.second.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-				currPair.first = 10;
+					ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
+						D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(currBuffer.GetAddressOf())));
+
+					m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(currBuffer.Get(),
+						D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+
+					meshCom->AddDeleteEvent([this](Component* comp)
+						{
+							m_resultVertexPosBuffers.erase(comp);
+						});
+				}
+				else
+				{
+					m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(iter->second.Get(),
+						D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_COPY_DEST));
+				}
 			}
-			else
+
+		}
+	}
+
+	for (auto& currNode : m_dirLightRenderQueue.queue)
+	{
+		if (!(currNode.second & CGHLightComponent::LIGHT_FLAG_SHADOW))
+		{
+			auto comLight = currNode.first->GetComponent<COMDirLight>();
+
+			if (comLight == nullptr)
 			{
-				m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(iter->second.second.Get(),
-					D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_COPY_DEST));
-				iter->second.first = 10;
+				auto iter = m_dirLightShadowMaps.find(comLight);
+
+				if (iter == m_dirLightShadowMaps.end())
+				{
+					auto& currShadowMap = m_dirLightShadowMaps[comLight];
+
+					D3D12_RESOURCE_DESC desc = m_swapChain->GetDSResource()->GetDesc();
+					D3D12_HEAP_PROPERTIES prop = {};
+					prop.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+					D3D12_CLEAR_VALUE clearValue = {};
+					clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+					clearValue.DepthStencil.Depth = 1.0f;
+					clearValue.DepthStencil.Stencil = 0;
+					ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
+						D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(currShadowMap.resource.GetAddressOf())));
+
+					D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+					heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+					heapDesc.NumDescriptors = 1;
+					ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(currShadowMap.texViewHeap.GetAddressOf())));
+
+					D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+					dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+					dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+					dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+					dsvDesc.Texture2D.MipSlice = 0;
+					m_d3dDevice->CreateDepthStencilView(currShadowMap.resource.Get(), &dsvDesc, 
+						currShadowMap.texViewHeap->GetCPUDescriptorHandleForHeapStart());
+
+					comLight->AddDeleteEvent([this](Component* comp)
+						{
+							m_dirLightShadowMaps.erase(comp);
+						});
+				}
+				else
+				{
+					m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(iter->second.resource.Get(),
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+				}
 			}
 		}
 	}
@@ -594,7 +653,7 @@ void GraphicDeviceDX12::RenderString(const wchar_t* str, const DirectX::XMFLOAT4
 	int currLine = 0;
 	CGH::CharInfo* currCharInfo = m_charInfoMapped[m_currFrame];
 	currCharInfo += m_numRenderChar;
-	
+
 	for (int i = 0; i < stringLen; i++)
 	{
 		currCharInfo->glyphID = currFont->GetGlyphIndex(str[i]);
@@ -639,7 +698,7 @@ void GraphicDeviceDX12::RenderEnd()
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV() };
 		m_swapChain->ClearDS(m_cmdList.Get());
 		m_cmdList->OMSetRenderTargets(1, rtvs, true, &m_swapChain->GetDSV());
-	
+
 		if (m_fontPSO.pso != nullptr)
 		{
 			m_cmdList->SetPipelineState(m_fontPSO.pso);
@@ -782,21 +841,6 @@ void GraphicDeviceDX12::RenderEnd()
 
 		targetFrame = (targetFrame + m_numFrameResource - 1) % m_numFrameResource;
 	}
-
-	for (auto iter = m_resultVertexPosBuffers.begin(); iter != m_resultVertexPosBuffers.end(); )
-	{
-		iter->second.first -= 1;
-
-		if (iter->second.first < 1)
-		{
-			iter = m_resultVertexPosBuffers.erase(iter);
-		}
-		else
-		{
-			iter++;
-		}
-	}
-	
 }
 
 void GraphicDeviceDX12::FlushCommandQueue()
@@ -1089,10 +1133,10 @@ void GraphicDeviceDX12::BuildPso()
 			if (isShadowGen)
 			{
 				auto desc = currMesh->meshData[MESHDATA_POSITION]->GetDesc();
-				auto currNodesBuffer = m_resultVertexPosBuffers[node];
-				cmd->CopyBufferRegion(currNodesBuffer.second.Get(), 0, m_resultVertexPosUABuffer.Get(), 0, desc.Width);
+				auto currNodesBuffer = m_resultVertexPosBuffers[meshCom];
+				cmd->CopyBufferRegion(currNodesBuffer.Get(), 0, m_resultVertexPosUABuffer.Get(), 0, desc.Width);
 
-				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(currNodesBuffer.second.Get(),
+				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(currNodesBuffer.Get(),
 					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 			}
 		};
@@ -1559,21 +1603,15 @@ void GraphicDeviceDX12::BuildPso()
 	}
 #pragma endregion
 
-#pragma region SHADOWMAP_GEN_PIPELINE
+#pragma region DIRLIGHT_SHADOWMAP_WRITE_PIPELINE
 	{
-		std::string pipeLineName = "PIPELINE_SHADOWMAP";
+		std::string pipeLineName = "DIRLIGHT_SHADOWMAP_WRITE";
 		rootParams.clear();
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		temp.Constants.Num32BitValues = 2;
 		temp.Constants.RegisterSpace = 0;
 		temp.Constants.ShaderRegister = 0;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 0;
-		temp.Descriptor.ShaderRegister = 0;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+		temp.Constants.Num32BitValues = 16;
+		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParams.push_back(temp);
 
 		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
@@ -1588,34 +1626,73 @@ void GraphicDeviceDX12::BuildPso()
 
 		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
 
-		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "VS");
-		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "GS");
-		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "PS");
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/ShadowMapGenShader.hlsl", "VS");
 
 		//IA Set
-		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-		psoDesc.InputLayout.NumElements = 0;
-		psoDesc.InputLayout.pInputElementDescs = nullptr;
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psoDesc.InputLayout.NumElements = 1;
+		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
 
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 
-		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
-
 		//OM Set
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R16_UINT;
+		psoDesc.NumRenderTargets = 0;
 
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
 
 		m_shadowMapWritePSO.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
 		m_shadowMapWritePSO.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
-		
+
+		m_shadowMapWritePSO.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+		{
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		};
+
+		m_shadowMapWritePSO.nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int lightFlags)
+		{
+			if (lightFlags & CGHLightComponent::LIGHT_FLAG_SHADOW)
+			{
+				auto* lightCom = node->GetComponent<COMDirLight>();
+				if (lightCom)
+				{
+					auto shadowMap = m_dirLightShadowMaps[lightCom];
+					auto shadowMapDSV = shadowMap.texViewHeap->GetCPUDescriptorHandleForHeapStart();
+					DirectX::XMFLOAT4X4 shadowViewProj = {};
+					cmd->ClearDepthStencilView(shadowMapDSV,
+						D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+					cmd->OMSetRenderTargets(0, nullptr, false, &shadowMapDSV);
+					cmd->SetGraphicsRoot32BitConstants(0, 16, &shadowViewProj, 0);
+
+					for (auto& iter : m_resultVertexPosBuffers)
+					{
+						auto meshCom = reinterpret_cast<COMSkinnedMesh*>(iter.first);
+						auto mesh = meshCom->GetMeshData();
+
+						D3D12_VERTEX_BUFFER_VIEW vbv = {};
+						vbv.BufferLocation = iter.second->GetGPUVirtualAddress();
+						vbv.StrideInBytes = sizeof(DirectX::XMFLOAT3);
+						vbv.SizeInBytes = vbv.StrideInBytes * mesh->numData[MESHDATA_POSITION];
+
+						D3D12_INDEX_BUFFER_VIEW ibv = {};
+						ibv.BufferLocation = mesh->meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
+						ibv.Format = DXGI_FORMAT_R32_UINT;
+						ibv.SizeInBytes = sizeof(unsigned int) * mesh->numData[MESHDATA_INDEX];
+
+						cmd->IASetVertexBuffers(0, 1, &vbv);
+						cmd->IASetIndexBuffer(&ibv);
+						cmd->DrawIndexedInstanced(mesh->numData[MESHDATA_INDEX], 1, 0, 0, 0);
+					}
+
+					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowMap.resource.Get(),
+						D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+				}
+			}
+		};
 	}
 #pragma endregion
 }

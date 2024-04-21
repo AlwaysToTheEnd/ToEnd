@@ -1,5 +1,5 @@
 
-cbuffer ShadowLightPass : register(b0, sapce0)
+cbuffer ShadowLightPass : register(b0, space0)
 {
     float4x4 gLightViewOrtho;
 };

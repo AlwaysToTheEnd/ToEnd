@@ -12,19 +12,25 @@ struct LightData
 	float pad1 = 0;
 };
 
-class CGHLight
+class CGHLightComponent : public Component
 {
 public:
+	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) = 0;
 	enum LIGHT_FLAGS
 	{
 		LIGHT_FLAG_NONE =0,
 		LIGHT_FLAG_SHADOW = 1,
 	};
 
+	LightData m_data;
+
 protected:
+	unsigned int m_lightIndex = 0;
+	unsigned int m_lightFlags = 0;
+
 };
 
-class COMDirLight : public Component, public CGHLight
+class COMDirLight : public CGHLightComponent
 {
 public:
 	COMDirLight(CGHNode* node);
@@ -33,16 +39,12 @@ public:
 	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
-public:
-	LightData m_data;
-
 private:
 	static size_t s_hashCode;
-	unsigned int m_lightFlags = 0;
 };
 
 
-class COMPointLight : public Component, public CGHLight
+class COMPointLight : public CGHLightComponent
 {
 public:
 	COMPointLight(CGHNode* node);
@@ -53,11 +55,7 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	UINT64 GetLightDataGPU(unsigned int currFrameIndex);
 
-public:
-	LightData m_data;
-
 private:
 	static size_t s_hashCode;
-	unsigned int m_lightIndex = 0;
-	unsigned int m_lightFlags = 0;
+	
 };

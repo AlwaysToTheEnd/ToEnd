@@ -57,6 +57,12 @@ struct PipeLineWorkSet
 
 class GraphicDeviceDX12
 {
+	struct ShadowMap
+	{
+		ComPtr<ID3D12Resource> resource;
+		ComPtr<ID3D12DescriptorHeap> texViewHeap;
+	};
+
 	struct DX12DirLightData
 	{
 		DirectX::XMFLOAT3 dir = { 0.0f, 0.0f, -1.0f };
@@ -211,9 +217,10 @@ private:
 
 	unsigned int										m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
+	std::unordered_map<void*, ShadowMap>				m_dirLightShadowMaps;
 
-	std::unordered_map<void*,std::pair<char, ComPtr<ID3D12Resource>>>	m_resultVertexPosBuffers;
-	ComPtr<ID3D12Resource>												m_resultVertexPosUABuffer;
+	std::unordered_map<void*, ComPtr<ID3D12Resource>>	m_resultVertexPosBuffers;
+	ComPtr<ID3D12Resource>								m_resultVertexPosUABuffer;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;
