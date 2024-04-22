@@ -204,6 +204,7 @@ void TestScene::Init()
 	auto light = m_dirLight.CreateComponent<COMDirLight>();
 	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	light->m_data.power = 1.5f;
+	light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
 
 	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
 

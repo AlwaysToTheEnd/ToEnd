@@ -8,7 +8,7 @@
 #include <functional>
 #include "BaseComponents.h"
 
-static struct GlobalOptions
+struct GlobalOptions
 {
 	struct WindowOption
 	{
@@ -22,7 +22,9 @@ static struct GlobalOptions
 		const std::wstring	FontFolderPath = L"Fonts";
 		float				Shadowlength = 100.0f;
 	}GRAPHIC;
-}GO;
+
+	static GlobalOptions GO;
+};
 
 enum CGHNODE_EVENT_FLAGS
 {

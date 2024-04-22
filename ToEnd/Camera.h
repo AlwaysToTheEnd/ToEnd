@@ -21,7 +21,8 @@ public:
 
 	DirectX::XMFLOAT3A			GetViewRay(const DirectX::XMFLOAT4X4& projectionMat, unsigned int viewPortWidth, unsigned int viewPortHeight) const;
 	const DirectX::XMFLOAT4X4*	GetViewMatrix() const { return &m_viewMat; }
-	DirectX::XMFLOAT3			GetEyePos() const { return m_eyePos; }
+	const DirectX::XMFLOAT3&	GetEyePos() const { return m_eyePos; }
+	const DirectX::XMFLOAT3&	GetTargetPos() const { return m_targetPos; }
 
 private:
 	DirectX::XMFLOAT4X4 m_viewMat;

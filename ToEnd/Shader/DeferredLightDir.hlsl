@@ -5,12 +5,14 @@ struct LightData
     float3 dir;
     float power;
     float3 color;
-    float pad0;
+    int shadowMapIndex;
+    float4x4 shadowMapMat;
 };
 
 uint gNumLight : register(b1, space0);
 
 StructuredBuffer<LightData> gLightDatas : register(t5);
+Texture2D<float> gShadowMapTexture[8] : register(t0, space1);
 
 float4 VS() : SV_Position
 {
@@ -21,6 +23,32 @@ struct DLightGSOut
 {
     float4 position : SV_Position;
 };
+
+float CalcSahdowFactor(float4 shadowPos, uint shadowMapIndex)
+{
+    shadowPos.xyz /= shadowPos.w;
+    Texture2D<float> currShadowMap = gShadowMapTexture[shadowMapIndex];
+    uint width, height, numMips;
+    currShadowMap.GetDimensions(0, width, height, numMips);
+    
+    float dx = 1.0f / (float) width;
+    
+    float percentLit = 0.0f;
+    const float2 offsets[9] =
+    {
+        float2(-dx, -dx), float2(0.0f, -dx), float2(dx, -dx),
+        float2(-dx, 0.0f), float2(0.0f, 0.0f), float2(dx, 0.0f),
+        float2(-dx, +dx), float2(0.0f, +dx), float2(dx, +dx)
+    };
+    
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        percentLit += currShadowMap.SampleCmpLevelZero(gsamShadow, shadowPos.xy + offsets[i], shadowPos.z);
+    }
+    
+    return percentLit / 9.0f;
+}
 
 
 [maxvertexcount(4)]
@@ -74,12 +102,20 @@ float4 PS(DLightGSOut inDLight) : SV_Target
         float3 diffuseBRDF = kd * gbData.color.rgb;
         float3 specularBRDF = (F * D * G) / max(Epsilon, 4.0f * cosLight * cosEye);
         
-        finalColor += (diffuseBRDF + specularBRDF) *currLight.color * cosLight * currLight.power;
+        float shadowFactor = 1.0f;
+        
+        if (currLight.shadowMapIndex > -1)
+        {
+            float4 shadowPos = mul(float4(worldPos, 1.0f), currLight.shadowMapMat);
+            shadowFactor = CalcSahdowFactor(shadowPos, currLight.shadowMapIndex);
+        }
+        
+        finalColor += (diffuseBRDF + specularBRDF) * currLight.color * cosLight * currLight.power * shadowFactor;
     }
     
     //float3 specRefVec = 2.0f * cosEye * gbData.normal - toEye;
     
-    float3 ambientLight = gAmbientLight.rgb * gbData.color.rgb; 
+    float3 ambientLight = gAmbientLight.rgb * gbData.color.rgb;
     
     return float4(finalColor + ambientLight, 1.0f);
 }

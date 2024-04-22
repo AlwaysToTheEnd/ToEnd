@@ -59,8 +59,11 @@ class GraphicDeviceDX12
 {
 	struct ShadowMap
 	{
+		static ComPtr<ID3D12DescriptorHeap> texSRVHeap;
 		ComPtr<ID3D12Resource> resource;
-		ComPtr<ID3D12DescriptorHeap> texViewHeap;
+		ComPtr<ID3D12DescriptorHeap> texDSVHeap;
+		DirectX::XMFLOAT4X4 lightViewProj;
+		unsigned int srvHeapIndex = 0;
 	};
 
 	struct DX12DirLightData
@@ -68,7 +71,8 @@ class GraphicDeviceDX12
 		DirectX::XMFLOAT3 dir = { 0.0f, 0.0f, -1.0f };
 		float power = 1.0f;
 		DirectX::XMFLOAT3 color = {};
-		float pad = 0;
+		int shadowMapIndex = -1;
+		DirectX::XMFLOAT4X4 shadowMapMat = CGH::IdentityMatrix;
 	};
 
 	struct UIInfo
@@ -186,6 +190,7 @@ private:
 	DirectX::XMFLOAT4X4				m_projMat = CGH::IdentityMatrix;
 	DirectX::XMFLOAT3				m_rayOrigin = { 0,0,0 };
 	DirectX::XMFLOAT3				m_ray = { 0,0,0 };
+	DirectX::XMFLOAT3				m_cameraTargetPos = { 0,0,0 };
 
 	DXGI_FORMAT						m_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DX12SwapChain*					m_swapChain = nullptr;
@@ -197,9 +202,9 @@ private:
 	DX12RenderQueue					m_pointLightRenderQueue;
 
 	unsigned int					m_rtvSize = 0;
+	unsigned int					m_srvcbvuavSize = 0;
  	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
-	ComPtr<ID3D12DescriptorHeap>	m_deferredBaseSRVHeap;
 
 	UINT16							m_currMouseTargetRenderID = 0;
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
@@ -215,6 +220,8 @@ private:
 	std::vector<CGH::CharInfo*>				m_charInfoMapped;
 	Microsoft::WRL::ComPtr<ID3D12Resource>	m_charInfos;
 
+	const unsigned int									m_numMaxShadowMap = 8;
+	unsigned char										m_currNumShadowMap = 0;
 	unsigned int										m_numDirLight = 0;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>> m_dirLightDatas;
 	std::unordered_map<void*, ShadowMap>				m_dirLightShadowMaps;

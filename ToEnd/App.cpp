@@ -25,7 +25,7 @@ App* App::s_App = nullptr;
 HRESULT App::Init()
 {
 	HRESULT result = InitWindow();
-	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+	GraphicDeviceDX12::CreateDeivce(m_hMainWnd, GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 	DX12GarbageFrameResourceMG::s_instance.Init();
 
 	m_timer.Start();
@@ -118,8 +118,8 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		int clientWidth = LOWORD(lParam);
 		int clientHeight = HIWORD(lParam);
 
-		GO.WIN.WindowsizeX = clientWidth;
-		GO.WIN.WindowsizeY = clientHeight;
+		GlobalOptions::GO.WIN.WindowsizeX = clientWidth;
+		GlobalOptions::GO.WIN.WindowsizeY = clientHeight;
 
 		if (wParam == SIZE_MINIMIZED)
 		{
@@ -130,23 +130,23 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			m_miniMized = false;
 			m_maximized = true;
-			GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+			GraphicDeviceDX12::GetGraphic()->OnResize(GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 		}
 		else if (wParam == SIZE_RESTORED)
 		{
 			if (m_miniMized)
 			{
 				m_miniMized = false;
-				GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+				GraphicDeviceDX12::GetGraphic()->OnResize(GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 			}
 			else if (m_maximized)
 			{
 				m_maximized = false;
-				GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+				GraphicDeviceDX12::GetGraphic()->OnResize(GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 			}
 			else if (m_resizing)
 			{
-				GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+				GraphicDeviceDX12::GetGraphic()->OnResize(GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 			}
 		}
 		return 0;
@@ -158,7 +158,7 @@ LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_EXITSIZEMOVE:
 	{
-		GraphicDeviceDX12::GetGraphic()->OnResize(GO.WIN.WindowsizeX, GO.WIN.WindowsizeY);
+		GraphicDeviceDX12::GetGraphic()->OnResize(GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 		m_resizing = false;
 		return 0;
 	}
@@ -207,7 +207,7 @@ HRESULT App::InitWindow()
 		return S_FALSE;
 	}
 
-	RECT R = { 0,0,GO.WIN.WindowsizeX, GO.WIN.WindowsizeY };
+	RECT R = { 0,0,GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;

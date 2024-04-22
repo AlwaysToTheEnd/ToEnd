@@ -1,6 +1,8 @@
 #pragma once
 #include <basetsd.h>
 #include "Component.h"
+#pragma warning(push)
+#pragma warning(disable: 26812)
 
 struct LightData
 {
@@ -16,13 +18,16 @@ class CGHLightComponent : public Component
 {
 public:
 	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) = 0;
-	enum LIGHT_FLAGS
+	enum LIGHT_FLAGS : unsigned int
 	{
 		LIGHT_FLAG_NONE =0,
 		LIGHT_FLAG_SHADOW = 1,
 	};
 
 	LightData m_data;
+
+	void SetFlags(LIGHT_FLAGS flags) { m_lightFlags = flags; }
+	LIGHT_FLAGS GetFlags() { return static_cast<LIGHT_FLAGS>(m_lightFlags); }
 
 protected:
 	unsigned int m_lightIndex = 0;
@@ -59,3 +64,5 @@ private:
 	static size_t s_hashCode;
 	
 };
+
+#pragma warning(pop)
