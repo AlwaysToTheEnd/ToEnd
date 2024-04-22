@@ -1,10 +1,16 @@
 #include "RenderBaseRegister.hlsli"
 #include "MaterialRegister.hlsli"
 
-struct BoneWeightInfo
+struct VertexIn
 {
-    uint numWeight;
-    uint offsetIndex;
+    float3 posL : POSITION;
+    float3 normal : NORMAL;
+    float3 tan : TANGENT;
+    float3 bitan : BITAN;
+    float3 uv0 : UV0;
+    float3 uv1 : UV1;
+    float3 uv2 : UV2;
+    uint2 weightInfo : BONEWEIGHTINFO; //x =numWeight , y = offsetIndex
 };
 
 struct BoneWeight
@@ -19,16 +25,16 @@ cbuffer cbsettings : register(b0, space1)
     bool gIsShadowGen;
 };
 
-StructuredBuffer<float3> gVertexNormals : register(t0, space1);
-StructuredBuffer<float3> gVertexTangents : register(t1, space1);
-StructuredBuffer<float3> gVertexBitans : register(t2, space1);
-StructuredBuffer<float3> gVertexUV0 : register(t3, space1);
-StructuredBuffer<float3> gVertexUV1 : register(t4, space1);
-StructuredBuffer<float3> gVertexUV2 : register(t5, space1);
+//StructuredBuffer<float3> gVertexNormals : register(t0, space1);
+//StructuredBuffer<float3> gVertexTangents : register(t1, space1);
+//StructuredBuffer<float3> gVertexBitans : register(t2, space1);
+//StructuredBuffer<float3> gVertexUV0 : register(t3, space1);
+//StructuredBuffer<float3> gVertexUV1 : register(t4, space1);
+//StructuredBuffer<float3> gVertexUV2 : register(t5, space1);
 
-StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t0, space2);
-StructuredBuffer<BoneWeight> gBoneWeights : register(t1, space2);
-StructuredBuffer<float4x4> gBoneData : register(t2, space2);
+//StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t0, space1);
+StructuredBuffer<BoneWeight> gBoneWeights : register(t0, space1);
+StructuredBuffer<float4x4> gBoneData : register(t1, space1);
 
 RWStructuredBuffer<float3> gResultVertices : register(u0, space1);
 
@@ -41,17 +47,12 @@ struct VSOut
     float3 uv2 : TEXCOORD2;
 };
 
-VSOut VS(VertexIn vin)
+VSOut VS(VertexIn vin, uint id : SV_VertexID)
 {
     VSOut vout;
    
-    vout.posH = float4(vin.PosL, 1.0f);
-    float3 normal = gVertexNormals[vin.id];
-    float3 tangent = gVertexTangents[vin.id];
-    float3 bitangent = gVertexBitans[vin.id];
+    vout.posH = float4(vin.posL, 1.0f);
     
-    BoneWeightInfo weightInfo = gBoneWeightInfos[vin.id];
-   
     float3 sumPos = float3(0.0f, 0.0f, 0.0f);
     float3 sumNormal = float3(0.0f, 0.0f, 0.0f);
     float3 sumTangent = float3(0.0f, 0.0f, 0.0f);
@@ -59,26 +60,26 @@ VSOut VS(VertexIn vin)
     
     BoneWeight boenWeight;
     [loop]
-    for (uint i = 0; i < weightInfo.numWeight; i++)
+    for (uint i = 0; i < vin.weightInfo.x; i++)
     {
-        boenWeight = gBoneWeights[weightInfo.offsetIndex + i];
+        boenWeight = gBoneWeights[vin.weightInfo.y + i];
         
         sumPos += boenWeight.weight * mul(vout.posH, gBoneData[boenWeight.boneIndex]).xyz;
-        sumNormal += boenWeight.weight * mul(normal, (float3x3) gBoneData[boenWeight.boneIndex]);
-        sumTangent += boenWeight.weight * mul(tangent, (float3x3) gBoneData[boenWeight.boneIndex]);
-        sumBitan += boenWeight.weight * mul(bitangent, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumNormal += boenWeight.weight * mul(vin.normal, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumTangent += boenWeight.weight * mul(vin.tan, (float3x3) gBoneData[boenWeight.boneIndex]);
+        sumBitan += boenWeight.weight * mul(vin.bitan, (float3x3) gBoneData[boenWeight.boneIndex]);
     }
     
     vout.posH = mul(float4(sumPos, 1.0f), gViewProj);
     vout.tangentBasis = transpose(float3x3(normalize(sumTangent), normalize(sumBitan), normalize(sumNormal)));
    
-    vout.uv0 = gVertexUV0[vin.id];
-    vout.uv1 = gVertexUV1[vin.id];
-    vout.uv2 = gVertexUV2[vin.id];
+    vout.uv0 = vin.uv0;
+    vout.uv1 = vin.uv1;
+    vout.uv2 = vin.uv2;
     
     if (gIsShadowGen)
     {
-        gResultVertices[vin.id] = sumPos;
+        gResultVertices[id] = sumPos;
     }
     
     return vout;

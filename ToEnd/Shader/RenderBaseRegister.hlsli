@@ -24,8 +24,4 @@ cbuffer cbPass : register(b0, space0)
     float3 gPad0;
 };
 
-struct VertexIn
-{
-    float3 PosL : POSITION;
-    uint id : SV_VertexID;
-};
+

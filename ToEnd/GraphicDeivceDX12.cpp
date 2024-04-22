@@ -928,14 +928,7 @@ void GraphicDeviceDX12::BuildPso()
 		ROOT_TEXTURE_TABLE,
 
 		ROOT_OBJECTINFO_CB,
-		ROOT_NORMAL_SRV,
-		ROOT_TANGENT_SRV,
-		ROOT_BITAN_SRV,
-		ROOT_UV0,
-		ROOT_UV1,
-		ROOT_UV2,
 
-		ROOT_WEIGHTINFO_SRV,
 		ROOT_WEIGHT_SRV,
 		ROOT_BONEDATA_SRV,
 
@@ -999,48 +992,6 @@ void GraphicDeviceDX12::BuildPso()
 		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParams.push_back(temp);
 
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 1;
-		temp.Descriptor.ShaderRegister = 2;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 1;
-		temp.Descriptor.ShaderRegister = 3;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 1;
-		temp.Descriptor.ShaderRegister = 4;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 1;
-		temp.Descriptor.ShaderRegister = 5;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 2;
-		temp.Descriptor.ShaderRegister = 0;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 2;
-		temp.Descriptor.ShaderRegister = 1;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
-		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		temp.Descriptor.RegisterSpace = 2;
-		temp.Descriptor.ShaderRegister = 2;
-		temp.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		rootParams.push_back(temp);
-
 		temp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
 		temp.Descriptor.RegisterSpace = 1;
 		temp.Descriptor.ShaderRegister = 0;
@@ -1064,10 +1015,21 @@ void GraphicDeviceDX12::BuildPso()
 		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, "PIPELINE_SKINNEDMESH_VS", L"Shader/skinnedMeshShader.hlsl", "VS");
 		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, "PIPELINE_SKINNEDMESH_PS", L"Shader/skinnedMeshShader.hlsl", "PS");
 
+
+		D3D12_INPUT_ELEMENT_DESC skinnedInputs[] = {
+			{ "POSITION" ,0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "NORMAL" ,0,DXGI_FORMAT_R32G32B32_FLOAT,1,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "TANGENT" ,0,DXGI_FORMAT_R32G32B32_FLOAT,2,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "BITAN" ,0,DXGI_FORMAT_R32G32B32_FLOAT,3,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "UV" ,0,DXGI_FORMAT_R32G32B32_FLOAT,4,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "UV" ,1,DXGI_FORMAT_R32G32B32_FLOAT,5,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "UV" ,2,DXGI_FORMAT_R32G32B32_FLOAT,6,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "BONEWEIGHTINFO",0,DXGI_FORMAT_R32G32_UINT,7,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 }, };
+
 		//IA Set
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		psoDesc.InputLayout.NumElements = 1;
-		psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
+		psoDesc.InputLayout.NumElements = _countof(skinnedInputs);
+		psoDesc.InputLayout.pInputElementDescs = skinnedInputs;
 
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
@@ -1129,48 +1091,47 @@ void GraphicDeviceDX12::BuildPso()
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB);
 			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
 
-			D3D12_VERTEX_BUFFER_VIEW vbView = {};
-			vbView.BufferLocation = currMesh->meshData[MESHDATA_POSITION]->GetGPUVirtualAddress();
-			vbView.SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
-			vbView.StrideInBytes = sizeof(aiVector3D);
+			D3D12_VERTEX_BUFFER_VIEW vbView[8] = {};
+
+			for (int i = 0; i < MESHDATA_INDEX; i++)
+			{
+				vbView[i].BufferLocation = currMesh->meshData[i]->GetGPUVirtualAddress();
+				vbView[i].SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
+				vbView[i].StrideInBytes = sizeof(aiVector3D);
+			}
+
+			for (int i = 0; i < currMesh->meshDataUVs.size(); i++)
+			{
+				vbView[MESHDATA_INDEX + i].BufferLocation = currMesh->meshDataUVs[i]->GetGPUVirtualAddress();
+				vbView[MESHDATA_INDEX + i].SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
+				vbView[MESHDATA_INDEX + i].StrideInBytes = sizeof(aiVector3D);
+			}
+
+			for (int i = currMesh->meshDataUVs.size(); i < 3; i++)
+			{
+				vbView[MESHDATA_INDEX + i].BufferLocation = currMesh->meshDataUVs[0]->GetGPUVirtualAddress();
+				vbView[MESHDATA_INDEX + i].SizeInBytes = sizeof(aiVector3D) * currMesh->numData[MESHDATA_POSITION];
+				vbView[MESHDATA_INDEX + i].StrideInBytes = sizeof(aiVector3D);
+			}
+
+			vbView[7].BufferLocation = currMesh->boneWeightInfos->GetGPUVirtualAddress();
+			vbView[7].StrideInBytes = sizeof(unsigned int) * 2;
+			vbView[7].SizeInBytes = vbView[7].StrideInBytes * currMesh->numData[MESHDATA_POSITION];
 
 			D3D12_INDEX_BUFFER_VIEW ibView = {};
 			ibView.BufferLocation = currMesh->meshData[MESHDATA_INDEX]->GetGPUVirtualAddress();
 			ibView.Format = DXGI_FORMAT_R32_UINT;
 			ibView.SizeInBytes = sizeof(unsigned int) * currMesh->numData[MESHDATA_INDEX];
 
-			cmd->IASetVertexBuffers(0, 1, &vbView);
+			cmd->IASetVertexBuffers(0, _countof(vbView), vbView);
+			cmd->IASetVertexBuffers(0, 8, vbView);
 			cmd->IASetIndexBuffer(&ibView);
 
 			unsigned int id = renderer->GetRenderID();
 			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, id, 0);
 			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, isShadowGen, 1);
-			cmd->SetGraphicsRootShaderResourceView(ROOT_NORMAL_SRV, currMesh->meshData[MESHDATA_NORMAL]->GetGPUVirtualAddress());
-			cmd->SetGraphicsRootShaderResourceView(ROOT_TANGENT_SRV, currMesh->meshData[MESHDATA_TAN]->GetGPUVirtualAddress());
-			cmd->SetGraphicsRootShaderResourceView(ROOT_BITAN_SRV, currMesh->meshData[MESHDATA_BITAN]->GetGPUVirtualAddress());
-			cmd->SetGraphicsRootShaderResourceView(ROOT_UV0, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
 
-			if (currMesh->meshDataUVs.size() > 1)
-			{
-				cmd->SetGraphicsRootShaderResourceView(ROOT_UV1, currMesh->meshDataUVs[1]->GetGPUVirtualAddress());
-			}
-			else
-			{
-				cmd->SetGraphicsRootShaderResourceView(ROOT_UV1, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
-			}
-
-			if (currMesh->meshDataUVs.size() > 2)
-			{
-				cmd->SetGraphicsRootShaderResourceView(ROOT_UV2, currMesh->meshDataUVs[2]->GetGPUVirtualAddress());
-			}
-			else
-			{
-				cmd->SetGraphicsRootShaderResourceView(ROOT_UV2, currMesh->meshDataUVs[0]->GetGPUVirtualAddress());
-			}
-
-			cmd->SetGraphicsRootShaderResourceView(ROOT_WEIGHTINFO_SRV, currMesh->boneWeightInfos->GetGPUVirtualAddress());
 			cmd->SetGraphicsRootShaderResourceView(ROOT_WEIGHT_SRV, currMesh->boneWeights->GetGPUVirtualAddress());
-
 			cmd->SetGraphicsRootShaderResourceView(ROOT_BONEDATA_SRV, meshCom->GetBoneData(GetCurrFrameIndex()));
 
 			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_resultVertexPosUABuffer.Get(),
