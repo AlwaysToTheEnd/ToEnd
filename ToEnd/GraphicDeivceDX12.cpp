@@ -110,6 +110,16 @@ void GraphicDeviceDX12::BaseRender()
 		}
 	}
 
+	CD3DX12_RESOURCE_BARRIER resourceBars[DEFERRED_TEXTURE_RENDERID] = {};
+
+	for (int i = 0; i < DEFERRED_TEXTURE_RENDERID; i++)
+	{
+		resourceBars[i] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i].Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	}
+
+	m_cmdList->ResourceBarrier(_countof(resourceBars), resourceBars);
+
 	for (auto& currQueue : m_renderQueues)
 	{
 		currQueue.queue.clear();
@@ -1155,6 +1165,10 @@ void GraphicDeviceDX12::BuildShadowMapWritePipeLineWorkSet()
 	psoDesc.InputLayout.pInputElementDescs = &inputElementdesc;
 
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	psoDesc.RasterizerState.DepthBias = 100000;
+	psoDesc.RasterizerState.DepthBiasClamp = 0.0f;
+	psoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
+
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.SampleMask = UINT_MAX;
@@ -1262,8 +1276,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
 	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.resize(ROOT_NUM);
+		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
 
 		rootParams[ROOT_MAINPASS_CB].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		rootParams[ROOT_MAINPASS_CB].Descriptor.RegisterSpace = 0;
@@ -1378,12 +1391,22 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 						D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 				}
 
-				m_dirLightDatas->CopyData((m_numMaxDirLight * m_numFrameResource) + m_numDirLight, lightData);
+				m_dirLightDatas->CopyData((m_numMaxDirLight * m_currFrame) + m_numDirLight, lightData);
 			}
 		}
 
-		cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
-			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+		CD3DX12_RESOURCE_BARRIER resourceBars[DEFERRED_TEXTURE_RENDERID + 1] = {};
+
+		for (int i = 0; i < DEFERRED_TEXTURE_RENDERID; i++)
+		{
+			resourceBars[i] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i].Get(),
+				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+		}
+
+		resourceBars[DEFERRED_TEXTURE_RENDERID] = CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
+			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+		cmd->ResourceBarrier(_countof(resourceBars), resourceBars);
 		auto rtv = m_swapChain->CurrRTV();
 		cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
 
@@ -1398,7 +1421,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 			cmd->IASetVertexBuffers(0, 0, nullptr);
 
 			auto ligthDataStart = m_dirLightDatas->Resource()->GetGPUVirtualAddress();
-			ligthDataStart += (m_dirLightDatas->GetBufferSize() / m_numFrameResource) * m_currFrame;
+			ligthDataStart += (m_numMaxDirLight * m_currFrame) * m_dirLightDatas->GetElementByteSize();
 
 			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, ShadowMap::texSRVHeap->GetGPUDescriptorHandleForHeapStart());
 			cmd->SetGraphicsRoot32BitConstant(ROOT_NUMLIGHT_CONST, m_numDirLight, 0);

@@ -110,10 +110,10 @@ float4 PS(DLightGSOut inDLight) : SV_Target
         //    shadowFactor = CalcSahdowFactor(shadowPos, currLight.shadowMapIndex);
         //}
         
-        finalColor += (diffuseBRDF + specularBRDF) * currLight.color * cosLight * currLight.power * shadowFactor;
+        finalColor += (diffuseBRDF + specularBRDF) * currLight.color * cosLight * currLight.power;
     }
     
-    //float3 specRefVec = 2.0f * cosEye * gbData.normal - toEye;
+    float3 specRefVec = 2.0f * cosEye * gbData.normal - toEye;
     
     float3 ambientLight = gAmbientLight.rgb * gbData.color.rgb;
     
