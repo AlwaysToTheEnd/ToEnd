@@ -184,6 +184,7 @@
     <ClInclude Include="Xml.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\Source\CGHUtil.cpp" />
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp" />
     <ClCompile Include="..\Common\Source\DxException.cpp" />
     <ClCompile Include="..\Common\Source\GameTimer.cpp" />

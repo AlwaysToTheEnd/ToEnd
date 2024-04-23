@@ -24,6 +24,9 @@ public:
 	void Present();
 	void ClearDS(ID3D12GraphicsCommandList* cmd);
 
+	DXGI_FORMAT GetDSFormat() { return m_depthStencilFormat; }
+	DXGI_FORMAT GetDSVFormat() { return DXGI_FORMAT_D24_UNORM_S8_UINT; }
+
 	D3D12_CPU_DESCRIPTOR_HANDLE CurrRTV() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const;
 	ID3D12Resource* GetDSResource() const;
@@ -35,6 +38,7 @@ private:
 private:
 	ID3D12Device*											m_device;
 	DXGI_FORMAT												m_presentBufferFormat;
+	const DXGI_FORMAT										m_depthStencilFormat = DXGI_FORMAT_R24G8_TYPELESS;
 	unsigned int											m_numSwapBuffer;
 	unsigned int											m_currBackBufferIndex;
 	unsigned int											m_rtvDescriptorSize;

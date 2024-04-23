@@ -1,7 +1,7 @@
 #include <assert.h>
 #include "CGHBaseClass.h"
 
-GlobalOptions GlobalOptions::GO;
+
 
 CGHNode::CGHNode()
 {

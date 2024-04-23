@@ -8,24 +8,6 @@
 #include <functional>
 #include "BaseComponents.h"
 
-struct GlobalOptions
-{
-	struct WindowOption
-	{
-		int WindowsizeX = 900;
-		int WindowsizeY = 900;
-	}WIN;
-
-	struct GraphicOption
-	{
-		const std::wstring	TextureFolderPath = L"Texture";
-		const std::wstring	FontFolderPath = L"Fonts";
-		float				Shadowlength = 100.0f;
-	}GRAPHIC;
-
-	static GlobalOptions GO;
-};
-
 enum CGHNODE_EVENT_FLAGS
 {
 	CGHNODE_EVENT_FLAG_NONE = 0,

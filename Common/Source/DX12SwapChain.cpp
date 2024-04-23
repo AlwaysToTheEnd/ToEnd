@@ -157,7 +157,7 @@ void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)
 	D3D12_RESOURCE_DESC dsDesc;
 	dsDesc.Alignment = 0;
 	dsDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	dsDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+	dsDesc.Format = m_depthStencilFormat;
 	dsDesc.DepthOrArraySize = 1;
 	dsDesc.MipLevels = 0;
 	dsDesc.Width = x;

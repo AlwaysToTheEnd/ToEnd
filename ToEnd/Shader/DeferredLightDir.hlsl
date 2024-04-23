@@ -9,10 +9,10 @@ struct LightData
     float4x4 shadowMapMat;
 };
 
-uint gNumLight : register(b1, space0);
-
-StructuredBuffer<LightData> gLightDatas : register(t5);
 Texture2D<float> gShadowMapTexture[8] : register(t0, space1);
+
+uint gNumLight : register(b1, space0);
+StructuredBuffer<LightData> gLightDatas : register(t5);
 
 float4 VS() : SV_Position
 {
@@ -104,11 +104,11 @@ float4 PS(DLightGSOut inDLight) : SV_Target
         
         float shadowFactor = 1.0f;
         
-        if (currLight.shadowMapIndex > -1)
-        {
-            float4 shadowPos = mul(float4(worldPos, 1.0f), currLight.shadowMapMat);
-            shadowFactor = CalcSahdowFactor(shadowPos, currLight.shadowMapIndex);
-        }
+        //if (currLight.shadowMapIndex > -1)
+        //{
+        //    float4 shadowPos = mul(float4(worldPos, 1.0f), currLight.shadowMapMat);
+        //    shadowFactor = CalcSahdowFactor(shadowPos, currLight.shadowMapIndex);
+        //}
         
         finalColor += (diffuseBRDF + specularBRDF) * currLight.color * cosLight * currLight.power * shadowFactor;
     }

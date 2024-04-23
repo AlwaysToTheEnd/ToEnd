@@ -1,6 +1,7 @@
 #pragma once
 #include <assert.h>
 #include <intsafe.h>
+#include <string>
 #include <DirectXMath.h>
 
 #define GET_NAME(n) #n
@@ -26,3 +27,20 @@ namespace CGH
 	const unsigned int NumFrameresource = 3;
 }
 
+struct GlobalOptions
+{
+	struct WindowOption
+	{
+		int WindowsizeX = 900;
+		int WindowsizeY = 900;
+	}WIN;
+
+	struct GraphicOption
+	{
+		const std::wstring	TextureFolderPath = L"Texture";
+		const std::wstring	FontFolderPath = L"Fonts";
+		float				Shadowlength = 100.0f;
+	}GRAPHIC;
+
+	static GlobalOptions GO;
+};
