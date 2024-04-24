@@ -17,11 +17,11 @@ cbuffer cbPass : register(b0, space0)
     float4x4 gRightViewProj;
     float4x4 gOrthoMatrix;
     uint2 gRenderTargetSize;
-    uint2 gInvRenderTargetSize;
+    float2 gInvRenderTargetSize;
     float4 gAmbientLight;
     float3 gEyePosW;
+    uint gSamplerIndex;
     float2 gMousePos;
-    float3 gPad0;
+    float2 gPad0;
 };
-
 

@@ -23,6 +23,7 @@ public:
 	const DirectX::XMFLOAT4X4*	GetViewMatrix() const { return &m_viewMat; }
 	const DirectX::XMFLOAT3&	GetEyePos() const { return m_eyePos; }
 	const DirectX::XMFLOAT3&	GetTargetPos() const { return m_targetPos; }
+	float						GetDistance() const { return m_distance; }
 
 private:
 	DirectX::XMFLOAT4X4 m_viewMat;

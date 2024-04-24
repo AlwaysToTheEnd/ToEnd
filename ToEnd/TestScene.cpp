@@ -220,10 +220,17 @@ void TestScene::Init()
 void TestScene::Update(float delta)
 {
 	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
+	auto rootTrans = m_rootNode->GetComponent<COMTransform>();
+
+	static float posY = 0.0f;
+	//posY += delta * 1.0f;
+
+	DirectX::XMFLOAT3 pos = { 0.0f,posY, 0.0f };
+	rootTrans->SetPos(pos);
 
 	static float x, y = 0;
-	//x += delta * 1.0f;
-	//y += delta * 0.8f;
+	x += delta * 1.0f;
+	y += delta * 0.8f;
 
 	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));

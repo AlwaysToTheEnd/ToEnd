@@ -19,6 +19,21 @@ static const float3 Fdielectric = 0.04;
 static const float PI = 3.141592;
 static const float Epsilon = 0.00001;
 
+SurfaceData UnpackGBuffer(float2 UV)
+{
+    SurfaceData result;
+
+    result.color = gDiffuseTexture.Sample(gsamPointWrap, UV.xy);
+    result.normal = gNormalTexture.Sample(gsamPointWrap, UV.xy).xyz;
+    result.normal = normalize(result.normal * 2.0 - 1.0);
+    result.linearDepth = gDepthTexture.Sample(gsamPointWrap, UV.xy).x;
+    result.linearDepth = gProj._43 / (result.linearDepth + gProj._33);
+    result.metal_rough_ao = gMRATexture.Sample(gsamPointWrap, UV.xy);
+    result.emissionColor = gEmissionTexture.Sample(gsamPointWrap, UV.xy);
+
+    return result;
+}
+
 SurfaceData UnpackGBufferL(int2 location)
 {
     SurfaceData result;
@@ -40,7 +55,7 @@ float3 CalcWorldPos(float2 csPos, float depth)
 {
     float4 position;
 
-    position.xy = csPos.xy * float2(1 / gProj._11, 1 / gProj._22) * depth;
+    position.xy = csPos.xy * float2(1.0f / gProj._11, 1.0f / gProj._22) * depth;
     position.z = depth;
     position.w = 1.0;
 	

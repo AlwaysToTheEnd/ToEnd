@@ -16,8 +16,6 @@
 
 using namespace DirectX;
 GraphicDeviceDX12* GraphicDeviceDX12::s_Graphic = nullptr;
-ComPtr<ID3D12DescriptorHeap> GraphicDeviceDX12::ShadowMap::texSRVHeap;
-
 
 GraphicDeviceDX12* GraphicDeviceDX12::GetGraphic()
 {
@@ -83,8 +81,6 @@ GraphicDeviceDX12::~GraphicDeviceDX12()
 
 void GraphicDeviceDX12::BaseRender()
 {
-	ReservedUIInfoSort();
-
 	for (auto& currPSOW : m_PSOWorkSets)
 	{
 		if (currPSOW.pso)
@@ -124,18 +120,11 @@ void GraphicDeviceDX12::BaseRender()
 	{
 		currQueue.queue.clear();
 	}
-
-	m_reservedUIInfos.clear();
 }
 
 void GraphicDeviceDX12::ReservedUIInfoSort()
 {
-	std::sort(m_reservedUIInfos.begin(), m_reservedUIInfos.end(), [](const UIInfo& left, const UIInfo& right)
-		{
-			return left.pos.z > right.pos.z;
-		});
-
-	std::memcpy(m_uiInfoMapped[m_currFrame], m_reservedUIInfos.data(), m_reservedUIInfos.size() * sizeof(UIInfo));
+	
 }
 
 void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
@@ -162,6 +151,7 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	m_passCBs.resize(m_numFrameResource);
 	m_rtvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	m_srvcbvuavSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_dsvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 	for (size_t i = 0; i < m_passCBs.size(); i++)
 	{
@@ -205,8 +195,6 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 
 	OnResize(windowWidth, windowHeight);
-
-	BuildPso();
 
 	ThrowIfFailed(m_cmdList->Reset(m_cmdListAllocs.front().Get(), nullptr));
 	{
@@ -344,6 +332,8 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	FlushCommandQueue();
 
 	ThrowIfFailed(m_cmdListAllocs.front()->Reset());
+
+	BuildPso();
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -356,14 +346,18 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 	XMMATRIX xmView = XMLoadFloat4x4(camera->GetViewMatrix());
 	XMMATRIX xmProj = XMLoadFloat4x4(&m_projMat);
 	XMMATRIX xmViewProj = XMMatrixMultiply(xmView, xmProj);
-	XMMATRIX xmInvView = XMMatrixInverse(&deter, xmView);
+
+	XMMATRIX xminvView = XMMatrixInverse(&XMMatrixDeterminant(xmView), xmView);
+	XMMATRIX xminvProj = XMMatrixInverse(&XMMatrixDeterminant(xmProj), xmProj);
+	XMMATRIX xminvViewProj = XMMatrixInverse(&XMMatrixDeterminant(xmViewProj), xmViewProj);
+	XMStoreFloat4x4(&m_cameraViewProjMat, xmViewProj);
 
 	XMStoreFloat4x4(&passCons.view, XMMatrixTranspose(xmView));
 	XMStoreFloat4x4(&passCons.proj, XMMatrixTranspose(xmProj));
 	XMStoreFloat4x4(&passCons.viewProj, XMMatrixTranspose(xmViewProj));
-	XMStoreFloat4x4(&passCons.invView, XMMatrixTranspose(xmInvView));
-	XMStoreFloat4x4(&passCons.invProj, XMMatrixTranspose(XMMatrixInverse(&deter, xmProj)));
-	XMStoreFloat4x4(&passCons.invViewProj, XMMatrixTranspose(XMMatrixInverse(&deter, xmViewProj)));
+	XMStoreFloat4x4(&passCons.invView, XMMatrixTranspose(xminvView));
+	XMStoreFloat4x4(&passCons.invProj, XMMatrixTranspose(xminvProj));
+	XMStoreFloat4x4(&passCons.invViewProj, XMMatrixTranspose(xminvViewProj));
 
 	passCons.renderTargetSizeX = m_scissorRect.right;
 	passCons.renderTargetSizeY = m_scissorRect.bottom;
@@ -380,9 +374,10 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 	XMVECTOR rayOrigin = XMVectorZero();
 	XMVECTOR ray = XMLoadFloat3(&camera->GetViewRay(m_projMat, static_cast<unsigned int>(m_screenViewport.Width), static_cast<unsigned int>(m_screenViewport.Height)));
 
-	rayOrigin = XMVector3Transform(rayOrigin, xmInvView);
-	ray = (xmInvView.r[0] * ray.m128_f32[0]) + (xmInvView.r[1] * ray.m128_f32[1]) + (xmInvView.r[2] * ray.m128_f32[2]);
+	rayOrigin = XMVector3Transform(rayOrigin, xminvView);
+	ray = (xminvView.r[0] * ray.m128_f32[0]) + (xminvView.r[1] * ray.m128_f32[1]) + (xminvView.r[2] * ray.m128_f32[2]);
 
+	m_cameraDistance = camera->GetDistance();
 	m_cameraTargetPos = camera->GetTargetPos();
 	XMStoreFloat3(&m_ray, ray);
 	XMStoreFloat3(&m_rayOrigin, rayOrigin);
@@ -470,7 +465,7 @@ void GraphicDeviceDX12::RenderBegin()
 	m_cmdList->ClearRenderTargetView(renderIDTexture, backColor, 0, nullptr);
 	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, backColor, 0, nullptr);
 
-	RenderResourcesCreate();
+	CreateRenderResources();
 }
 
 void GraphicDeviceDX12::RenderMesh(CGHNode* node, unsigned int renderFlag)
@@ -568,9 +563,7 @@ void GraphicDeviceDX12::RenderString(const wchar_t* str, const DirectX::XMFLOAT4
 
 void GraphicDeviceDX12::RenderEnd()
 {
-
 	BaseRender();
-
 
 	{
 		auto renderIDTexture = m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get();
@@ -668,7 +661,7 @@ void GraphicDeviceDX12::RenderEnd()
 	}
 }
 
-void GraphicDeviceDX12::RenderResourcesCreate()
+void GraphicDeviceDX12::CreateRenderResources()
 {
 	for (auto& currNode : m_renderQueues[RENDERQUEUE_SKINNEDMESH].queue)
 	{
@@ -718,8 +711,9 @@ void GraphicDeviceDX12::RenderResourcesCreate()
 					auto& currShadowMap = m_dirLightShadowMaps[comLight];
 
 					D3D12_RESOURCE_DESC desc = m_swapChain->GetDSResource()->GetDesc();
-					D3D12_HEAP_PROPERTIES prop = {};
-					prop.Type = D3D12_HEAP_TYPE_DEFAULT;
+					D3D12_HEAP_PROPERTIES prop; 
+					D3D12_HEAP_FLAGS flags;
+					m_swapChain->GetDSResource()->GetHeapProperties(&prop, &flags);
 
 					D3D12_CLEAR_VALUE clearValue = {};
 					clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -741,12 +735,12 @@ void GraphicDeviceDX12::RenderResourcesCreate()
 					m_d3dDevice->CreateDepthStencilView(currShadowMap.resource.Get(), &dsvDesc,
 						currShadowMap.texDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
-					auto texSRVHeapCPU = ShadowMap::texSRVHeap->GetCPUDescriptorHandleForHeapStart();
+					auto texSRVHeapCPU = m_SRVHeap->GetCPUDescriptorHandleForHeapStart();
 					texSRVHeapCPU.ptr += (DEFERRED_TEXTURE_NUM + m_currNumShadowMap) * m_srvcbvuavSize;
 					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 					srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-					srvDesc.Texture2D.MipLevels = -1;
+					srvDesc.Texture2D.MipLevels = 1;
 					srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 					m_d3dDevice->CreateShaderResourceView(currShadowMap.resource.Get(), &srvDesc, texSRVHeapCPU);
 
@@ -795,6 +789,7 @@ void GraphicDeviceDX12::BuildPso()
 	BuildDeferredLightDirPipeLineWorkSet();
 	BuildFontRenderPipeLineWorkSet();
 	BuildUIRenderPipeLineWorkSet();
+	//BuildTextureDataDebugPipeLineWorkSet();
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
@@ -859,23 +854,22 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 		}
 	}
 
-
 	{
 		m_currNumShadowMap = 0;
 		m_dirLightShadowMaps.clear();
-		ShadowMap::texSRVHeap = nullptr;
+		m_SRVHeap = nullptr;
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		heapDesc.NumDescriptors = DEFERRED_TEXTURE_NUM + m_numMaxShadowMap;
 
-		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(ShadowMap::texSRVHeap.GetAddressOf())));
+		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_SRVHeap.GetAddressOf())));
 
-		auto heapCPU = ShadowMap::texSRVHeap->GetCPUDescriptorHandleForHeapStart();
+		auto heapCPU = m_SRVHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
 		viewDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		viewDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_TEXTURE2D;
-		viewDesc.Texture2D.MipLevels = -1;
+		viewDesc.Texture2D.MipLevels = 1;
 		viewDesc.Texture2D.MostDetailedMip = 0;
 		viewDesc.Texture2D.ResourceMinLODClamp = 0;
 		viewDesc.Texture2D.PlaneSlice = 0;
@@ -885,7 +879,7 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 		{
 			viewDesc.Format = m_deferredFormat[i];
 			m_d3dDevice->CreateShaderResourceView(m_deferredResources[i].Get(), &viewDesc, heapCPU);
-			heapCPU.ptr += m_rtvSize;
+			heapCPU.ptr += m_srvcbvuavSize;
 		}
 
 		viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
@@ -1193,14 +1187,25 @@ void GraphicDeviceDX12::BuildShadowMapWritePipeLineWorkSet()
 				if (lights[m_numDirLight].second & CGHLightComponent::LIGHT_FLAG_SHADOW)
 				{
 					auto& shadowMap = m_dirLightShadowMaps[lightCom];
-					const static float radius = 400.0f;
-
+					float radius = sqrtf(10.0f * 10.0f + 15.0f * 15.0f);
 					XMVECTOR lightDir = XMLoadFloat3(&lightCom->m_data.dir);
-					XMVECTOR targetPos = XMLoadFloat3(&m_cameraTargetPos);
-					XMVECTOR lightPos = targetPos - (radius * lightDir);
+					XMVECTOR lightPos = -2.0f * radius * lightDir;
+					XMVECTOR targetPos = XMVectorSet(0, 0, 0, 1.0f);
 					XMVECTOR lightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 					XMMATRIX lightView = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
-					XMMATRIX lightProj = XMMatrixOrthographicLH(GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY, 0, 2.0f * radius);
+
+					XMFLOAT3 sphereCenterLS;
+					XMStoreFloat3(&sphereCenterLS, XMVector3TransformCoord(targetPos, lightView));
+
+					float l = sphereCenterLS.x -radius;
+					float b = sphereCenterLS.y -radius;
+					float n = sphereCenterLS.z -radius;
+					float r = sphereCenterLS.x +radius;
+					float t = sphereCenterLS.y +radius;
+					float f = sphereCenterLS.z +radius;
+
+					XMMATRIX lightProj = XMMatrixOrthographicOffCenterLH(l, r, b, t, n, f);
+
 					XMMATRIX viewProj = lightView * lightProj;
 
 					XMStoreFloat4x4(&shadowMap.lightViewProj, viewProj);
@@ -1290,6 +1295,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 		rootParams[ROOT_TEXTURE_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParams[ROOT_TEXTURE_TABLE].DescriptorTable.NumDescriptorRanges = 2;
 		rootParams[ROOT_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = shadowTexTableRange;
+		rootParams[ROOT_TEXTURE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		rootParams[ROOT_NUMLIGHT_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 		rootParams[ROOT_NUMLIGHT_CONST].Constants.RegisterSpace = 0;
@@ -1346,7 +1352,6 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
 	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.RasterizerState.DepthClipEnable = false;
 
 	//OM Set
@@ -1376,16 +1381,18 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 				if (lights[m_numDirLight].second & CGHLightComponent::LIGHT_FLAG_SHADOW)
 				{
 					auto& shadowMap = m_dirLightShadowMaps[lightCom];
+
+					lightData.shadowMapIndex = shadowMap.srvHeapIndex;
+
 					const static XMMATRIX T(
 						0.5f, 0.0f, 0.0f, 0.0f,
 						0.0f, -0.5f, 0.0f, 0.0f,
 						0.0f, 0.0f, 1.0f, 0.0f,
 						0.5f, 0.5f, 0.0f, 1.0f);
 
-					XMMATRIX viewProjT = XMLoadFloat4x4(&shadowMap.lightViewProj) * T;
+					XMMATRIX lightViewProj = XMLoadFloat4x4(&shadowMap.lightViewProj);
 
-					lightData.shadowMapIndex = shadowMap.srvHeapIndex;
-					XMStoreFloat4x4(&lightData.shadowMapMat, XMMatrixTranspose(viewProjT));
+					XMStoreFloat4x4(&lightData.shadowMapMat, XMMatrixTranspose(lightViewProj* T));
 
 					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowMap.resource.Get(),
 						D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
@@ -1415,7 +1422,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
 
-			ID3D12DescriptorHeap* heaps[] = { ShadowMap::texSRVHeap.Get() };
+			ID3D12DescriptorHeap* heaps[] = { m_SRVHeap.Get() };
 			cmd->SetDescriptorHeaps(1, heaps);
 
 			cmd->IASetVertexBuffers(0, 0, nullptr);
@@ -1423,7 +1430,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 			auto ligthDataStart = m_dirLightDatas->Resource()->GetGPUVirtualAddress();
 			ligthDataStart += (m_numMaxDirLight * m_currFrame) * m_dirLightDatas->GetElementByteSize();
 
-			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, ShadowMap::texSRVHeap->GetGPUDescriptorHandleForHeapStart());
+			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, m_SRVHeap->GetGPUDescriptorHandleForHeapStart());
 			cmd->SetGraphicsRoot32BitConstant(ROOT_NUMLIGHT_CONST, m_numDirLight, 0);
 			cmd->SetGraphicsRootShaderResourceView(ROOT_LIGHTDATA_SRV, ligthDataStart);
 
@@ -1494,7 +1501,6 @@ void GraphicDeviceDX12::BuildFontRenderPipeLineWorkSet()
 	psoDesc.InputLayout.pInputElementDescs = nullptr;
 
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.SampleMask = UINT_MAX;
@@ -1616,7 +1622,6 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 	psoDesc.InputLayout.pInputElementDescs = nullptr;
 
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.SampleMask = UINT_MAX;
@@ -1719,7 +1724,6 @@ void GraphicDeviceDX12::BuildUIRenderIDRenderPipeLineWorkSet()
 	psoDesc.InputLayout.pInputElementDescs = nullptr;
 
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.SampleMask = UINT_MAX;
@@ -1738,6 +1742,13 @@ void GraphicDeviceDX12::BuildUIRenderIDRenderPipeLineWorkSet()
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 	{
+		std::sort(m_reservedUIInfos.begin(), m_reservedUIInfos.end(), [](const UIInfo& left, const UIInfo& right)
+			{
+				return left.pos.z > right.pos.z;
+			});
+
+		std::memcpy(m_uiInfoMapped[m_currFrame], m_reservedUIInfos.data(), m_reservedUIInfos.size() * sizeof(UIInfo));
+
 		auto rtv = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
 		rtv.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
 		m_swapChain->ClearDS(cmd);
@@ -1760,6 +1771,97 @@ void GraphicDeviceDX12::BuildUIRenderIDRenderPipeLineWorkSet()
 		cmd->SetGraphicsRootShaderResourceView(ROOT_UIINFOS_SRV, uiInfoDataGPU);
 
 		cmd->DrawInstanced(m_reservedUIInfos.size(), 1, 0, 0);
+
+		m_reservedUIInfos.clear();
+	};
+
+	currPSOWorkSet.nodeGraphicCmdFunc = nullptr;
+}
+
+void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()
+{
+	enum
+	{
+		ROOT_WINSIZE_CONST = 0,
+		ROOT_DEBUG_TEXTURE_TABLE,
+		ROOT_NUM
+	};
+
+	std::string pipeLineName = "textureDebug";
+	auto& currPSOWorkSet = m_PSOWorkSets[PSOW_TEX_DEBUG];
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+
+	{
+		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
+
+		rootParams[ROOT_WINSIZE_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[ROOT_WINSIZE_CONST].Constants.Num32BitValues = 2;
+		rootParams[ROOT_WINSIZE_CONST].Constants.RegisterSpace = 0;
+		rootParams[ROOT_WINSIZE_CONST].Constants.ShaderRegister = 0;
+		rootParams[ROOT_WINSIZE_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+
+		CD3DX12_DESCRIPTOR_RANGE shadowTexTableRange[2];
+		shadowTexTableRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, DEFERRED_TEXTURE_NUM, 0);
+		shadowTexTableRange[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, m_numMaxShadowMap, 0, 1);
+
+		rootParams[ROOT_DEBUG_TEXTURE_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParams[ROOT_DEBUG_TEXTURE_TABLE].DescriptorTable.NumDescriptorRanges = 2;
+		rootParams[ROOT_DEBUG_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = shadowTexTableRange;
+		rootParams[ROOT_DEBUG_TEXTURE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
+		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootsigDesc.pStaticSamplers = s_StaticSamplers;
+		rootsigDesc.NumStaticSamplers = _countof(s_StaticSamplers);
+		rootsigDesc.NumParameters = rootParams.size();
+		rootsigDesc.pParameters = rootParams.data();
+
+		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
+		currPSOWorkSet.rootSig = psoDesc.pRootSignature;
+	}
+
+	psoDesc.NodeMask = 0;
+
+	psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/TextureDebugShader.hlsl", "VS");
+	psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName).c_str(), L"Shader/TextureDebugShader.hlsl", "GS");
+	psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName).c_str(), L"Shader/TextureDebugShader.hlsl", "PS");
+
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	psoDesc.InputLayout.NumElements = 0;
+	psoDesc.InputLayout.pInputElementDescs = nullptr;
+
+	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState.DepthEnable = false;
+	psoDesc.SampleMask = UINT_MAX;
+
+	psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = m_backBufferFormat;
+	psoDesc.SampleDesc.Count = 1;
+	psoDesc.SampleDesc.Quality = 0;
+
+	currPSOWorkSet.renderQueue = nullptr;
+	currPSOWorkSet.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
+	currPSOWorkSet.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+
+	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+	{
+		auto rtv = m_swapChain->CurrRTV();
+		cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
+
+		cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+		ID3D12DescriptorHeap* descHeaps[] = { m_SRVHeap.Get()};
+		cmd->SetDescriptorHeaps(1, descHeaps);
+		cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeX, 0);
+		cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeY, 1);
+
+		auto srvHeap = m_SRVHeap->GetGPUDescriptorHandleForHeapStart();
+		cmd->SetGraphicsRootDescriptorTable(ROOT_DEBUG_TEXTURE_TABLE, srvHeap);
+
+		cmd->DrawInstanced(1, 1, 0, 0);
 	};
 
 	currPSOWorkSet.nodeGraphicCmdFunc = nullptr;

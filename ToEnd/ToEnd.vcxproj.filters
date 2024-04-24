@@ -219,5 +219,8 @@
     <FxCompile Include="Shader\ComputBoneDataToVertex.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="Shader\TextureDebugShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

@@ -78,8 +78,8 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
     vertices[3].color = cInfo.color;
 
     output.Append(vertices[0]);
-    output.Append(vertices[2]);
     output.Append(vertices[1]);
+    output.Append(vertices[2]);
     output.Append(vertices[3]);
 }
 

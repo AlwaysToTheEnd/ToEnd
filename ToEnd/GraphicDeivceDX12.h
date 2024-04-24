@@ -58,7 +58,6 @@ class GraphicDeviceDX12
 
 	struct ShadowMap
 	{
-		static ComPtr<ID3D12DescriptorHeap> texSRVHeap;
 		ComPtr<ID3D12Resource> resource;
 		ComPtr<ID3D12DescriptorHeap> texDSVHeap;
 		DirectX::XMFLOAT4X4 lightViewProj;
@@ -142,7 +141,7 @@ private:
 	GraphicDeviceDX12();
 	~GraphicDeviceDX12();
 	void BaseRender();
-	void RenderResourcesCreate();
+	void CreateRenderResources();
 	void ReservedUIInfoSort();
 
 	void Init(HWND hWnd, int windowWidth, int windowHeight);
@@ -163,6 +162,7 @@ private:
 		PSOW_FONT_RENDER,
 		PSOW_UI_RENDER,
 		PSOW_UI_RENDERID_RENDER,
+		PSOW_TEX_DEBUG,
 		PSOW_NUM
 	};
 
@@ -181,6 +181,7 @@ private:
 	void BuildFontRenderPipeLineWorkSet();
 	void BuildUIRenderPipeLineWorkSet();
 	void BuildUIRenderIDRenderPipeLineWorkSet();
+	void BuildTextureDataDebugPipeLineWorkSet();
 
 private:
 	static GraphicDeviceDX12* s_Graphic;
@@ -194,6 +195,7 @@ private:
 	DXGI_FORMAT						m_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	unsigned int					m_rtvSize = 0;
 	unsigned int					m_srvcbvuavSize = 0;
+	unsigned int					m_dsvSize = 0;
 
 	const unsigned int				m_numFrameResource = CGH::NumFrameresource;
 	unsigned int					m_currFrame = 0;
@@ -202,11 +204,13 @@ private:
 	std::vector<unsigned long long>	m_fenceCounts;
 
 	DirectX::XMFLOAT4X4				m_projMat = CGH::IdentityMatrix;
+	DirectX::XMFLOAT4X4				m_cameraViewProjMat = CGH::IdentityMatrix;
 	DirectX::XMFLOAT3				m_rayOrigin = { 0,0,0 };
 	DirectX::XMFLOAT3				m_ray = { 0,0,0 };
 	DirectX::XMFLOAT3				m_cameraTargetPos = { 0,0,0 };
+	float							m_cameraDistance = 0;
 
-	DX12SwapChain* m_swapChain = nullptr;
+	DX12SwapChain*					m_swapChain = nullptr;
 
 	PipeLineWorkSet					m_PSOWorkSets[PSOW_NUM];
 	DX12RenderQueue					m_renderQueues[RENDERQUEUE_NUM];
@@ -238,6 +242,7 @@ private:
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>>		m_dirLightDatas;
 	std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>	m_shadowPassCB;
 	std::unordered_map<void*, ShadowMap>					m_dirLightShadowMaps;
+	ComPtr<ID3D12DescriptorHeap>							m_SRVHeap;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

@@ -17,7 +17,10 @@ struct VSOut
 VSOut VS(VertexIn vin)
 {
     VSOut vout;
-    vout.posH = mul(float4(vin.PosW, 1.0f), gLightViewOrtho);
+    
+    vout.posH = float4(vin.PosW, 1.0f);
+    
+    vout.posH = mul(vout.posH, gLightViewOrtho);
    
     return vout;
 }

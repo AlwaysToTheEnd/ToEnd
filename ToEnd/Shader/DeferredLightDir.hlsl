@@ -22,14 +22,13 @@ float4 VS() : SV_Position
 struct DLightGSOut
 {
     float4 position : SV_Position;
+    float2 cpPos : TEXCOORD0;
 };
 
 float CalcSahdowFactor(float4 shadowPos, uint shadowMapIndex)
 {
-    shadowPos.xyz /= shadowPos.w;
-    Texture2D<float> currShadowMap = gShadowMapTexture[shadowMapIndex];
     uint width, height, numMips;
-    currShadowMap.GetDimensions(0, width, height, numMips);
+    gShadowMapTexture[shadowMapIndex].GetDimensions(0, width, height, numMips);
     
     float dx = 1.0f / (float) width;
     
@@ -44,7 +43,7 @@ float CalcSahdowFactor(float4 shadowPos, uint shadowMapIndex)
     [unroll]
     for (int i = 0; i < 9; ++i)
     {
-        percentLit += currShadowMap.SampleCmpLevelZero(gsamShadow, shadowPos.xy + offsets[i], shadowPos.z);
+        percentLit += gShadowMapTexture[shadowMapIndex].SampleCmpLevelZero(gsamShadow, shadowPos.xy + offsets[i], shadowPos.z);
     }
     
     return percentLit / 9.0f;
@@ -58,27 +57,32 @@ void GS(point float4 input[1] : SV_Position, inout TriangleStream<DLightGSOut> o
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(-1.0f, -1.0f, 1.0f, 1.0f);
-    vertices[1].position = float4(-1.0f, 1.0f, 1.0f, 1.0f);
-    vertices[2].position = float4(1.0f, -1.0f, 1.0f, 1.0f);
-    vertices[3].position = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    vertices[0].position = float4(-1.0f, -1.0f, 0.0001f, 1.0f);
+    vertices[0].cpPos = vertices[0].position.xy;
+    vertices[1].position = float4(-1.0f, 1.0f, 0.0001f, 1.0f);
+    vertices[1].cpPos = vertices[1].position.xy;
+    vertices[2].position = float4(1.0f, -1.0f, 0.0001f, 1.0f);
+    vertices[2].cpPos = vertices[2].position.xy;
+    vertices[3].position = float4(1.0f, 1.0f, 0.0001f, 1.0f);
+    vertices[3].cpPos = vertices[3].position.xy;
 
     output.Append(vertices[0]);
-    output.Append(vertices[2]);
     output.Append(vertices[1]);
+    output.Append(vertices[2]);
     output.Append(vertices[3]);
 }
 
 float4 PS(DLightGSOut inDLight) : SV_Target
 {
-    if (gDepthTexture.Load(float3(inDLight.position.xy, 0)).x == 1.0f)
+    float depth = gDepthTexture.Load(float3(inDLight.position.xy, 0)).x;
+    if (depth == 1.0f)
     {
         clip(-1);
     }
     
     SurfaceData gbData = UnpackGBufferL(inDLight.position.xy);
     
-    float3 worldPos = CalcWorldPos(inDLight.position.xy, gbData.linearDepth);
+    float3 worldPos = CalcWorldPos(inDLight.cpPos, gbData.linearDepth);
     float3 toEye = normalize(gEyePosW - worldPos);
     float cosEye = max(0.0f, dot(gbData.normal, toEye));
     float3 fresRef = lerp(Fdielectric, gbData.color.rgb, gbData.metal_rough_ao.x);
@@ -104,13 +108,13 @@ float4 PS(DLightGSOut inDLight) : SV_Target
         
         float shadowFactor = 1.0f;
         
-        //if (currLight.shadowMapIndex > -1)
-        //{
-        //    float4 shadowPos = mul(float4(worldPos, 1.0f), currLight.shadowMapMat);
-        //    shadowFactor = CalcSahdowFactor(shadowPos, currLight.shadowMapIndex);
-        //}
+        if (currLight.shadowMapIndex > -1)
+        {
+            float4 posInShadow = mul(float4(worldPos, 1.0f), currLight.shadowMapMat);
+            shadowFactor = CalcSahdowFactor(posInShadow, currLight.shadowMapIndex);
+        }
         
-        finalColor += (diffuseBRDF + specularBRDF) * currLight.color * cosLight * currLight.power;
+        finalColor += (diffuseBRDF + specularBRDF) * currLight.color * cosLight * currLight.power * shadowFactor;
     }
     
     float3 specRefVec = 2.0f * cosEye * gbData.normal - toEye;
