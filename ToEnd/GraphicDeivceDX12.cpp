@@ -1216,6 +1216,15 @@ void GraphicDeviceDX12::BuildShadowMapWritePipeLineWorkSet()
 				}
 			}
 		}
+
+		for (auto& iter : m_resultVertexPosBuffers)
+		{
+			auto meshCom = reinterpret_cast<COMSkinnedMesh*>(iter.first);
+			auto mesh = meshCom->GetMeshData();
+
+			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(iter.second.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+		}
 	};
 
 	currPSOWorkSet.nodeGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int lightFlags)
@@ -1240,9 +1249,6 @@ void GraphicDeviceDX12::BuildShadowMapWritePipeLineWorkSet()
 				{
 					auto meshCom = reinterpret_cast<COMSkinnedMesh*>(iter.first);
 					auto mesh = meshCom->GetMeshData();
-
-					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(iter.second.Get(),
-						D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 					D3D12_VERTEX_BUFFER_VIEW vbv = {};
 					vbv.BufferLocation = iter.second->GetGPUVirtualAddress();

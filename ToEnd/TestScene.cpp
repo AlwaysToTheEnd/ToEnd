@@ -201,12 +201,23 @@ void TestScene::Init()
 		delete document;
 	}
 
-	auto light = m_dirLight.CreateComponent<COMDirLight>();
-	light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	light->m_data.power = 1.5f;
-	light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
+	{
+		auto light = m_dirLight.CreateComponent<COMDirLight>();
+		light->m_data.color = DirectX::XMFLOAT3(1.0f, 0.1f, 0.1f);
+		light->m_data.power = 1.0f;
+		light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
 
-	auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
+		auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
+	}
+
+	{
+		auto light = m_dirLight2.CreateComponent<COMDirLight>();
+		light->m_data.color = DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f);
+		light->m_data.power = 1.0f;
+		light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
+
+		auto lightTransform = m_dirLight2.CreateComponent<COMTransform>();
+	}
 
 	auto fontrender = m_stringNode.CreateComponent<COMFontRenderer>();
 	auto fontTrans = m_stringNode.CreateComponent<COMUITransform>();
@@ -220,6 +231,7 @@ void TestScene::Init()
 void TestScene::Update(float delta)
 {
 	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
+	auto light2Trans = m_dirLight2.GetComponent<COMTransform>();
 	auto rootTrans = m_rootNode->GetComponent<COMTransform>();
 
 	static float posY = 0.0f;
@@ -237,9 +249,11 @@ void TestScene::Update(float delta)
 	fontrender->SetText(rotXvalue.c_str());
 
 	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
+	light2Trans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
 
 	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_dirLight2.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_stringNode.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
@@ -247,6 +261,7 @@ void TestScene::RateUpdate(float delta)
 {
 	m_rootNode->RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_dirLight2.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_stringNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 

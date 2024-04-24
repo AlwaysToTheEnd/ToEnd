@@ -31,5 +31,6 @@ private:
 	std::vector<CGHMaterial> m_bodyMats;
 	CGHNode* m_rootNode = nullptr;
 	CGHNode m_dirLight;
+	CGHNode m_dirLight2;
 	CGHNode	m_stringNode;
 };
