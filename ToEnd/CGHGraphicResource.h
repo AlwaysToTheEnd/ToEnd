@@ -6,8 +6,9 @@
 #include <d3d12.h>
 #include <DirectXMath.h>
 
-#include "assimp\material.h"
-#include "assimp\mesh.h"
+#include "assimp/material.h"
+#include "assimp/mesh.h"
+#include "assimp/anim.h"
 
 enum CGHRENDER_FLAG
 {
@@ -83,40 +84,20 @@ struct CGHMaterial
 };
 #pragma pack(pop)
 
-template <typename T>
-struct TimeValue
+
+enum class ANIMATION_TYPE
 {
-	double time = 0;
-	T value;
-};
-
-struct AnimBone
-{
-	std::string name;
-	std::vector<TimeValue<DirectX::XMFLOAT3>> posKeys;
-	std::vector<TimeValue<DirectX::XMFLOAT3>> scaleKeys;
-	std::vector<TimeValue<DirectX::XMFLOAT4>> rotKeys;
-	std::vector<TimeValue<DirectX::XMFLOAT4X4>> trafoKeys;
-};
-
-struct AnimMesh
-{
-
-};
-
-struct AnimMorph
-{
-
+	NODE_ANIMATION,
+	MESH_ANIMATION,
+	MORP_ANIMATION,
+	NONE_TYPE,
 };
 
 
-struct CGHAnimation
+struct CGHAnimationGroup
 {
-	double					tickPerSecond = 0.0l;
-	double					duration = 0.0;
-	std::vector<AnimBone>	animBones;
-	std::vector<AnimMesh>	animMeshs;
-	std::vector<AnimMorph>	animMorphs;
+	std::vector<ANIMATION_TYPE> types;
+	std::vector<aiAnimation> anims;
 };
 
 enum MESHDATA_TYPE

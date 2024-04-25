@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "assimp\postprocess.h"
+#include "assimp/postprocess.h"
 #include "CGHGraphicResource.h"
 #include "CGHBaseClass.h"
 
@@ -15,6 +15,8 @@ public:
 		ID3D12GraphicsCommandList* cmd, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut,
 		std::vector<CGHMesh>* meshDataOut, std::vector<CGHMaterial>* materialOut = nullptr,
 		std::vector<CGHNode>* nodeOut = nullptr);
+
+	void LoadAnimation(const std::string& filePath, CGHAnimationGroup* animationsOut);
 
 private:
 	void LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut);

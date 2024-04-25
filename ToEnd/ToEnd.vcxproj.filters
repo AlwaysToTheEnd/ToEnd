@@ -110,6 +110,9 @@
     <ClInclude Include="CGHUIButton.h">
       <Filter>Nodes</Filter>
     </ClInclude>
+    <ClInclude Include="CGHAnimation.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">

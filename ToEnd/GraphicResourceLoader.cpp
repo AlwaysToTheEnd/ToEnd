@@ -4,7 +4,6 @@
 #include "GraphicDeivceDX12.h"
 #include "assimp\scene.h"
 #include "assimp\Importer.hpp"
-#include "CGHBaseClass.h"
 
 using namespace Assimp;
 
@@ -57,6 +56,71 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 	LoadMeshData(scene, d12Device, cmd, meshDataOut, materialOut, uploadbuffersOut);
 
 	importer.FreeScene();
+}
+
+void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAnimationGroup* animationsOut)
+{
+	Assimp::Importer importer;
+	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
+
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
+
+	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
+	std::string error = importer.GetErrorString();
+	
+	assert(scene != nullptr);
+
+	if (scene->HasAnimations())
+	{
+		unsigned int numAnimation = scene->mNumAnimations;
+		if (animationsOut)
+		{
+			animationsOut->anims.assign(numAnimation, *(scene->mAnimations[0]));
+			animationsOut->types.resize(numAnimation);
+
+			for (int aniIndex = 0; aniIndex < numAnimation; aniIndex++)
+			{
+				auto currAnimation = scene->mAnimations[aniIndex];
+				
+				ANIMATION_TYPE aniType = ANIMATION_TYPE::NONE_TYPE;
+
+				if (currAnimation->mNumChannels > 0)
+				{
+					animationsOut->types[aniIndex] = ANIMATION_TYPE::NODE_ANIMATION;
+
+					assert(currAnimation->mNumMeshChannels == 0);
+					assert(currAnimation->mNumMorphMeshChannels == 0);
+				}
+
+				if (currAnimation->mNumMeshChannels > 0)
+				{
+					animationsOut->types[aniIndex] = ANIMATION_TYPE::MESH_ANIMATION;
+
+					assert(currAnimation->mNumChannels == 0);
+					assert(currAnimation->mNumMorphMeshChannels == 0);
+				}
+
+				if (currAnimation->mNumMorphMeshChannels > 0)
+				{
+					animationsOut->types[aniIndex] = ANIMATION_TYPE::MORP_ANIMATION;
+
+					assert(currAnimation->mNumChannels == 0);
+					assert(currAnimation->mNumMeshChannels == 0);
+				}
+
+				currAnimation->mNumChannels = 0;
+				currAnimation->mNumMeshChannels = 0;
+				currAnimation->mNumMorphMeshChannels = 0;
+
+				currAnimation->mChannels = nullptr;
+				currAnimation->mMeshChannels = nullptr;
+				currAnimation->mMorphMeshChannels = nullptr;
+			}
+		}
+	}
+
+	importer.FreeScene();
+
 }
 
 void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut)
@@ -139,8 +203,8 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 			currMat->Get(AI_MATKEY_REFRACTI, currDumpMat->refracti);
 			currMat->Get(AI_MATKEY_COLOR_DIFFUSE, currDumpMat->diffuse);
 			currMat->Get(AI_MATKEY_COLOR_AMBIENT, currDumpMat->ambient);
-			currMat->Get(AI_MATKEY_COLOR_SPECULAR,currDumpMat->specular);
-			currMat->Get(AI_MATKEY_COLOR_EMISSIVE,currDumpMat->emissive);
+			currMat->Get(AI_MATKEY_COLOR_SPECULAR, currDumpMat->specular);
+			currMat->Get(AI_MATKEY_COLOR_EMISSIVE, currDumpMat->emissive);
 			currMat->Get(AI_MATKEY_COLOR_TRANSPARENT, currDumpMat->transparent);
 			currMat->Get(AI_MATKEY_COLOR_REFLECTIVE, currDumpMat->reflective);
 
@@ -256,7 +320,7 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 	for (unsigned int i = 0; i < numMeshes; i++)
 	{
 		aiMesh* currMesh = scene->mMeshes[i];
-		
+
 		CGHMesh& targetMesh = outMeshs[i];
 		unsigned int numUVChannel = currMesh->GetNumUVChannels();
 

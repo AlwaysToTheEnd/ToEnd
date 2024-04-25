@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <unordered_map>
 #include <assert.h>
+#include <string>
 #include "DX12FontStructs.h"
 
 class DX12FontManger
