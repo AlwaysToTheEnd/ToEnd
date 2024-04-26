@@ -104,9 +104,13 @@ public:
 	};
 
 public:
+	CGHRenderer();
+	virtual ~CGHRenderer();
 	unsigned int GetRenderID() { return m_renderID + 1; }
 
 protected:
+	static unsigned int s_currRendererInstancedNum;
+	static std::vector<unsigned int> s_renderIDPool;
 	unsigned int m_renderID = 0;
 	unsigned int m_renderFlag = 0;
 };

@@ -12,6 +12,8 @@ size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRendere
 size_t COMUIRenderer::s_hashCode = typeid(COMUIRenderer).hash_code();
 size_t COMUITransform::s_hashCode = typeid(COMUITransform).hash_code();
 size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
+unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
+std::vector<unsigned int> CGHRenderer::s_renderIDPool;
 
 COMTransform::COMTransform(CGHNode* node)
 {
@@ -331,4 +333,23 @@ void COMFontRenderer::SetText(const wchar_t* str)
 void COMFontRenderer::SetRowPitch(float rowPitch)
 {
 	m_rowPitch = rowPitch;
+}
+
+CGHRenderer::CGHRenderer()
+{
+	if (s_renderIDPool.size())
+	{
+		m_renderID = s_renderIDPool.back();
+		s_renderIDPool.pop_back();
+	}
+	else
+	{
+		assert(s_currRendererInstancedNum < UINT16_MAX);
+		m_renderID = s_currRendererInstancedNum++;
+	}
+}
+
+CGHRenderer::~CGHRenderer()
+{
+	s_renderIDPool.push_back(m_renderID);
 }

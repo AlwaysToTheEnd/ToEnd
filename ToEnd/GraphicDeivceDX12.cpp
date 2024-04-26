@@ -592,20 +592,25 @@ void GraphicDeviceDX12::RenderEnd()
 		dest.SubresourceIndex = 0;
 
 		auto mouseState = InputManager::GetMouse().GetLastState();
-		D3D12_BOX rect = {};
-		rect.left = mouseState.x;
-		rect.right = mouseState.x + 1;
-		rect.top = mouseState.y;
-		rect.bottom = mouseState.y + 1;
-		rect.front = 0;
-		rect.back = 1;
 
-		m_cmdList->ResourceBarrier(1, &bar);
-		m_cmdList->CopyTextureRegion(&dest, 0, 0, 0, &src, &rect);
+		if (mouseState.x < GlobalOptions::GO.WIN.WindowsizeX && mouseState.y < GlobalOptions::GO.WIN.WindowsizeY)
+		{
+			D3D12_BOX rect = {};
 
-		bar.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-		bar.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		m_cmdList->ResourceBarrier(1, &bar);
+			rect.left = mouseState.x;
+			rect.right = mouseState.x + 1;
+			rect.top = mouseState.y;
+			rect.bottom = mouseState.y + 1;
+			rect.front = 0;
+			rect.back = 1;
+
+			m_cmdList->ResourceBarrier(1, &bar);
+			m_cmdList->CopyTextureRegion(&dest, 0, 0, 0, &src, &rect);
+
+			bar.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+			bar.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			m_cmdList->ResourceBarrier(1, &bar);
+		}
 	}
 
 

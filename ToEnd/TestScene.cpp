@@ -231,7 +231,6 @@ void TestScene::Init()
 	CGHAnimationGroup animGroup;
 	DX12GraphicResourceLoader loader;
 	loader.LoadAnimation("Animation/NinjaIdle.fbx", &animGroup);
-
 }
 
 void TestScene::Update(float delta)

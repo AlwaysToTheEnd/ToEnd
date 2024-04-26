@@ -143,6 +143,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectoryNoRoot); ../Common/Include;</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -161,6 +162,7 @@
     <ClInclude Include="..\Common\Source\DX12SwapChain.h" />
     <ClInclude Include="..\Common\Source\DxException.h" />
     <ClInclude Include="..\Common\Source\GameTimer.h" />
+    <ClInclude Include="AnimationComponent.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="BaseComponents.h" />
     <ClInclude Include="BinaryReader.h" />
@@ -191,6 +193,7 @@
     <ClCompile Include="..\Common\Source\DX12SwapChain.cpp" />
     <ClCompile Include="..\Common\Source\DxException.cpp" />
     <ClCompile Include="..\Common\Source\GameTimer.cpp" />
+    <ClCompile Include="AnimationComponent.cpp" />
     <ClCompile Include="App.cpp" />
     <ClCompile Include="BaseComponents.cpp" />
     <ClCompile Include="BinaryReader.cpp" />

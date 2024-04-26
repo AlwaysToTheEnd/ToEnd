@@ -93,12 +93,12 @@ enum class ANIMATION_TYPE
 	NONE_TYPE,
 };
 
-
 struct CGHAnimationGroup
 {
 	std::vector<ANIMATION_TYPE> types;
 	std::vector<aiAnimation> anims;
 };
+
 
 enum MESHDATA_TYPE
 {
