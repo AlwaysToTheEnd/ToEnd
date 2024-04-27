@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include "BaseComponents.h"
+#include "AnimationComponent.h"
 
 enum CGHNODE_EVENT_FLAGS
 {
@@ -145,6 +146,23 @@ template<>
 inline COMUITransform* CGHNode::GetComponent()
 {
 	return reinterpret_cast<COMUITransform*>(m_components[COMPONENT_UITRANSFORM].get());
+}
+
+template<>
+inline COMAnimator* CGHNode::CreateComponent()
+{
+	COMAnimator* result = new COMAnimator(this);
+	std::unique_ptr<Component> uniqueTemp(result);
+
+	m_components[COMPONENT_ANIMATOR] = std::move(uniqueTemp);
+
+	return result;
+}
+
+template<>
+inline COMAnimator* CGHNode::GetComponent()
+{
+	return reinterpret_cast<COMAnimator*>(m_components[COMPONENT_ANIMATOR].get());
 }
 
 template<typename T>

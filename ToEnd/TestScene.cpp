@@ -7,6 +7,8 @@
 #include "Xml.h"
 #include <DirectXMath.h>
 #include <ppl.h>
+#include <iostream>
+#include <fstream>
 #include <concurrent_unordered_map.h>
 #include <concurrent_vector.h>
 #include <DirectXColors.h>
@@ -22,6 +24,7 @@ TestScene::TestScene()
 
 TestScene::~TestScene()
 {
+	delete m_aniGroup;
 }
 
 void TestScene::Init()
@@ -231,103 +234,6 @@ void TestScene::Init()
 	fontrender->SetRenderString(L"Test Rendering", color, 350.0f);
 	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
 	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
-
-	CGHAnimationGroup animGroup;
-	DX12GraphicResourceLoader loader;
-	loader.LoadAnimation("Animation/NinjaIdle.fbx", &animGroup);
-
-	std::vector<aiNodeAnim*> nodeAnims(animGroup.anims.front().mNumChannels);
-
-	for (int i = 0; i < animGroup.anims.front().mNumChannels; i++)
-	{
-		nodeAnims[i] = animGroup.anims.front().mChannels[i];
-	}
-
-	{
-		std::vector<std::string> filterStrs = { "MIXAMORIG:" };
-		std::string handName = "HAND";
-
-
-		struct filtedAniData
-		{
-			aiNodeAnim* anim = nullptr;
-			char leftRightToken = 0;
-			int nameIndex = -1;
-		};
-
-		Concurrency::concurrent_unordered_map<std::string, Concurrency::concurrent_vector<filtedAniData>> nodeAniFilted;
-		Concurrency::parallel_for_each(nodeAnims.begin(), nodeAnims.end(), [&handName, &filterStrs, &nodeAniFilted](aiNodeAnim* iter)
-			{
-				filtedAniData data;
-				data.anim = iter;
-				std::string filtedName;
-				FiltAniNodeName(iter->mNodeName.C_Str(), filterStrs, filtedName, data.leftRightToken, data.nameIndex);
-
-				size_t handTokenIndex = filtedName.find(handName.c_str());
-				if (handTokenIndex != std::string::npos && filtedName.size() > handName.size())
-				{
-					filtedName = filtedName.substr(0, handTokenIndex) + filtedName.substr(handTokenIndex + handName.size());
-				}
-
-				nodeAniFilted[filtedName].push_back(data);
-			});
-
-		std::vector<CGHNode*> outnodes;
-		m_rootNode->GetChildNodes(&outnodes);
-
-		Concurrency::concurrent_vector<CGHNode*> targetNodes;
-		targetNodes.reserve(128);
-
-		Concurrency::parallel_for_each(outnodes.begin(), outnodes.end(),
-			[&targetNodes](CGHNode* iter)
-			{
-				std::string nodeName = iter->GetName();
-
-				size_t findIndex = nodeName.find("cf_J");
-
-				if (std::string::npos != findIndex)
-				{
-					findIndex = nodeName.find("_s", findIndex);
-
-					if (std::string::npos == findIndex)
-					{
-						targetNodes.push_back(iter);
-					}
-				}
-			});
-
-		struct filtedNodeData
-		{
-			CGHNode* node = nullptr;
-			char leftRightToken = 0;
-			int nameIndex = -1;
-		};
-
-		filterStrs = { "CF_J_" };
-		handName = "HAND_";
-		Concurrency::concurrent_unordered_map<std::string, Concurrency::concurrent_vector<filtedNodeData>> nodesFilted;
-		Concurrency::parallel_for_each(targetNodes.begin(), targetNodes.end(), [&handName, &filterStrs, &nodesFilted](CGHNode* iter)
-			{
-				if (strlen(iter->GetName()))
-				{
-					filtedNodeData data;
-					data.node = iter;
-					std::string filtedName;
-					FiltAniNodeName(iter->GetName(), filterStrs, filtedName, data.leftRightToken, data.nameIndex);
-
-					size_t handTokenIndex = filtedName.find(handName.c_str());
-					if (handTokenIndex != std::string::npos && filtedName.size() > handName.size())
-					{
-						filtedName = filtedName.substr(0, handTokenIndex) + filtedName.substr(handTokenIndex + handName.size());
-					}
-
-					nodesFilted[filtedName].push_back(data);
-				}
-			});
-
-	}
-	
-	m_rootNode->CreateComponent<COMAnimator>();
 }
 
 void TestScene::Update(float delta)

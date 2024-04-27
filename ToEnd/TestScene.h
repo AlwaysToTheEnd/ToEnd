@@ -33,4 +33,6 @@ private:
 	CGHNode m_dirLight;
 	CGHNode m_dirLight2;
 	CGHNode	m_stringNode;
+
+	CGHAnimationGroup* m_aniGroup = nullptr;
 };

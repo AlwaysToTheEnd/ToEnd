@@ -184,6 +184,7 @@
     <ClInclude Include="GraphicResourceLoader.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="LightComponents.h" />
+    <ClInclude Include="NodeTransformController.h" />
     <ClInclude Include="PlatformHelpers.h" />
     <ClInclude Include="TestScene.h" />
     <ClInclude Include="Xml.h" />
@@ -211,6 +212,7 @@
     <ClCompile Include="GraphicResourceLoader.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LightComponents.cpp" />
+    <ClCompile Include="NodeTransformController.cpp" />
     <ClCompile Include="TestScene.cpp" />
     <ClCompile Include="Xml.cpp" />
   </ItemGroup>

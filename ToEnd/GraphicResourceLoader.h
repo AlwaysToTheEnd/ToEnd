@@ -16,7 +16,7 @@ public:
 		std::vector<CGHMesh>* meshDataOut, std::vector<CGHMaterial>* materialOut = nullptr,
 		std::vector<CGHNode>* nodeOut = nullptr);
 
-	void LoadAnimation(const std::string& filePath, CGHAnimationGroup* animationsOut);
+	//void LoadAnimation(const std::string& filePath, CGHAnimationGroup* animationsOut);
 
 private:
 	void LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut);

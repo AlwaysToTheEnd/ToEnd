@@ -58,70 +58,70 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 	importer.FreeScene();
 }
 
-void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAnimationGroup* animationsOut)
-{
-	Assimp::Importer importer;
-	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
-
-	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
-
-	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
-	std::string error = importer.GetErrorString();
-	
-	assert(scene != nullptr);
-
-	if (scene->HasAnimations())
-	{
-		unsigned int numAnimation = scene->mNumAnimations;
-		if (animationsOut)
-		{
-			animationsOut->anims.assign(numAnimation, *(scene->mAnimations[0]));
-			animationsOut->types.resize(numAnimation);
-
-			for (int aniIndex = 0; aniIndex < numAnimation; aniIndex++)
-			{
-				auto currAnimation = scene->mAnimations[aniIndex];
-				
-				ANIMATION_TYPE aniType = ANIMATION_TYPE::NONE_TYPE;
-
-				if (currAnimation->mNumChannels > 0)
-				{
-					animationsOut->types[aniIndex] = ANIMATION_TYPE::NODE_ANIMATION;
-
-					assert(currAnimation->mNumMeshChannels == 0);
-					assert(currAnimation->mNumMorphMeshChannels == 0);
-				}
-
-				if (currAnimation->mNumMeshChannels > 0)
-				{
-					animationsOut->types[aniIndex] = ANIMATION_TYPE::MESH_ANIMATION;
-
-					assert(currAnimation->mNumChannels == 0);
-					assert(currAnimation->mNumMorphMeshChannels == 0);
-				}
-
-				if (currAnimation->mNumMorphMeshChannels > 0)
-				{
-					animationsOut->types[aniIndex] = ANIMATION_TYPE::MORP_ANIMATION;
-
-					assert(currAnimation->mNumChannels == 0);
-					assert(currAnimation->mNumMeshChannels == 0);
-				}
-
-				currAnimation->mNumChannels = 0;
-				currAnimation->mNumMeshChannels = 0;
-				currAnimation->mNumMorphMeshChannels = 0;
-
-				currAnimation->mChannels = nullptr;
-				currAnimation->mMeshChannels = nullptr;
-				currAnimation->mMorphMeshChannels = nullptr;
-			}
-		}
-	}
-
-	importer.FreeScene();
-
-}
+//void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAnimationGroup* animationsOut)
+//{
+//	Assimp::Importer importer;
+//	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
+//
+//	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
+//
+//	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
+//	std::string error = importer.GetErrorString();
+//	
+//	assert(scene != nullptr);
+//
+//	if (scene->HasAnimations())
+//	{
+//		unsigned int numAnimation = scene->mNumAnimations;
+//		if (animationsOut)
+//		{
+//			animationsOut->anims.assign(numAnimation, *(scene->mAnimations[0]));
+//			animationsOut->types.resize(numAnimation);
+//
+//			for (int aniIndex = 0; aniIndex < numAnimation; aniIndex++)
+//			{
+//				auto currAnimation = scene->mAnimations[aniIndex];
+//				
+//				ANIMATION_TYPE aniType = ANIMATION_TYPE::NONE_TYPE;
+//
+//				if (currAnimation->mNumChannels > 0)
+//				{
+//					animationsOut->types[aniIndex] = ANIMATION_TYPE::NODE_ANIMATION;
+//
+//					assert(currAnimation->mNumMeshChannels == 0);
+//					assert(currAnimation->mNumMorphMeshChannels == 0);
+//				}
+//
+//				if (currAnimation->mNumMeshChannels > 0)
+//				{
+//					animationsOut->types[aniIndex] = ANIMATION_TYPE::MESH_ANIMATION;
+//
+//					assert(currAnimation->mNumChannels == 0);
+//					assert(currAnimation->mNumMorphMeshChannels == 0);
+//				}
+//
+//				if (currAnimation->mNumMorphMeshChannels > 0)
+//				{
+//					animationsOut->types[aniIndex] = ANIMATION_TYPE::MORP_ANIMATION;
+//
+//					assert(currAnimation->mNumChannels == 0);
+//					assert(currAnimation->mNumMeshChannels == 0);
+//				}
+//
+//				currAnimation->mNumChannels = 0;
+//				currAnimation->mNumMeshChannels = 0;
+//				currAnimation->mNumMorphMeshChannels = 0;
+//
+//				currAnimation->mChannels = nullptr;
+//				currAnimation->mMeshChannels = nullptr;
+//				currAnimation->mMorphMeshChannels = nullptr;
+//			}
+//		}
+//	}
+//
+//	importer.FreeScene();
+//
+//}
 
 void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut)
 {

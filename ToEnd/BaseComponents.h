@@ -14,7 +14,7 @@ public:
 	COMTransform(CGHNode* node);
 
 	virtual void Update(CGHNode* node, unsigned int, float delta) override;
-	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override {};
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_TRANSFORM; }
 

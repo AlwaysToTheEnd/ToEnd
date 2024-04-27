@@ -54,16 +54,25 @@ void COMAnimator::Update(CGHNode* node, unsigned int, float delta)
 				std::bind(&COMAnimator::NodeAnimation, this, currAnimation),
 				std::bind(&COMAnimator::MeshAnimation, this, currAnimation, node),
 				std::bind(&COMAnimator::MorphAnimation, this, currAnimation, node));
+
 		}
 	}
 	else
 	{
 		m_currTime = 0;
 	}
+
 }
 
-void COMAnimator::SetAnimation(const aiAnimation* anim, unsigned int stateIndex)
+void COMAnimator::SetAnimation(unsigned int animationIndex, unsigned int stateIndex)
 {
+	if (m_currGroup->anims.size() > animationIndex)
+	{
+		m_states.resize(1);
+		m_states.front().targetAnimation = &m_currGroup->anims[animationIndex];
+
+		m_currState = &m_states.front();
+	}
 }
 
 void COMAnimator::NodeTreeDirty()
@@ -76,9 +85,13 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim)
 	int currChannelNum = anim->mNumChannels;
 
 	Concurrency::parallel_for(0, currChannelNum, [anim, this](int index)
+	{
+		auto currChannel = anim->mChannels[index];
+
+		auto rigMappingIter = m_currGroup->rigMapping->find(currChannel->mNodeName.C_Str());
+		if (rigMappingIter != m_currGroup->rigMapping->end())
 		{
-			auto currChannel = anim->mChannels[index];
-			auto nodeIter = m_currNodeTree.find(currChannel->mNodeName.C_Str());
+			auto nodeIter = m_currNodeTree.find(rigMappingIter->second.c_str());
 			if (nodeIter != m_currNodeTree.end())
 			{
 				unsigned int numscale = currChannel->mNumScalingKeys;
@@ -101,7 +114,7 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim)
 						break;
 					}
 				}
-
+				
 				for (int i = 0; i < numscale - 1; i++)
 				{
 					double prevTime = currChannel->mScalingKeys[i].mTime;
@@ -128,13 +141,12 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim)
 					}
 				}
 
-				auto nodeMat = XMLoadFloat4x4(&nodeIter->second->m_srt);
 				auto nodeAniMat = XMMatrixAffineTransformation(xmScale, XMVectorZero(), xmRotate, xmPos);
 
-				XMStoreFloat4x4(&nodeIter->second->m_srt, nodeAniMat * nodeMat);
+				XMStoreFloat4x4(&nodeIter->second->m_srt, nodeAniMat);
 			}
-		});
-
+		}
+	});
 }
 
 void COMAnimator::MeshAnimation(const aiAnimation* anim, CGHNode* node)

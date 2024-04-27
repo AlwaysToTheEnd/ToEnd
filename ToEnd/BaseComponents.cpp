@@ -24,15 +24,16 @@ void COMTransform::Update(CGHNode* node, unsigned int, float delta)
 	DirectX::XMMATRIX rotateMat = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&m_queternion));
 	DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
 	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
+	DirectX::XMMATRIX ortMat = DirectX::XMLoadFloat4x4(&node->m_srt);
 
 	CGHNode* parentNode = node->GetParent();
 	if (parentNode != nullptr)
 	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, scaleMat * rotateMat * transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
+		DirectX::XMStoreFloat4x4(&node->m_srt, ortMat * scaleMat * rotateMat * transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
 	}
 	else
 	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, scaleMat * rotateMat * transMat);
+		DirectX::XMStoreFloat4x4(&node->m_srt, ortMat * scaleMat * rotateMat * transMat);
 	}
 }
 

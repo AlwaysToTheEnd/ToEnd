@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "CGHBaseClass.h"
+#include "../Common/Source/CGHUtil.h"
 
 
 
@@ -62,6 +63,8 @@ void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 		{
 			iter->RateUpdate(currFrame, delta);
 		}
+
+		std::memcpy(&m_srt, &CGH::IdentityMatrix, sizeof(m_srt));
 	}
 }
 

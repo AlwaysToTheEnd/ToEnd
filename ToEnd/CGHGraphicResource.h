@@ -97,6 +97,7 @@ struct CGHAnimationGroup
 {
 	std::vector<ANIMATION_TYPE> types;
 	std::vector<aiAnimation> anims;
+	const std::unordered_map<std::string, std::string>* rigMapping = nullptr;
 };
 
 

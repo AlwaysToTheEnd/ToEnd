@@ -20,7 +20,7 @@ namespace CGH
 		return static_cast<int>(size);
 	}
 
-	const DirectX::XMFLOAT4X4 IdentityMatrix(1.0f, 0.0f, 0.0f, 0.0f,
+	static const DirectX::XMFLOAT4X4 IdentityMatrix(1.0f, 0.0f, 0.0f, 0.0f,
 											 0.0f, 1.0f, 0.0f, 0.0f,
 											 0.0f, 0.0f, 1.0f, 0.0f,
 											 0.0f, 0.0f, 0.0f, 1.0f);

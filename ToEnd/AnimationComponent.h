@@ -39,7 +39,8 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_ANIMATOR; }
 
-	void SetAnimation(const aiAnimation* anim, unsigned int stateIndex);
+	void SetAnimationGroup(const CGHAnimationGroup* group) { m_currGroup = group; }
+	void SetAnimation(unsigned int animationIndex, unsigned int stateIndex);
 
 private:
 	void NodeTreeDirty();
@@ -55,7 +56,6 @@ private:
 
 	bool m_nodeTreeDirty = true;
 	std::unordered_map<std::string, CGHNode*> m_currNodeTree;
-	std::unordered_map<std::string, CGHNode*> m_rigMap;
 
 	std::vector<std::vector<unsigned int>> m_animationTransitionInfos;
 	std::unordered_map<std::string, CGHAnimationParameter> m_params;

@@ -24,6 +24,9 @@
     <Filter Include="Nodes">
       <UniqueIdentifier>{0466979f-0ba3-4ac5-a3e1-10c20b48f677}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EndObject">
+      <UniqueIdentifier>{26882f2d-81ed-4267-a94b-034094014e08}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -114,6 +117,9 @@
       <Filter>Component</Filter>
     </ClInclude>
     <ClInclude Include="AnimationNodeNameFilter.h">
+      <Filter>Component</Filter>
+    </ClInclude>
+    <ClInclude Include="NodeTransformController.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -189,6 +195,9 @@
     </ClCompile>
     <ClCompile Include="AnimationComponent.cpp">
       <Filter>Component</Filter>
+    </ClCompile>
+    <ClCompile Include="NodeTransformController.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
