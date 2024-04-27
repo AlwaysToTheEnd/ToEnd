@@ -110,11 +110,11 @@
     <ClInclude Include="CGHUIButton.h">
       <Filter>Nodes</Filter>
     </ClInclude>
-    <ClInclude Include="CGHAnimation.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="AnimationComponent.h">
       <Filter>Component</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimationNodeNameFilter.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

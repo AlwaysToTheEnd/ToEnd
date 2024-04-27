@@ -49,10 +49,11 @@ void COMAnimator::Update(CGHNode* node, unsigned int, float delta)
 				currFrame = std::fmod(currFrame, duration);
 				m_currTime = currFrame / tickPerSecond;
 			}
-
-			NodeAnimation(currAnimation);
-			MeshAnimation(currAnimation, node);
-			MorphAnimation(currAnimation, node);
+			
+			Concurrency::parallel_invoke(
+				std::bind(&COMAnimator::NodeAnimation, this, currAnimation),
+				std::bind(&COMAnimator::MeshAnimation, this, currAnimation, node),
+				std::bind(&COMAnimator::MorphAnimation, this, currAnimation, node));
 		}
 	}
 	else

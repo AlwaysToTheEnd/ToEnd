@@ -55,6 +55,7 @@ private:
 
 	bool m_nodeTreeDirty = true;
 	std::unordered_map<std::string, CGHNode*> m_currNodeTree;
+	std::unordered_map<std::string, CGHNode*> m_rigMap;
 
 	std::vector<std::vector<unsigned int>> m_animationTransitionInfos;
 	std::unordered_map<std::string, CGHAnimationParameter> m_params;

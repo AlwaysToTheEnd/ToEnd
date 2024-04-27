@@ -163,11 +163,11 @@
     <ClInclude Include="..\Common\Source\DxException.h" />
     <ClInclude Include="..\Common\Source\GameTimer.h" />
     <ClInclude Include="AnimationComponent.h" />
+    <ClInclude Include="AnimationNodeNameFilter.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="BaseComponents.h" />
     <ClInclude Include="BinaryReader.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="CGHAnimation.h" />
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
     <ClInclude Include="CGHUIButton.h" />
