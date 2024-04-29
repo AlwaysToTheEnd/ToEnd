@@ -27,6 +27,9 @@
     <Filter Include="EndObject">
       <UniqueIdentifier>{26882f2d-81ed-4267-a94b-034094014e08}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\Header">
+      <UniqueIdentifier>{4eb48efd-1924-4024-a769-75fac16c66d5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -120,7 +123,10 @@
       <Filter>Component</Filter>
     </ClInclude>
     <ClInclude Include="NodeTransformController.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>EndObject</Filter>
+    </ClInclude>
+    <ClInclude Include="CGHUIPanel.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -197,19 +203,22 @@
       <Filter>Component</Filter>
     </ClCompile>
     <ClCompile Include="NodeTransformController.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>EndObject</Filter>
+    </ClCompile>
+    <ClCompile Include="CGHUIPanel.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Shader\MaterialRegister.hlsli">
-      <Filter>Shader</Filter>
+    <None Include="Shader\DeferredRenderBase.hlsli">
+      <Filter>Shader\Header</Filter>
     </None>
     <None Include="Shader\RenderBaseRegister.hlsli">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Header</Filter>
     </None>
-    <None Include="Shader\DeferredRenderBase.hlsli">
-      <Filter>Shader</Filter>
+    <None Include="Shader\MaterialRegister.hlsli">
+      <Filter>Shader\Header</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

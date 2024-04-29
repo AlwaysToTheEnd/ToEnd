@@ -4,6 +4,7 @@
 #include "DX12GraphicResourceManager.h"
 #include "DX12TextureBuffer.h"
 #include "Dx12FontManager.h"
+#include "InputManager.h"
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
@@ -12,8 +13,10 @@ size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRendere
 size_t COMUIRenderer::s_hashCode = typeid(COMUIRenderer).hash_code();
 size_t COMUITransform::s_hashCode = typeid(COMUITransform).hash_code();
 size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
+
 unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
 std::vector<unsigned int> CGHRenderer::s_renderIDPool;
+std::unordered_map<unsigned int, std::vector<CGHRenderer::MouseAction>> CGHRenderer::s_mouseActions;
 
 COMTransform::COMTransform(CGHNode* node)
 {
@@ -250,20 +253,17 @@ UINT64 COMMaterial::GetMaterialDataGPU(unsigned int currFrameIndex)
 
 void COMUITransform::Update(CGHNode* node, unsigned int, float delta)
 {
-	DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScaling(m_scale.x, m_scale.y, 1.0f);
 	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
 
 	CGHNode* parentNode = node->GetParent();
 	if (parentNode != nullptr)
 	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, scaleMat * transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
+		DirectX::XMStoreFloat4x4(&node->m_srt, transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
 	}
 	else
 	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, scaleMat * transMat);
+		DirectX::XMStoreFloat4x4(&node->m_srt, transMat);
 	}
-
-	m_size = { m_sizeL.x * node->m_srt._11 , m_sizeL.y * node->m_srt._22 };
 }
 
 void XM_CALLCONV COMUITransform::SetPos(DirectX::FXMVECTOR pos)
@@ -271,14 +271,9 @@ void XM_CALLCONV COMUITransform::SetPos(DirectX::FXMVECTOR pos)
 	DirectX::XMStoreFloat3(&m_pos, pos);
 }
 
-void XM_CALLCONV COMUITransform::SetScale(DirectX::FXMVECTOR scale)
-{
-	DirectX::XMStoreFloat2(&m_scale, scale);
-}
-
 void XM_CALLCONV COMUITransform::SetSize(DirectX::FXMVECTOR size)
 {
-	DirectX::XMStoreFloat2(&m_sizeL, size);
+	DirectX::XMStoreFloat2(&m_size, size);
 }
 
 COMUIRenderer::COMUIRenderer(CGHNode* node)
@@ -308,9 +303,10 @@ COMFontRenderer::COMFontRenderer(CGHNode* node)
 void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
 	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
-	DirectX::XMFLOAT2 size = node->GetComponent<COMUITransform>()->GetSize();
-
-	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, size.x, m_rowPitch);
+	pos.x += m_offset.x;
+	pos.y += m_offset.y;
+	pos.z += m_offset.z;
+	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, m_fontSize, m_rowPitch);
 }
 
 void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
@@ -353,4 +349,76 @@ CGHRenderer::CGHRenderer()
 CGHRenderer::~CGHRenderer()
 {
 	s_renderIDPool.push_back(m_renderID);
+}
+
+void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
+{
+	if (renderID > 0)
+	{
+		auto iter = s_mouseActions.find(renderID - 1);
+
+		if (iter != s_mouseActions.end())
+		{
+			auto& actions = iter->second;
+			const auto& mouse = InputManager::GetMouse();
+			for (auto& currAction : actions)
+			{
+				DirectX::Mouse::ButtonStateTracker::ButtonState targetState = DirectX::Mouse::ButtonStateTracker::ButtonState::UP;
+
+				switch (currAction.funcMouseButton)
+				{
+				case 0:
+				{
+					targetState = mouse.leftButton;
+				}
+				break;
+				case 1:
+				{
+					targetState = mouse.middleButton;
+				}
+				break;
+				case 2:
+				{
+					targetState = mouse.rightButton;
+				}
+				break;
+				case 3:
+				{
+					targetState = mouse.xButton1;
+				}
+				break;
+				case 4:
+				{
+					targetState = mouse.xButton2;
+				}
+				break;
+				default:
+					assert(false);
+					break;
+				} 
+
+				if (currAction.funcMouseState == targetState)
+				{
+					currAction.func(currAction.node);
+				}
+			}
+		}
+	}
+}
+
+void CGHRenderer::AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
+{
+	MouseAction action;
+	action.node = reinterpret_cast<CGHNode*>(this);
+	action.func = func;
+	action.funcMouseButton = mousebutton;
+	action.funcMouseState = mouseState;
+
+	s_mouseActions[m_renderID].emplace_back(action);
+}
+
+void CGHRenderer::RemoveFuncs()
+{
+	auto& actions = s_mouseActions[m_renderID];
+	actions.clear();
 }

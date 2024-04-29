@@ -29,11 +29,9 @@ public:
 	CGHNode(const CGHNode& rhs);
 	virtual ~CGHNode();
 
+	virtual void Init() {};
 	virtual void Update(unsigned int currFrame, float delta);
 	virtual void RateUpdate(unsigned int currFrame, float delta);
-
-	virtual void OnClcked();
-	virtual void OnMouseOvered();
 
 	template<typename T> T* CreateComponent();
 	template<typename T> T* GetComponent();

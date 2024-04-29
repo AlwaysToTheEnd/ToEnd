@@ -241,8 +241,6 @@ void App::Render()
 	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderBegin();
 
-	m_testScene->Render();
-
 	graphic->RenderEnd();
 }
 

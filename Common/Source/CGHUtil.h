@@ -40,6 +40,7 @@ struct GlobalOptions
 		const std::wstring	TextureFolderPath = L"Texture";
 		const std::wstring	FontFolderPath = L"Fonts";
 		float				Shadowlength = 100.0f;
+		float				phongTessAlpha = 0.75f;
 	}GRAPHIC;
 
 	static GlobalOptions GO;

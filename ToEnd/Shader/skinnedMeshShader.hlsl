@@ -23,16 +23,9 @@ cbuffer cbsettings : register(b0, space1)
 {
     uint gRenderID;
     bool gIsShadowGen;
+    float gPhongTessAlpha;
 };
 
-//StructuredBuffer<float3> gVertexNormals : register(t0, space1);
-//StructuredBuffer<float3> gVertexTangents : register(t1, space1);
-//StructuredBuffer<float3> gVertexBitans : register(t2, space1);
-//StructuredBuffer<float3> gVertexUV0 : register(t3, space1);
-//StructuredBuffer<float3> gVertexUV1 : register(t4, space1);
-//StructuredBuffer<float3> gVertexUV2 : register(t5, space1);
-
-//StructuredBuffer<BoneWeightInfo> gBoneWeightInfos : register(t0, space1);
 StructuredBuffer<BoneWeight> gBoneWeights : register(t0, space1);
 StructuredBuffer<float4x4> gBoneData : register(t1, space1);
 
@@ -40,8 +33,10 @@ RWStructuredBuffer<float3> gResultVertices : register(u0, space1);
 
 struct VSOut
 {
-    float4 posH : SV_POSITION;
-    float3x3 tangentBasis : TANBASIS;
+    float3 pos : POSITION0;
+    float3 normal : NORMAL0;
+    float3 tangent : TANGENT0;
+    float3 biTan : BITANGENT0;
     float3 uv0 : TEXCOORD0;
     float3 uv1 : TEXCOORD1;
     float3 uv2 : TEXCOORD2;
@@ -51,9 +46,7 @@ VSOut VS(VertexIn vin, uint id : SV_VertexID)
 {
     VSOut vout;
    
-    vout.posH = float4(vin.posL, 1.0f);
-    
-    float3 sumPos = float3(0.0f, 0.0f, 0.0f);
+    float4 sumPos = float4(0.0f, 0.0f, 0.0f, 1.0f);
     float3 sumNormal = float3(0.0f, 0.0f, 0.0f);
     float3 sumTangent = float3(0.0f, 0.0f, 0.0f);
     float3 sumBitan = float3(0.0f, 0.0f, 0.0f);
@@ -64,14 +57,16 @@ VSOut VS(VertexIn vin, uint id : SV_VertexID)
     {
         boenWeight = gBoneWeights[vin.weightInfo.y + i];
         
-        sumPos += boenWeight.weight * mul(vout.posH, gBoneData[boenWeight.boneIndex]).xyz;
+        sumPos += boenWeight.weight * mul(float4(vin.posL, 1.0f), gBoneData[boenWeight.boneIndex]);
         sumNormal += boenWeight.weight * mul(vin.normal, (float3x3) gBoneData[boenWeight.boneIndex]);
         sumTangent += boenWeight.weight * mul(vin.tan, (float3x3) gBoneData[boenWeight.boneIndex]);
         sumBitan += boenWeight.weight * mul(vin.bitan, (float3x3) gBoneData[boenWeight.boneIndex]);
     }
     
-    vout.posH = mul(float4(sumPos, 1.0f), gViewProj);
-    vout.tangentBasis = transpose(float3x3(normalize(sumTangent), normalize(sumBitan), normalize(sumNormal)));
+    vout.pos = sumPos.xyz;
+    vout.tangent = normalize(sumTangent);
+    vout.normal = normalize(sumNormal);
+    vout.biTan = normalize(sumBitan);
    
     vout.uv0 = vin.uv0;
     vout.uv1 = vin.uv1;
@@ -79,10 +74,81 @@ VSOut VS(VertexIn vin, uint id : SV_VertexID)
     
     if (gIsShadowGen)
     {
-        gResultVertices[id] = sumPos;
+        gResultVertices[id] = sumPos.xyz;
     }
     
     return vout;
+}
+
+struct HSConstDataOut
+{
+    float edges[3] : SV_TessFactor;
+    float inside[1] : SV_InsideTessFactor;
+};
+
+HSConstDataOut PointLightConstantHS(InputPatch<VSOut, 3> patch)
+{
+    HSConstDataOut output;
+    
+    float tessFactor = 4.0;
+    output.edges[0] = output.edges[1] = output.edges[2] = tessFactor;
+    output.inside[0] = tessFactor;
+    
+    return output;
+}
+
+
+[domain("tri")]
+[partitioning("fractional_even")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("PointLightConstantHS")]
+[maxtessfactor(4.0f)]
+VSOut HS(InputPatch<VSOut, 3> patch, uint patchID : SV_PrimitiveID, uint cpId : SV_OutputControlPointID)
+{
+    VSOut result;
+    result = patch[cpId];
+    
+    return result;
+}
+
+struct DSOut
+{
+    float4 posH : SV_position;
+    float3x3 tangentBasis : TANBASIS;
+    float3 uv0 : TEXCOORD0;
+    float3 uv1 : TEXCOORD1;
+    float3 uv2 : TEXCOORD2;
+};
+
+float3 Project(float3 p, float3 c, float3 n)
+{
+    return p - dot(p - c, n) * n;
+}
+
+[domain("tri")]
+DSOut DS(HSConstDataOut input, float3 uvw : SV_DomainLocation, const OutputPatch<VSOut, 3> tri)
+{
+    DSOut result;
+    
+    float3 clampPos = uvw.x * tri[0].pos + uvw.y * tri[1].pos + uvw.z * tri[2].pos;
+    float3 c0 = Project(clampPos, tri[0].pos, tri[0].normal);
+    float3 c1 = Project(clampPos, tri[1].pos, tri[1].normal);
+    float3 c2 = Project(clampPos, tri[2].pos, tri[2].normal);
+    float3 phong = uvw.x * c0 + uvw.y * c1 + uvw.z * c2;
+    float3 r = lerp(clampPos, phong, gPhongTessAlpha);
+    
+    float3 normal = uvw.x * tri[0].normal + uvw.y * tri[1].normal + uvw.z * tri[2].normal;
+    float3 tangent = uvw.x * tri[0].tangent + uvw.y * tri[1].tangent + uvw.z * tri[2].tangent;
+    float3 bitan = uvw.x * tri[0].biTan + uvw.y * tri[1].biTan + uvw.z * tri[2].biTan;
+    
+    result.posH = mul(float4(r, 1.0f), gViewProj);
+    result.tangentBasis = transpose(float3x3(tangent, bitan, normal));
+    result.uv0 = uvw.x * tri[0].uv0 + uvw.y * tri[1].uv0 + uvw.z * tri[2].uv0;
+    result.uv1 = uvw.x * tri[0].uv1 + uvw.y * tri[1].uv1 + uvw.z * tri[2].uv1;
+    result.uv2 = uvw.x * tri[0].uv2 + uvw.y * tri[1].uv2 + uvw.z * tri[2].uv2;
+    
+    return result;
 }
 
 struct PSOut
@@ -141,7 +207,7 @@ float3 ExcuteSrcAlphaOP(float3 color, float alpha, uint op)
     return result;
 }
 
-PSOut PS(VSOut pin)
+PSOut PS(DSOut pin)
 {
     PSOut pout;
     pout.color = float4(gDiffuse, gDiffuseAlpha);

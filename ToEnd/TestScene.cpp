@@ -211,7 +211,7 @@ void TestScene::Init()
 
 	{
 		auto light = m_dirLight.CreateComponent<COMDirLight>();
-		light->m_data.color = DirectX::XMFLOAT3(1.0f, 0.3f, 0.0f);
+		light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 		light->m_data.power = 1.0f;
 		light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
 
@@ -219,12 +219,12 @@ void TestScene::Init()
 	}
 
 	{
-		auto light = m_dirLight2.CreateComponent<COMDirLight>();
+	/*	auto light = m_dirLight2.CreateComponent<COMDirLight>();
 		light->m_data.color = DirectX::XMFLOAT3(0.0f, 0.3f, 1.0f);
 		light->m_data.power = 1.0f;
 		light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
 
-		auto lightTransform = m_dirLight2.CreateComponent<COMTransform>();
+		auto lightTransform = m_dirLight2.CreateComponent<COMTransform>();*/
 	}
 
 	auto fontrender = m_stringNode.CreateComponent<COMFontRenderer>();
@@ -234,12 +234,20 @@ void TestScene::Init()
 	fontrender->SetRenderString(L"Test Rendering", color, 350.0f);
 	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
 	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
+
+	m_testButton.Init();
+	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1));
+	m_testButton.SetSize(250, 30);
+	m_testButton.SetPos(100, 100, 0.1f);
+	color.m128_f32[3] = 0.5f;
+	m_testButton.SetColor(color);
 }
 
 void TestScene::Update(float delta)
 {
+	auto graphic = GraphicDeviceDX12::GetGraphic();
 	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
-	auto lightTrans2 = m_dirLight2.GetComponent<COMTransform>();
+	//auto lightTrans2 = m_dirLight2.GetComponent<COMTransform>();
 	auto rootTrans = m_rootNode->GetComponent<COMTransform>();
 
 	static float posY = 0.0f;
@@ -249,20 +257,22 @@ void TestScene::Update(float delta)
 	rootTrans->SetPos(pos);
 
 	static float x, y = 0;
-	x += delta * 1.0f;
-	y += delta * 0.8f;
+	//x += delta * 1.0f;
+	//y += delta * 0.8f;
 
-	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
+	//auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
-	fontrender->SetText(rotXvalue.c_str());
+	//fontrender->SetText(rotXvalue.c_str());
 
 	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
-	lightTrans2->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
+	//lightTrans2->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
 
-	m_rootNode->Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_dirLight.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_dirLight2.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_stringNode.Update(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	CGHRenderer::ExcuteMouseAction(graphic->GetCurrMouseTargetRenderID());
+	m_rootNode->Update(graphic->GetCurrFrameIndex(), delta);
+	m_dirLight.Update(graphic->GetCurrFrameIndex(), delta);
+	m_dirLight2.Update(graphic->GetCurrFrameIndex(), delta);
+	//m_stringNode.Update(graphic->GetCurrFrameIndex(), delta);
+	m_testButton.Update(graphic->GetCurrFrameIndex(), delta);
 }
 
 void TestScene::RateUpdate(float delta)
@@ -270,10 +280,11 @@ void TestScene::RateUpdate(float delta)
 	m_rootNode->RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 	m_dirLight2.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_stringNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	//m_stringNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_testButton.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
-void TestScene::Render()
+void TestScene::ButtonTestFunc(CGHNode* node)
 {
-
+	m_testButton.SetColor(DirectX::Colors::Blue);
 }

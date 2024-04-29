@@ -3,6 +3,8 @@
 #include <unordered_map>
 #include "CGHBaseClass.h"
 #include "BaseComponents.h"
+#include "CGHUIButton.h"
+
 
 class TestScene
 {
@@ -13,7 +15,9 @@ public:
 	void Init();
 	void Update(float delta);
 	void RateUpdate(float delta);
-	void Render();
+
+private:
+	void ButtonTestFunc(CGHNode* node);
 
 private:
 	CGHNode* node = nullptr;
@@ -33,6 +37,7 @@ private:
 	CGHNode m_dirLight;
 	CGHNode m_dirLight2;
 	CGHNode	m_stringNode;
+	CGHUIButton m_testButton;
 
 	CGHAnimationGroup* m_aniGroup = nullptr;
 };

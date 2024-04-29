@@ -171,6 +171,7 @@
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
     <ClInclude Include="CGHUIButton.h" />
+    <ClInclude Include="CGHUIPanel.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="DX12DefaultBufferCreator.h" />
     <ClInclude Include="Dx12FontManager.h" />
@@ -202,6 +203,7 @@
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="CGHGraphicResource.cpp" />
     <ClCompile Include="CGHUIButton.cpp" />
+    <ClCompile Include="CGHUIPanel.cpp" />
     <ClCompile Include="DX12DefaultBufferCreator.cpp" />
     <ClCompile Include="Dx12FontManager.cpp" />
     <ClCompile Include="DX12GarbageFrameResourceMG.cpp" />

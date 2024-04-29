@@ -68,15 +68,6 @@ void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 	}
 }
 
-void CGHNode::OnClcked()
-{
-
-}
-
-void CGHNode::OnMouseOvered()
-{
-}
-
 void CGHNode::GetChildNodes(std::vector<CGHNode*>* nodeOut)
 {
 	nodeOut->push_back(this);

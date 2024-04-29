@@ -94,6 +94,13 @@ private:
 
 class CGHRenderer
 {
+	struct MouseAction
+	{
+		int funcMouseButton = 0;
+		int funcMouseState = 0;
+		CGHNode* node = nullptr;
+		std::function<void(CGHNode*)> func = nullptr;
+	};
 public:
 	enum RENDER_FLAGS
 	{
@@ -108,7 +115,12 @@ public:
 	virtual ~CGHRenderer();
 	unsigned int GetRenderID() { return m_renderID + 1; }
 
+	static void ExcuteMouseAction(unsigned int renderID);
+	void AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
+	void RemoveFuncs();
+
 protected:
+	static std::unordered_map<unsigned int, std::vector<MouseAction>> s_mouseActions;
 	static unsigned int s_currRendererInstancedNum;
 	static std::vector<unsigned int> s_renderIDPool;
 	unsigned int m_renderID = 0;
@@ -141,20 +153,15 @@ public:
 	virtual unsigned int GetPriority() override { return COMPONENT_UITRANSFORM; }
 
 	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
-	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
 	void XM_CALLCONV SetSize(DirectX::FXMVECTOR size);
 	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
-	void SetScale(const DirectX::XMFLOAT2& scale) { m_scale = scale; }
-	void SetSize(const DirectX::XMFLOAT2& size) { m_sizeL = size; }
+	void SetSize(const DirectX::XMFLOAT2& size) { m_size = size; }
 
 	DirectX::XMFLOAT2 GetSize() { return m_size; }
-
 
 private:
 	static size_t s_hashCode;
 	DirectX::XMFLOAT3 m_pos = {};
-	DirectX::XMFLOAT2 m_scale = { 1.0f, 1.0f };
-	DirectX::XMFLOAT2 m_sizeL = {};
 	DirectX::XMFLOAT2 m_size = {};
 };
 
@@ -178,7 +185,7 @@ private:
 	unsigned int m_spriteSubIndex = 0;
 };
 
-class COMFontRenderer : public Component, public CGHRenderer
+class COMFontRenderer : public Component
 {
 public:
 	COMFontRenderer(CGHNode* node);
@@ -190,12 +197,17 @@ public:
 
 	void SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch);
 	void SetText(const wchar_t* str);
+	void SetFontSize(float size) { m_fontSize = size; }
+	void SetOffset(const DirectX::XMFLOAT3& offset) { m_offset = offset; }
+	void XM_CALLCONV SetOffset(DirectX::FXMVECTOR offset) { DirectX::XMStoreFloat3(&m_offset, offset); }
 	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color);
 	void SetRowPitch(float rowPitch);
 
 private:
 	static size_t s_hashCode;
 	std::wstring m_str;
+	DirectX::XMFLOAT3 m_offset = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4 m_color = { 0.0f,0.0f, 0.0f, 1.0f };
+	float m_fontSize = 1.0f;
 	float m_rowPitch = 100.0f;
 };

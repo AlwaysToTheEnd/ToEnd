@@ -59,9 +59,17 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
     vertices[2].renderID = info.renderID;
     vertices[3].renderID = info.renderID;
     
+     [unroll(4)]
+    for (int index = 0; index < 4; index++)
+    {
+        vertices[index].position.x = vertices[index].position.x * gWinSizeReciprocal.x * 2.0f - 1.0f;
+        vertices[index].position.y = 1.0f - (vertices[index].position.y * gWinSizeReciprocal.y * 2.0f);
+        vertices[index].renderID = info.renderID;
+    }
+    
     output.Append(vertices[0]);
-    output.Append(vertices[2]);
     output.Append(vertices[1]);
+    output.Append(vertices[2]);
     output.Append(vertices[3]);
 }
 
