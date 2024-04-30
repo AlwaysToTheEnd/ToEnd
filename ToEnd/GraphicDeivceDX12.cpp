@@ -795,7 +795,7 @@ void GraphicDeviceDX12::BuildPso()
 	BuildFontRenderPipeLineWorkSet();
 	BuildUIRenderPipeLineWorkSet();
 	BuildUIRenderIDRenderPipeLineWorkSet();
-	//BuildTextureDataDebugPipeLineWorkSet();
+	BuildTextureDataDebugPipeLineWorkSet();
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
@@ -1199,10 +1199,10 @@ void GraphicDeviceDX12::BuildShadowMapWritePipeLineWorkSet()
 					if (lights[m_numDirLight].second & CGHLightComponent::LIGHT_FLAG_SHADOW)
 					{
 						auto& shadowMap = m_dirLightShadowMaps[lightCom];
-						float radius = sqrtf(10.0f * 10.0f + 15.0f * 15.0f);
+						float radius = m_cameraDistance * 1.1f +2.0f;
 						XMVECTOR lightDir = XMLoadFloat3(&lightCom->m_data.dir);
-						XMVECTOR lightPos = -2.0f * radius * lightDir;
-						XMVECTOR targetPos = XMVectorSet(0, 0, 0, 1.0f);
+						XMVECTOR targetPos = XMLoadFloat3(&m_cameraTargetPos);
+						XMVECTOR lightPos = targetPos - (radius * lightDir);
 						XMVECTOR lightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 						XMMATRIX lightView = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
 
@@ -1662,7 +1662,6 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 
 	currPSOWorkSet.renderQueue = nullptr;
 	currPSOWorkSet.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
-	currPSOWorkSet.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
@@ -1763,7 +1762,6 @@ void GraphicDeviceDX12::BuildUIRenderIDRenderPipeLineWorkSet()
 
 	currPSOWorkSet.renderQueue = nullptr;
 	currPSOWorkSet.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
-	currPSOWorkSet.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
@@ -1794,6 +1792,135 @@ void GraphicDeviceDX12::BuildUIRenderIDRenderPipeLineWorkSet()
 		};
 
 	currPSOWorkSet.nodeGraphicCmdFunc = nullptr;
+}
+
+void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
+{
+	enum
+	{
+		ROOT_SMAA_PASS_CONST = 0,
+		ROOT_SMAA_RESORUCE_TABLE,
+		ROOT_NUM
+	};
+
+	std::string pipeLineName = "SMAA";
+	auto currPSOWorkSet = &m_PSOWorkSets[PSOW_SMAA_EDGE_RENDER];
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	{
+		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
+		rootParams[ROOT_SMAA_PASS_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[ROOT_SMAA_PASS_CONST].Constants.Num32BitValues = 8;
+		rootParams[ROOT_SMAA_PASS_CONST].Constants.RegisterSpace = 0;
+		rootParams[ROOT_SMAA_PASS_CONST].Constants.ShaderRegister = 0;
+		rootParams[ROOT_SMAA_PASS_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		D3D12_DESCRIPTOR_RANGE textureTableRange = {};
+		textureTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		textureTableRange.RegisterSpace = 0;
+		textureTableRange.BaseShaderRegister = 0;
+		textureTableRange.NumDescriptors = 6;
+		textureTableRange.OffsetInDescriptorsFromTableStart = 0;
+
+		rootParams[ROOT_SMAA_RESORUCE_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParams[ROOT_SMAA_RESORUCE_TABLE].DescriptorTable.NumDescriptorRanges = 1;
+		rootParams[ROOT_SMAA_RESORUCE_TABLE].DescriptorTable.pDescriptorRanges = &textureTableRange;
+		rootParams[ROOT_SMAA_RESORUCE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
+		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootsigDesc.pStaticSamplers = nullptr;
+		rootsigDesc.NumStaticSamplers =0;
+		rootsigDesc.NumParameters = rootParams.size();
+		rootsigDesc.pParameters = rootParams.data();
+
+		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
+	}
+
+	psoDesc.NodeMask = 0;
+	psoDesc.SampleDesc.Count = 1;
+	psoDesc.SampleDesc.Quality = 0;
+
+	//IA Set
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	psoDesc.InputLayout.NumElements = 0;
+	psoDesc.InputLayout.pInputElementDescs = nullptr;
+
+	{
+		psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/SMAAShader.hlsl", "VS");
+		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName + "EDGE").c_str(), L"Shader/SMAAShader.hlsl", "EdgeGS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName + "EDGE").c_str(), L"Shader/SMAAShader.hlsl", "EdgePS");
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+		psoDesc.DepthStencilState.DepthEnable = false;
+		psoDesc.DepthStencilState.StencilEnable = true;
+		psoDesc.DepthStencilState.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+		psoDesc.SampleMask = UINT_MAX;
+
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
+
+		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8_UNORM;
+
+		currPSOWorkSet->renderQueue = nullptr;
+		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "EDGE").c_str(), &psoDesc);
+		currPSOWorkSet->rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+	}
+	
+
+	{
+		currPSOWorkSet = &m_PSOWorkSets[PSOW_SMAA_BLEND_RENDER];
+
+		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName + "BLEND").c_str(), L"Shader/SMAAShader.hlsl", "BlendGS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName + "BLEND").c_str(), L"Shader/SMAAShader.hlsl", "BlendPS");
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+		psoDesc.DepthStencilState.DepthEnable = false;
+		psoDesc.DepthStencilState.StencilEnable = true;
+		psoDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		psoDesc.SampleMask = UINT_MAX;
+
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
+
+		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		currPSOWorkSet->renderQueue = nullptr;
+		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "BLEND").c_str(), &psoDesc);
+		currPSOWorkSet->rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+	}
+
+	{
+		currPSOWorkSet = &m_PSOWorkSets[PSOW_SMAA_NEIBLEND_RENDER];
+
+		psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName + "NEIBLEND").c_str(), L"Shader/SMAAShader.hlsl", "NeiBlendGS");
+		psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName + "NEIBLEND").c_str(), L"Shader/SMAAShader.hlsl", "NeiBlendPS");
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+		psoDesc.DepthStencilState.DepthEnable = false;
+		psoDesc.DepthStencilState.StencilEnable = false;
+		psoDesc.SampleMask = UINT_MAX;
+
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
+
+		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		currPSOWorkSet->renderQueue = nullptr;
+		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "BLEND").c_str(), &psoDesc);
+		currPSOWorkSet->rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+	}
 }
 
 void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()
@@ -1862,7 +1989,6 @@ void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()
 
 	currPSOWorkSet.renderQueue = nullptr;
 	currPSOWorkSet.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
-	currPSOWorkSet.rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{

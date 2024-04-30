@@ -37,6 +37,12 @@ void Camera::Update()
 	XMVECTOR normalDir = XMVector3Normalize(toEye);
 
 	distance -= mouseState.scrollWheelValue * 0.01f;
+
+	if (distance < 0.1f)
+	{
+		distance = 0.1f;
+	}
+
 	eyePos = targetPos + normalDir * distance;
 
 	if (mouse.rightButton == 1)

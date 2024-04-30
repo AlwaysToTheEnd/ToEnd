@@ -220,6 +220,9 @@
     <None Include="Shader\MaterialRegister.hlsli">
       <Filter>Shader\Header</Filter>
     </None>
+    <None Include="Shader\SMAA.hlsl">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\skinnedMeshShader.hlsl">
@@ -247,6 +250,9 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shader\TextureDebugShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\SMAAShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

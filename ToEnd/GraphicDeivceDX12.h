@@ -162,6 +162,9 @@ private:
 		PSOW_FONT_RENDER,
 		PSOW_UI_RENDER,
 		PSOW_UI_RENDERID_RENDER,
+		PSOW_SMAA_EDGE_RENDER,
+		PSOW_SMAA_BLEND_RENDER,
+		PSOW_SMAA_NEIBLEND_RENDER,
 		PSOW_TEX_DEBUG,
 		PSOW_NUM
 	};
@@ -181,6 +184,7 @@ private:
 	void BuildFontRenderPipeLineWorkSet();
 	void BuildUIRenderPipeLineWorkSet();
 	void BuildUIRenderIDRenderPipeLineWorkSet();
+	void BuildSMAARenderPipeLineWorkSet();
 	void BuildTextureDataDebugPipeLineWorkSet();
 
 private:
