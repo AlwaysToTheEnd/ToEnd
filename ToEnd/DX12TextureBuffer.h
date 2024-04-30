@@ -28,10 +28,10 @@ public:
 	DX12TextureBuffer();
 	~DX12TextureBuffer();
 	static void Init();
-
-	void SetTexture(const char* texturePath, unsigned int index);
 	void SetNullTexture(unsigned int index);
 	void CreateSRVs(D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle);
+	void SetTexture(const char* texturePath, unsigned int index);
+
 
 	void SetBufferSize(unsigned int size) { m_textures.resize(size); }
 	UINT GetTexturesNum() const { return (UINT)m_textures.size(); }

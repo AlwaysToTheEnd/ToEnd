@@ -128,6 +128,9 @@
     <ClInclude Include="CGHUIPanel.h">
       <Filter>Nodes</Filter>
     </ClInclude>
+    <ClInclude Include="DX12SMAA.h">
+      <Filter>Graphic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">
@@ -207,6 +210,9 @@
     </ClCompile>
     <ClCompile Include="CGHUIPanel.cpp">
       <Filter>Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12SMAA.cpp">
+      <Filter>Graphic</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

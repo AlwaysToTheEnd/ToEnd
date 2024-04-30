@@ -19,6 +19,7 @@
 using Microsoft::WRL::ComPtr;
 class DX12SwapChain;
 class Camera;
+class DX12SMAA;
 
 struct DX12PassConstants
 {
@@ -247,6 +248,8 @@ private:
 	std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>	m_shadowPassCB;
 	std::unordered_map<void*, ShadowMap>					m_dirLightShadowMaps;
 	ComPtr<ID3D12DescriptorHeap>							m_SRVHeap;
+
+	DX12SMAA*												m_smaa = nullptr;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

@@ -6,6 +6,7 @@
 
 #include "GraphicResourceLoader.h"
 #include "DX12GarbageFrameResourceMG.h"
+#include "DX12SMAA.h"
 #include "DX12PipelineMG.h"
 #include "BaseComponents.h"
 #include "LightComponents.h"
@@ -63,7 +64,7 @@ void GraphicDeviceDX12::DeleteDeivce()
 
 GraphicDeviceDX12::GraphicDeviceDX12()
 {
-
+	m_smaa = new DX12SMAA;
 }
 
 GraphicDeviceDX12::~GraphicDeviceDX12()
@@ -76,6 +77,11 @@ GraphicDeviceDX12::~GraphicDeviceDX12()
 	if (m_charInfos != nullptr)
 	{
 		m_charInfos->Unmap(0, nullptr);
+	}
+
+	if (m_smaa != nullptr)
+	{
+		delete m_smaa;
 	}
 }
 
@@ -193,6 +199,7 @@ m_swapChain->CreateDXGIFactory(m_d3dDevice.GetAddressOf());
 }
 
 m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
+
 
 OnResize(windowWidth, windowHeight);
 
@@ -402,8 +409,9 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	{
 		m_swapChain->ReSize(m_cmdList.Get(), windowWidth, windowHeight);
 		CreateDeferredTextures(windowWidth, windowHeight);
-
 	}
+	
+	auto smaaUPloadBuffers = m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight, m_deferredResources[DEFERRED_TEXTURE_DIFFUSE].Get());
 	ThrowIfFailed(m_cmdList->Close());
 
 	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
@@ -795,6 +803,7 @@ void GraphicDeviceDX12::BuildPso()
 	BuildFontRenderPipeLineWorkSet();
 	BuildUIRenderPipeLineWorkSet();
 	BuildUIRenderIDRenderPipeLineWorkSet();
+	BuildSMAARenderPipeLineWorkSet();
 	BuildTextureDataDebugPipeLineWorkSet();
 }
 
@@ -1868,6 +1877,15 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 		currPSOWorkSet->renderQueue = nullptr;
 		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "EDGE").c_str(), &psoDesc);
 		currPSOWorkSet->rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+
+		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+			{
+			/*	cmd->CopyTextureRegion();
+				cmd->OMSetRenderTargets(1, );*/
+				
+			};
+
+		currPSOWorkSet->nodeGraphicCmdFunc = nullptr;
 	}
 	
 

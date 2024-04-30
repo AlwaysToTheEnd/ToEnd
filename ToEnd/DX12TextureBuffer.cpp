@@ -1,10 +1,10 @@
 #include "DX12TextureBuffer.h"
+#include <DirectXTex.h>
 #include "d3dx12.h"
 #include "CGHGraphicResource.h"
 #include "GraphicDeivceDX12.h"
 #include "DX12GarbageFrameResourceMG.h"
 #include "../Common/Source/DxException.h"
-#include <DirectXTex.h>
 
 ID3D12Device* DX12TextureBuffer::s_device = nullptr;
 std::unordered_map<std::string, DX12TextureBuffer::TEXTURE>	DX12TextureBuffer::s_textures;
@@ -278,3 +278,4 @@ DX12TextureBuffer::TEXTURE* DX12TextureBuffer::ResidentTexture(const std::string
 
 	return result;
 }
+
