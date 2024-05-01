@@ -131,6 +131,12 @@
     <ClInclude Include="DX12SMAA.h">
       <Filter>Graphic</Filter>
     </ClInclude>
+    <ClInclude Include="AreaTex.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="SearchTex.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp">

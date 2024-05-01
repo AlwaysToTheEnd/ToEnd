@@ -411,9 +411,8 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 		CreateDeferredTextures(windowWidth, windowHeight);
 	}
 	
-	auto smaaUPloadBuffers = m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight, m_deferredResources[DEFERRED_TEXTURE_DIFFUSE].Get());
+	auto smaaUPloadBuffers = m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight);
 	ThrowIfFailed(m_cmdList->Close());
-
 	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
@@ -425,6 +424,7 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	XMStoreFloat4x4(&m_projMat, proj);
 
 	FlushCommandQueue();
+
 	ThrowIfFailed(cmdListAlloc->Reset());
 }
 
@@ -454,9 +454,8 @@ void GraphicDeviceDX12::RenderBegin()
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
 
-	auto backColor = DirectX::Colors::Gray;
-	backColor.f[3] = 0.0f;
-	m_swapChain->RenderBegin(m_cmdList.Get(), backColor);
+	
+	m_swapChain->RenderBegin(m_cmdList.Get(), nullptr);
 
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
@@ -468,10 +467,14 @@ void GraphicDeviceDX12::RenderBegin()
 	renderIDTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
 	renderDiffuseTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_DIFFUSE;
 
-	backColor = DirectX::Colors::Black;
+	auto backColor = DirectX::Colors::Black;
 	backColor.f[3] = 0;
 	m_cmdList->ClearRenderTargetView(renderIDTexture, backColor, 0, nullptr);
 	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, backColor, 0, nullptr);
+
+	//backColor = DirectX::Colors::Gray;
+	//backColor.f[3] = 0;
+	m_cmdList->ClearRenderTargetView(m_smaa->GetColorRenderTarget(), backColor, 0, nullptr);
 
 	CreateRenderResources();
 }
@@ -1107,7 +1110,6 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 			cmd->IASetVertexBuffers(0, _countof(vbView), vbView);
 			cmd->IASetVertexBuffers(0, 8, vbView);
 			cmd->IASetIndexBuffer(&ibView);
-
 			
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB);
 			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
@@ -1441,7 +1443,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 				D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 			cmd->ResourceBarrier(_countof(resourceBars), resourceBars);
-			auto rtv = m_swapChain->CurrRTV();
+			auto rtv = m_smaa->GetColorRenderTarget();
 			cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
 
 			if (m_numDirLight)
@@ -1537,7 +1539,7 @@ void GraphicDeviceDX12::BuildFontRenderPipeLineWorkSet()
 	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_MAX;
-	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
+	psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
 	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
 
 	psoDesc.DSVFormat = m_swapChain->GetDSVFormat();
@@ -1554,8 +1556,6 @@ void GraphicDeviceDX12::BuildFontRenderPipeLineWorkSet()
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
 			auto rtv = m_swapChain->CurrRTV();
-			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
-				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 			m_swapChain->ClearDS(cmd);
 			cmd->OMSetRenderTargets(1, &rtv, false, &m_swapChain->GetDSV());
 
@@ -1658,7 +1658,7 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_MAX;
-	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
+	psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
 	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
 
 	//OM Set
@@ -1837,8 +1837,8 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
 		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootsigDesc.pStaticSamplers = nullptr;
-		rootsigDesc.NumStaticSamplers =0;
+		rootsigDesc.pStaticSamplers = s_StaticSamplers;
+		rootsigDesc.NumStaticSamplers = _countof(s_StaticSamplers);
 		rootsigDesc.NumParameters = rootParams.size();
 		rootsigDesc.pParameters = rootParams.data();
 
@@ -1870,7 +1870,7 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
 
-		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psoDesc.DSVFormat = m_swapChain->GetDSVFormat();
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8_UNORM;
 
@@ -1880,14 +1880,29 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 			{
-			/*	cmd->CopyTextureRegion();
-				cmd->OMSetRenderTargets(1, );*/
+				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
+					D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+				XMVECTOR vecZero = XMVectorZero();
+				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+				cmd->ClearRenderTargetView(m_smaa->GetEdgeRenderTarget(), vecZero.m128_f32, 0, nullptr);
+
+				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
+				cmd->SetDescriptorHeaps(1, heaps);
+				cmd->OMSetRenderTargets(1, &m_smaa->GetEdgeRenderTarget(), true, &m_swapChain->GetDSV());
+				cmd->OMSetStencilRef(1);
+
+				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
+					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 				
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+				
+				cmd->DrawInstanced(1, 1, 0, 0);
 			};
 
 		currPSOWorkSet->nodeGraphicCmdFunc = nullptr;
 	}
-	
 
 	{
 		currPSOWorkSet = &m_PSOWorkSets[PSOW_SMAA_BLEND_RENDER];
@@ -1906,13 +1921,34 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
 
-		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psoDesc.DSVFormat = m_swapChain->GetDSVFormat();
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 		currPSOWorkSet->renderQueue = nullptr;
 		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "BLEND").c_str(), &psoDesc);
 		currPSOWorkSet->rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+
+		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+			{
+				XMVECTOR vecZero = XMVectorZero();
+				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+				cmd->ClearRenderTargetView(m_smaa->GetBlendRenderTarget(), vecZero.m128_f32, 0, nullptr);
+
+				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
+				cmd->SetDescriptorHeaps(1, heaps);
+				cmd->OMSetRenderTargets(1, &m_smaa->GetBlendRenderTarget(), true, &m_swapChain->GetDSV());
+				cmd->OMSetStencilRef(1);
+
+				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
+					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
+
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+
+				cmd->DrawInstanced(1, 1, 0, 0);
+			};
 	}
 
 	{
@@ -1936,8 +1972,27 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 		currPSOWorkSet->renderQueue = nullptr;
-		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "BLEND").c_str(), &psoDesc);
+		currPSOWorkSet->pso = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName + "NEIBLEND").c_str(), &psoDesc);
 		currPSOWorkSet->rootSig = DX12PipelineMG::instance.GetRootSignature(pipeLineName.c_str());
+
+		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
+			{
+				XMVECTOR vecZero = XMVectorZero();
+				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
+				cmd->SetDescriptorHeaps(1, heaps);
+				cmd->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), true, nullptr);
+
+				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
+					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
+
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+
+				cmd->DrawInstanced(1, 1, 0, 0);
+			};
 	}
 }
 
@@ -1963,13 +2018,12 @@ void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()
 		rootParams[ROOT_WINSIZE_CONST].Constants.ShaderRegister = 0;
 		rootParams[ROOT_WINSIZE_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
 
-		CD3DX12_DESCRIPTOR_RANGE shadowTexTableRange[2];
-		shadowTexTableRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, DEFERRED_TEXTURE_NUM, 0);
-		shadowTexTableRange[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, m_numMaxShadowMap, 0, 1);
+		CD3DX12_DESCRIPTOR_RANGE debugTextureRange;
+		debugTextureRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 0);
 
 		rootParams[ROOT_DEBUG_TEXTURE_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParams[ROOT_DEBUG_TEXTURE_TABLE].DescriptorTable.NumDescriptorRanges = 2;
-		rootParams[ROOT_DEBUG_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = shadowTexTableRange;
+		rootParams[ROOT_DEBUG_TEXTURE_TABLE].DescriptorTable.NumDescriptorRanges = 1;
+		rootParams[ROOT_DEBUG_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = &debugTextureRange;
 		rootParams[ROOT_DEBUG_TEXTURE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
@@ -2015,12 +2069,12 @@ void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()
 
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-			ID3D12DescriptorHeap* descHeaps[] = { m_SRVHeap.Get() };
+			ID3D12DescriptorHeap* descHeaps[] = { m_smaa->GetSRVHeap() };
 			cmd->SetDescriptorHeaps(1, descHeaps);
 			cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeX, 0);
 			cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeY, 1);
 
-			auto srvHeap = m_SRVHeap->GetGPUDescriptorHandleForHeapStart();
+			auto srvHeap = m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart();
 			cmd->SetGraphicsRootDescriptorTable(ROOT_DEBUG_TEXTURE_TABLE, srvHeap);
 
 			cmd->DrawInstanced(1, 1, 0, 0);

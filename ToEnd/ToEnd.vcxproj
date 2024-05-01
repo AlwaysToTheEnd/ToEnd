@@ -165,6 +165,7 @@
     <ClInclude Include="AnimationComponent.h" />
     <ClInclude Include="AnimationNodeNameFilter.h" />
     <ClInclude Include="App.h" />
+    <ClInclude Include="AreaTex.h" />
     <ClInclude Include="BaseComponents.h" />
     <ClInclude Include="BinaryReader.h" />
     <ClInclude Include="Camera.h" />
@@ -188,6 +189,7 @@
     <ClInclude Include="LightComponents.h" />
     <ClInclude Include="NodeTransformController.h" />
     <ClInclude Include="PlatformHelpers.h" />
+    <ClInclude Include="SearchTex.h" />
     <ClInclude Include="TestScene.h" />
     <ClInclude Include="Xml.h" />
   </ItemGroup>

@@ -1,3 +1,6 @@
+SamplerState PointSampler : register(s1);
+SamplerState LinearSampler : register(s3);
+
 cbuffer gSMAAPassCB : register(b0, space0)
 {
     float4 gWindowReciprocalnSize;
@@ -5,7 +8,9 @@ cbuffer gSMAAPassCB : register(b0, space0)
 };
 
 #define SMAA_RT_METRICS gWindowReciprocalnSize
-#define SMAA_HLSL_4
+#define SMAA_HLSL_4_1
+//#define SMAA_PRESET_ULTRA
+//#define SMAA_PRESET_HIGH
 #define SMAA_PRESET_MEDIUM
 #include "SMAA.hlsl"
 
@@ -43,32 +48,28 @@ float4 VS() : SV_Position
     return float4(0.0, 0.0, 0.0, 1.0);
 }
 
-[maxvertexcount(4)]
+[maxvertexcount(3)]
 void EdgeGS(point float4 input[1] : SV_Position, inout TriangleStream<EdgeGSOut> output)
 {
-    EdgeGSOut vertices[4];
+    EdgeGSOut vertices[3];
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(-1.0f, -1.0f, 0.1f, 1.0f);
-    vertices[1].position = float4(-1.0f, 0.0f, 0.1f, 1.0f);
-    vertices[2].position = float4(0.0f, -1.0f, 0.1f, 1.0f);
-    vertices[3].position = float4(0.0f, 0.0f, 0.1f, 1.0f);
+    vertices[0].position = float4(-1.0f, -1.0f, 1.0f, 1.0f);
+    vertices[1].position = float4(-1.0f, 3.0f, 1.0f, 1.0f);
+    vertices[2].position = float4(3.0f, -1.0f, 1.0f, 1.0f);
 
     vertices[0].uv = float2(0.0f, 1.0f);
-    vertices[1].uv = float2(0.0f, 0.0f);
-    vertices[2].uv = float2(1.0f, 1.0f);
-    vertices[3].uv = float2(1.0f, 0.0f);
+    vertices[1].uv = float2(0.0f, -1.0f);
+    vertices[2].uv = float2(2.0f, 1.0f);
     
     SMAAEdgeDetectionVS(vertices[0].uv, vertices[0].offset);
     SMAAEdgeDetectionVS(vertices[1].uv, vertices[1].offset);
     SMAAEdgeDetectionVS(vertices[2].uv, vertices[2].offset);
-    SMAAEdgeDetectionVS(vertices[3].uv, vertices[3].offset);
     
     output.Append(vertices[0]);
     output.Append(vertices[1]);
     output.Append(vertices[2]);
-    output.Append(vertices[3]);
 }
 
 float2 EdgePS(EdgeGSOut input) : SV_Target0  // edgeTex
@@ -76,32 +77,28 @@ float2 EdgePS(EdgeGSOut input) : SV_Target0  // edgeTex
     return SMAAColorEdgeDetectionPS(input.uv, input.offset, gColorTexGamma);
 }
 
-[maxvertexcount(4)]
+[maxvertexcount(3)]
 void BlendGS(point float4 input[1] : SV_Position, inout TriangleStream<BlendGSOut> output)
 {
-    BlendGSOut vertices[4];
+    BlendGSOut vertices[3];
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(-1.0f, -1.0f, 0.1f, 1.0f);
-    vertices[1].position = float4(-1.0f, 0.0f, 0.1f, 1.0f);
-    vertices[2].position = float4(0.0f, -1.0f, 0.1f, 1.0f);
-    vertices[3].position = float4(0.0f, 0.0f, 0.1f, 1.0f);
+    vertices[0].position = float4(-1.0f, -1.0f, 1.0f, 1.0f);
+    vertices[1].position = float4(-1.0f, 3.0f, 1.0f, 1.0f);
+    vertices[2].position = float4(3.0f, -1.0f, 1.0f, 1.0f);
 
     vertices[0].uv = float2(0.0f, 1.0f);
-    vertices[1].uv = float2(0.0f, 0.0f);
-    vertices[2].uv = float2(1.0f, 1.0f);
-    vertices[3].uv = float2(1.0f, 0.0f);
+    vertices[1].uv = float2(0.0f, -1.0f);
+    vertices[2].uv = float2(2.0f, 1.0f);
     
     SMAABlendingWeightCalculationVS(vertices[0].uv, vertices[0].pixuv, vertices[0].offset);
     SMAABlendingWeightCalculationVS(vertices[1].uv, vertices[1].pixuv, vertices[1].offset);
     SMAABlendingWeightCalculationVS(vertices[2].uv, vertices[2].pixuv, vertices[2].offset);
-    SMAABlendingWeightCalculationVS(vertices[3].uv, vertices[3].pixuv, vertices[3].offset);
     
     output.Append(vertices[0]);
     output.Append(vertices[1]);
     output.Append(vertices[2]);
-    output.Append(vertices[3]);
 }
 
 float4 BlendPS(BlendGSOut input) : SV_Target0 //blendTex
@@ -111,32 +108,28 @@ float4 BlendPS(BlendGSOut input) : SV_Target0 //blendTex
 }
 
 
-[maxvertexcount(4)]
+[maxvertexcount(3)]
 void NeiBlendGS(point float4 input[1] : SV_Position, inout TriangleStream<NeiBlendGSOut> output)
 {
-    NeiBlendGSOut vertices[4];
+    NeiBlendGSOut vertices[3];
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(-1.0f, -1.0f, 0.1f, 1.0f);
-    vertices[1].position = float4(-1.0f, 0.0f, 0.1f, 1.0f);
-    vertices[2].position = float4(0.0f, -1.0f, 0.1f, 1.0f);
-    vertices[3].position = float4(0.0f, 0.0f, 0.1f, 1.0f);
+    vertices[0].position = float4(-1.0f, -1.0f, 1.0f, 1.0f);
+    vertices[1].position = float4(-1.0f, 3.0f, 1.0f, 1.0f);
+    vertices[2].position = float4(3.0f, -1.0f, 1.0f, 1.0f);
 
     vertices[0].uv = float2(0.0f, 1.0f);
-    vertices[1].uv = float2(0.0f, 0.0f);
-    vertices[2].uv = float2(1.0f, 1.0f);
-    vertices[3].uv = float2(1.0f, 0.0f);
+    vertices[1].uv = float2(0.0f, -1.0f);
+    vertices[2].uv = float2(2.0f, 1.0f);
     
     SMAANeighborhoodBlendingVS(vertices[0].uv, vertices[0].offset);
     SMAANeighborhoodBlendingVS(vertices[1].uv, vertices[1].offset);
     SMAANeighborhoodBlendingVS(vertices[2].uv, vertices[2].offset);
-    SMAANeighborhoodBlendingVS(vertices[3].uv, vertices[3].offset);
     
     output.Append(vertices[0]);
     output.Append(vertices[1]);
     output.Append(vertices[2]);
-    output.Append(vertices[3]);
 }
 
 float4 NeiBlendPS(NeiBlendGSOut input) : SV_Target0 

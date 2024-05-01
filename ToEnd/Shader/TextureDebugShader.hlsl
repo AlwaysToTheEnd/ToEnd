@@ -11,13 +11,12 @@ cbuffer window : register(b0, space0)
     uint2 windowSize;
 };
 
-Texture2D<float4> gDiffuseTexture : register(t0);
-Texture2D<float3> gNormalTexture : register(t1);
-Texture2D<float3> gMRATexture : register(t2);
-Texture2D<float3> gEmissionTexture : register(t3);
-Texture2D<float> gDepthTexture : register(t4);
-
-Texture2D<float> gShadowMapTexture[8] : register(t0, space1);
+Texture2D gColorTex : register(t0);
+Texture2D gColorTexGamma : register(t1);
+Texture2D gSearchTex : register(t2);
+Texture2D<float2> gAreaTex : register(t3);
+Texture2D gEdgesTex : register(t4);
+Texture2D gBlendTex : register(t5);
 
 struct VSOut
 {
@@ -62,7 +61,7 @@ float4 PS(GSOut pin) : SV_Target0
 {
     float4 color = float4(1, 1, 1, 1);
     
-    color.rgb = gShadowMapTexture[0].Sample(gsamLinearWrap, pin.uv).xxx;
+    color.rgb = gEdgesTex.Sample(gsamLinearWrap, pin.uv).rgb;
 
     return color;
 }

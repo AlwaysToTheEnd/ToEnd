@@ -42,7 +42,7 @@ struct GSOut
 struct PSOut
 {
     float4 color : SV_Target0;
-    float depth : SV_Depth;
+    //float depth : SV_Depth;
 };
 
 VSOut VS(uint vIndex : SV_VertexID)
@@ -99,14 +99,14 @@ PSOut PS(GSOut pin)
     //        break;
     //}
     
-    if(result.color.a ==0.0f)
-    {
-        result.depth = 1.0f;
-    }
-    else
-    {
-        result.depth = pin.position.z;
-    }
+    //if(result.color.a ==0.0f)
+    //{
+    //    result.depth = 1.0f;
+    //}
+    //else
+    //{
+    //    result.depth = pin.position.z;
+    //}
     
     return result;
 }

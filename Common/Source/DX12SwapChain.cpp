@@ -104,7 +104,10 @@ void DX12SwapChain::RenderBegin(ID3D12GraphicsCommandList* cmd, const float clea
 	cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[static_cast<size_t>(m_currBackBufferIndex)].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-	cmd->ClearRenderTargetView(CurrRTV(), clearColor, 0, nullptr);
+	if (clearColor != nullptr)
+	{
+		cmd->ClearRenderTargetView(CurrRTV(), clearColor, 0, nullptr);
+	}
 }
 
 void DX12SwapChain::RenderEnd(ID3D12GraphicsCommandList* cmd)
@@ -143,6 +146,11 @@ D3D12_CPU_DESCRIPTOR_HANDLE DX12SwapChain::GetDSV() const
 ID3D12Resource* DX12SwapChain::GetDSResource() const
 {
 	return m_depthStencil.Get();
+}
+
+ID3D12Resource* DX12SwapChain::GetCurrRenderTargetResource()
+{
+	return m_renderTargets[m_currBackBufferIndex].Get();
 }
 
 void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)

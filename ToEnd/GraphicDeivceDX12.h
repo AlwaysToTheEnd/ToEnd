@@ -160,12 +160,12 @@ private:
 		PSOW_DEFERRED_SKINNEDMESH = 0,
 		PSOW_SHADOWMAP_WRITE,
 		PSOW_DEFERRED_LIGHT_DIR,
-		PSOW_FONT_RENDER,
-		PSOW_UI_RENDER,
-		PSOW_UI_RENDERID_RENDER,
 		PSOW_SMAA_EDGE_RENDER,
 		PSOW_SMAA_BLEND_RENDER,
 		PSOW_SMAA_NEIBLEND_RENDER,
+		PSOW_FONT_RENDER,
+		PSOW_UI_RENDER,
+		PSOW_UI_RENDERID_RENDER,
 		PSOW_TEX_DEBUG,
 		PSOW_NUM
 	};
@@ -182,10 +182,10 @@ private:
 	void BuildDeferredSkinnedMeshPipeLineWorkSet();
 	void BuildShadowMapWritePipeLineWorkSet();
 	void BuildDeferredLightDirPipeLineWorkSet();
+	void BuildSMAARenderPipeLineWorkSet();
 	void BuildFontRenderPipeLineWorkSet();
 	void BuildUIRenderPipeLineWorkSet();
 	void BuildUIRenderIDRenderPipeLineWorkSet();
-	void BuildSMAARenderPipeLineWorkSet();
 	void BuildTextureDataDebugPipeLineWorkSet();
 
 private:

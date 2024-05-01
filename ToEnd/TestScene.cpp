@@ -239,7 +239,8 @@ void TestScene::Init()
 	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1));
 	m_testButton.SetSize(250, 30);
 	m_testButton.SetPos(100, 100, 0.1f);
-	color.m128_f32[3] = 0.5f;
+	color = DirectX::Colors::Snow;
+	color.m128_f32[3] = 0.7f;
 	m_testButton.SetColor(color);
 }
 
