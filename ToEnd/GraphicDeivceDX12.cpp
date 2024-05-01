@@ -454,8 +454,9 @@ void GraphicDeviceDX12::RenderBegin()
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(m_cmdList->Reset(cmdListAlloc, nullptr));
 
-	
-	m_swapChain->RenderBegin(m_cmdList.Get(), nullptr);
+	auto backColor = DirectX::Colors::Gray;
+	backColor.f[3] = 0;
+	m_swapChain->RenderBegin(m_cmdList.Get(), backColor);
 
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
@@ -467,13 +468,11 @@ void GraphicDeviceDX12::RenderBegin()
 	renderIDTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
 	renderDiffuseTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_DIFFUSE;
 
-	auto backColor = DirectX::Colors::Black;
+	backColor = DirectX::Colors::Black;
 	backColor.f[3] = 0;
+
 	m_cmdList->ClearRenderTargetView(renderIDTexture, backColor, 0, nullptr);
 	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, backColor, 0, nullptr);
-
-	//backColor = DirectX::Colors::Gray;
-	//backColor.f[3] = 0;
 	m_cmdList->ClearRenderTargetView(m_smaa->GetColorRenderTarget(), backColor, 0, nullptr);
 
 	CreateRenderResources();
@@ -1818,7 +1817,7 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
 		rootParams[ROOT_SMAA_PASS_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_SMAA_PASS_CONST].Constants.Num32BitValues = 8;
+		rootParams[ROOT_SMAA_PASS_CONST].Constants.Num32BitValues = 9;
 		rootParams[ROOT_SMAA_PASS_CONST].Constants.RegisterSpace = 0;
 		rootParams[ROOT_SMAA_PASS_CONST].Constants.ShaderRegister = 0;
 		rootParams[ROOT_SMAA_PASS_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -1896,6 +1895,7 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 				
 				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
 				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 1, &m_testThreshold, 8);
 				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
 				
 				cmd->DrawInstanced(1, 1, 0, 0);
@@ -1945,6 +1945,7 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
 				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 1, &m_testThreshold, 8);
 				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
 
 				cmd->DrawInstanced(1, 1, 0, 0);
@@ -1965,7 +1966,14 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 		psoDesc.DepthStencilState.StencilEnable = false;
 		psoDesc.SampleMask = UINT_MAX;
 
-		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
+		psoDesc.BlendState.AlphaToCoverageEnable = true;
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
+		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+		psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+		psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_MAX;
+		psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+		psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
 
 		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
 		psoDesc.NumRenderTargets = 1;
@@ -1983,15 +1991,19 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
 				cmd->SetDescriptorHeaps(1, heaps);
 				cmd->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), true, nullptr);
+				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaa->GetBlendTex(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
 					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 
 				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
 				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 1, &m_testThreshold, 8);
 				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
 
 				cmd->DrawInstanced(1, 1, 0, 0);
+
+				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaa->GetBlendTex(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET));
 			};
 	}
 }

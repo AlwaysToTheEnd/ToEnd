@@ -5,14 +5,38 @@ cbuffer gSMAAPassCB : register(b0, space0)
 {
     float4 gWindowReciprocalnSize;
     float4 gSubsampleIndices;
+    float gThreshold;
 };
 
 #define SMAA_RT_METRICS gWindowReciprocalnSize
 #define SMAA_HLSL_4_1
-//#define SMAA_PRESET_ULTRA
-//#define SMAA_PRESET_HIGH
-#define SMAA_PRESET_MEDIUM
+#define SMAA_THRESHOLD gThreshold
+#define SMAA_MAX_SEARCH_STEPS 32
+#define SMAA_MAX_SEARCH_STEPS_DIAG 16
+#define SMAA_CORNER_ROUNDING 25
 #include "SMAA.hlsl"
+
+//#if defined(SMAA_PRESET_LOW)
+//#define SMAA_THRESHOLD 0.15
+//#define SMAA_MAX_SEARCH_STEPS 4
+//#define SMAA_DISABLE_DIAG_DETECTION
+//#define SMAA_DISABLE_CORNER_DETECTION
+//#elif defined(SMAA_PRESET_MEDIUM)
+//#define SMAA_THRESHOLD 0.1
+//#define SMAA_MAX_SEARCH_STEPS 8
+//#define SMAA_DISABLE_DIAG_DETECTION
+//#define SMAA_DISABLE_CORNER_DETECTION
+//#elif defined(SMAA_PRESET_HIGH)
+//#define SMAA_THRESHOLD 0.1
+//#define SMAA_MAX_SEARCH_STEPS 16
+//#define SMAA_MAX_SEARCH_STEPS_DIAG 8
+//#define SMAA_CORNER_ROUNDING 25
+//#elif defined(SMAA_PRESET_ULTRA)
+//#define SMAA_THRESHOLD 0.05
+//#define SMAA_MAX_SEARCH_STEPS 32
+//#define SMAA_MAX_SEARCH_STEPS_DIAG 16
+//#define SMAA_CORNER_ROUNDING 25
+//#endif
 
 Texture2D gColorTex : register(t0);
 Texture2D gColorTexGamma : register(t1); 
@@ -134,5 +158,11 @@ void NeiBlendGS(point float4 input[1] : SV_Position, inout TriangleStream<NeiBle
 
 float4 NeiBlendPS(NeiBlendGSOut input) : SV_Target0 
 {
-    return SMAANeighborhoodBlendingPS(input.uv,input.offset, gColorTex, gBlendTex);
+    float4 result = SMAANeighborhoodBlendingPS(input.uv, input.offset, gColorTex, gBlendTex);
+    
+    if (result.a == 0)
+    {
+        clip(0);
+    }
+    return result;
 }

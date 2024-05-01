@@ -14,7 +14,7 @@ cbuffer window : register(b0, space0)
 Texture2D gColorTex : register(t0);
 Texture2D gColorTexGamma : register(t1);
 Texture2D gSearchTex : register(t2);
-Texture2D<float2> gAreaTex : register(t3);
+Texture2D gAreaTex : register(t3);
 Texture2D gEdgesTex : register(t4);
 Texture2D gBlendTex : register(t5);
 
@@ -61,7 +61,7 @@ float4 PS(GSOut pin) : SV_Target0
 {
     float4 color = float4(1, 1, 1, 1);
     
-    color.rgb = gEdgesTex.Sample(gsamLinearWrap, pin.uv).rgb;
+    color.rgb = gBlendTex.SampleLevel(gsamLinearClamp, pin.uv, 0).rgb;
 
     return color;
 }

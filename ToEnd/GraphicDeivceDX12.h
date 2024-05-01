@@ -250,6 +250,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap>							m_SRVHeap;
 
 	DX12SMAA*												m_smaa = nullptr;
+	float													m_testThreshold = 0.05f;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

@@ -3,8 +3,6 @@
 #include "d3dx12.h"
 #include "../Common/Source/DxException.h"
 #include "DX12GarbageFrameResourceMG.h"
-#include "AreaTex.h"
-#include "SearchTex.h"
 
 ID3D12DescriptorHeap* DX12SMAA::GetSRVHeap()
 {
@@ -92,7 +90,7 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 	ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
 		D3D12_RESOURCE_STATE_RENDER_TARGET, &clearVal, IID_PPV_ARGS(m_textures[TEXTYPE_BLEND].GetAddressOf())));
 
-	if (m_textures[TEXTYPE_SEARCHTH] == nullptr)
+	if (m_textures[TEXTYPE_SEARCH] == nullptr)
 	{
 		upBuffers.resize(2);
 		D3D12_RESOURCE_DESC upDesc = {};
@@ -114,11 +112,19 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 		upDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 		{
-			desc.Width = AREATEX_WIDTH;
-			desc.Height = AREATEX_HEIGHT;
-			desc.Format = DXGI_FORMAT_R8G8_UNORM;
+			DirectX::TexMetadata metaData;
+			DirectX::ScratchImage scratch;
+			ThrowIfFailed(DirectX::LoadFromDDSFile(L"Textures/SMAA/AreaTex.dds", DirectX::DDS_FLAGS_NONE, &metaData, scratch));
+
+			const uint8_t* pixelMemory = scratch.GetPixels();
+			const DirectX::Image* image = scratch.GetImages();
+			const size_t imageNum = scratch.GetImageCount();
+			
+			desc.Width = image->width;
+			desc.Height = image->height;
+			desc.Format = image->format;
 			desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-			upDesc.Width = AREATEX_WIDTH * AREATEX_HEIGHT * sizeof(UINT16);
+			upDesc.Width = scratch.GetPixelsSize() * 1.5;
 
 			ThrowIfFailed(device->CreateCommittedResource(&upProp, D3D12_HEAP_FLAG_NONE, &upDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(upBuffers[0].GetAddressOf())));
@@ -127,12 +133,21 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 				D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_textures[TEXTYPE_AREA].GetAddressOf())));
 
 			D3D12_SUBRESOURCE_DATA subData;
-			subData.pData = areaTexBytes;
-			subData.RowPitch = AREATEX_PITCH;
-			subData.SlicePitch = 0;
+			subData.pData = pixelMemory;
+			subData.RowPitch = image->rowPitch;
+			subData.SlicePitch = image->slicePitch;
 
 			UpdateSubresources<1>(cmd, m_textures[TEXTYPE_AREA].Get(),
 				upBuffers[0].Get(), 0, 0, 1, &subData);
+
+			m_textures[TEXTYPE_AREA]->SetName(L"SMAA_AREA");
+			
+
+			BYTE* mapped = nullptr;
+			upBuffers[0]->Map(0, nullptr,reinterpret_cast<void**>(& mapped));
+
+			
+			upBuffers[0]->Unmap(0,nullptr);
 
 			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textures[TEXTYPE_AREA].Get(),
 				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
@@ -151,24 +166,24 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 			desc.Height = image->height;
 			desc.Format = image->format;
 			desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-			upDesc.Width = scratch.GetPixelsSize();
-			//m_textureFormats[TEXTYPE_SEARCHTH] = desc.Format;
+			upDesc.Width = scratch.GetPixelsSize() * 1.5;
 
 			ThrowIfFailed(device->CreateCommittedResource(&upProp, D3D12_HEAP_FLAG_NONE, &upDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(upBuffers[1].GetAddressOf())));
 
 			ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
-				D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_textures[TEXTYPE_SEARCHTH].GetAddressOf())));
+				D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_textures[TEXTYPE_SEARCH].GetAddressOf())));
 
 			D3D12_SUBRESOURCE_DATA subData;
 			subData.pData = pixelMemory;
 			subData.RowPitch = image->rowPitch;
 			subData.SlicePitch = image->slicePitch;
 
-			UpdateSubresources<1>(cmd, m_textures[TEXTYPE_SEARCHTH].Get(),
+			UpdateSubresources<1>(cmd, m_textures[TEXTYPE_SEARCH].Get(),
 				upBuffers[1].Get(), 0, 0, 1, &subData);
 
-			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textures[TEXTYPE_SEARCHTH].Get(),
+			m_textures[TEXTYPE_SEARCH]->SetName(L"SMAA_SEARCH");
+			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textures[TEXTYPE_SEARCH].Get(),
 				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 		}
 	}
