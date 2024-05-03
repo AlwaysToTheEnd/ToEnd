@@ -62,6 +62,8 @@ namespace CGH
 		uint32_t defaultChar = 0;
 		uint32_t textureWidth = 0;
 		uint32_t textureHeight = 0;
+		uint32_t fontBaseHeight = 0;
+		uint32_t defaultGlyphIndex = 0;
 		std::vector<FontGlyph> glyphs;
 		std::vector<CharSubCategory> category;
 

@@ -539,15 +539,16 @@ void GraphicDeviceDX12::RenderString(const wchar_t* str, const DirectX::XMFLOAT4
 	CGH::CharInfo* currCharInfo = m_charInfoMapped[m_currFrame];
 	currCharInfo += m_numRenderChar;
 
+	float scaledFontSize = size / currFont->fontBaseHeight;
 	for (int i = 0; i < stringLen; i++)
 	{
 		currCharInfo->glyphID = currFont->GetGlyphIndex(str[i]);
 		auto& currGlyph = glyphs[currCharInfo->glyphID];
-		XMFLOAT2 fontSize = { float(currGlyph.subrect.right - currGlyph.subrect.left) * size,float(currGlyph.subrect.bottom - currGlyph.subrect.top) * size };
+		XMFLOAT2 fontSize = { float(currGlyph.subrect.right - currGlyph.subrect.left) * scaledFontSize,float(currGlyph.subrect.bottom - currGlyph.subrect.top) * scaledFontSize };
 		currCharInfo->depth = pos.z;
 		currCharInfo->color = color;
-		offsetInString += currGlyph.xOffset * size;
-		currCharInfo->leftTopP = { pos.x + offsetInString, pos.y + (currGlyph.yOffset + (currFont->lineSpacing * currLine)) * size };
+		offsetInString += currGlyph.xOffset * scaledFontSize;
+		currCharInfo->leftTopP = { pos.x + offsetInString, pos.y + (currGlyph.yOffset + (currFont->lineSpacing * currLine)) * scaledFontSize };
 		currCharInfo->rightBottomP = { currCharInfo->leftTopP.x + fontSize.x, currCharInfo->leftTopP.y + fontSize.y };
 
 		currCharInfo->leftTopP.x = currCharInfo->leftTopP.x * winSizeReciprocal.x * 2.0f - 1.0f;
@@ -562,7 +563,7 @@ void GraphicDeviceDX12::RenderString(const wchar_t* str, const DirectX::XMFLOAT4
 		}
 		else
 		{
-			offsetInString += fontSize.x + currGlyph.xAdvance * size;
+			offsetInString += fontSize.x + currGlyph.xAdvance * scaledFontSize;
 		}
 
 		currCharInfo++;
@@ -806,7 +807,7 @@ void GraphicDeviceDX12::BuildPso()
 	BuildUIRenderPipeLineWorkSet();
 	BuildUIRenderIDRenderPipeLineWorkSet();
 	BuildSMAARenderPipeLineWorkSet();
-	BuildTextureDataDebugPipeLineWorkSet();
+	//BuildTextureDataDebugPipeLineWorkSet();
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
@@ -1554,10 +1555,6 @@ void GraphicDeviceDX12::BuildFontRenderPipeLineWorkSet()
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			auto rtv = m_swapChain->CurrRTV();
-			m_swapChain->ClearDS(cmd);
-			cmd->OMSetRenderTargets(1, &rtv, false, &m_swapChain->GetDSV());
-
 			auto currFont = DX12FontManger::s_instance.GetCurrFont();
 			if (currFont && m_numRenderChar)
 			{
@@ -1679,6 +1676,10 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 				});
 
 			std::memcpy(m_uiInfoMapped[m_currFrame], m_reservedUIInfos.data(), m_reservedUIInfos.size() * sizeof(UIInfo));
+
+			auto rtv = m_swapChain->CurrRTV();
+			m_swapChain->ClearDS(cmd);
+			cmd->OMSetRenderTargets(1, &rtv, false, &m_swapChain->GetDSV());
 
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 

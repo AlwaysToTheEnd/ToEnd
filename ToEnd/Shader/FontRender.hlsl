@@ -86,13 +86,7 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 PSOut PS(GSOut pin)
 {
     PSOut result;
-    result.color = pin.color;
-    float4 textureColor = gSpriteTexture.Sample(gsamLinearClamp, pin.uv);
- 
-    if (textureColor.r < epsilon)
-    {
-        clip(-1);
-    }
+    result.color = gSpriteTexture.Sample(gsamAnisotropicClamp, pin.uv) * pin.color;
     
     return result;
 }

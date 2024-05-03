@@ -303,9 +303,6 @@ COMFontRenderer::COMFontRenderer(CGHNode* node)
 void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
 	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
-	pos.x += m_offset.x;
-	pos.y += m_offset.y;
-	pos.z += m_offset.z;
 	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, m_fontSize, m_rowPitch);
 }
 

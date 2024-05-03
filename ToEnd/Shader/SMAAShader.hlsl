@@ -158,8 +158,9 @@ void NeiBlendGS(point float4 input[1] : SV_Position, inout TriangleStream<NeiBle
 
 float4 NeiBlendPS(NeiBlendGSOut input) : SV_Target0 
 {
-    float4 result = SMAANeighborhoodBlendingPS(input.uv, input.offset, gColorTex, gBlendTex);
+    float4 result = SMAANeighborhoodBlendingPS(input.uv, input.offset, gColorTexGamma, gBlendTex);
     
+    //result.rgb = pow(result.rgb, 1.0f / 2.2f);
     if (result.a == 0)
     {
         clip(0);

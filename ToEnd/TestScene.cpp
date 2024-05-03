@@ -212,7 +212,7 @@ void TestScene::Init()
 	{
 		auto light = m_dirLight.CreateComponent<COMDirLight>();
 		light->m_data.color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-		light->m_data.power = 1.2f;
+		light->m_data.power = 1.0f;
 		light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
 
 		auto lightTransform = m_dirLight.CreateComponent<COMTransform>();
@@ -230,18 +230,19 @@ void TestScene::Init()
 	auto fontrender = m_stringNode.CreateComponent<COMFontRenderer>();
 	auto fontTrans = m_stringNode.CreateComponent<COMUITransform>();
 	DirectX::XMVECTOR color = DirectX::Colors::Aqua;
-	//color.m128_f32[3] = 0.5f;
+	color.m128_f32[3] = 0.5f;
 	fontrender->SetRenderString(L"Test Rendering", color, 350.0f);
+	fontrender->SetFontSize(20.0f);
 	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
 	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
 
-
 	m_testButton.Init();
 	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1));
-	m_testButton.SetSize(250, 30);
+	m_testButton.SetSize(250, 20);
 	m_testButton.SetPos(100, 100, 0.1f);
+	m_testButton.SetText(L"textButton");
 	color = DirectX::Colors::Snow;
-	color.m128_f32[3] = 0.7f;
+	color.m128_f32[3] = 0.5f;
 	m_testButton.SetColor(color);
 }
 
@@ -260,7 +261,7 @@ void TestScene::Update(float delta)
 
 	static float x, y = 0;
 	//x += delta * 1.0f;
-	//y += delta * 0.8f;
+	y += delta * 0.8f;
 
 	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));

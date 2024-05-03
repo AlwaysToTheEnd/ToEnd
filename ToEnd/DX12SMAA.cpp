@@ -141,14 +141,6 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 				upBuffers[0].Get(), 0, 0, 1, &subData);
 
 			m_textures[TEXTYPE_AREA]->SetName(L"SMAA_AREA");
-			
-
-			BYTE* mapped = nullptr;
-			upBuffers[0]->Map(0, nullptr,reinterpret_cast<void**>(& mapped));
-
-			
-			upBuffers[0]->Unmap(0,nullptr);
-
 			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textures[TEXTYPE_AREA].Get(),
 				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 		}

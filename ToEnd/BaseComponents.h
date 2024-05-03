@@ -198,16 +198,13 @@ public:
 	void SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch);
 	void SetText(const wchar_t* str);
 	void SetFontSize(float size) { m_fontSize = size; }
-	void SetOffset(const DirectX::XMFLOAT3& offset) { m_offset = offset; }
-	void XM_CALLCONV SetOffset(DirectX::FXMVECTOR offset) { DirectX::XMStoreFloat3(&m_offset, offset); }
 	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color);
 	void SetRowPitch(float rowPitch);
 
 private:
 	static size_t s_hashCode;
 	std::wstring m_str;
-	DirectX::XMFLOAT3 m_offset = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4 m_color = { 0.0f,0.0f, 0.0f, 1.0f };
-	float m_fontSize = 1.0f;
+	float m_fontSize = 10.0f;
 	float m_rowPitch = 100.0f;
 };

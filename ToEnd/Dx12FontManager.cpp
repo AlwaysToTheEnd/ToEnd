@@ -21,6 +21,7 @@ const CGH::DX12Font* DX12FontManger::LoadFont(const wchar_t* filePath)
 	if (iter == s_instance.m_fonts.end())
 	{
 		result = s_instance.CreateFontData(filePath);
+	
 	}
 	else
 	{
@@ -60,6 +61,7 @@ CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 	auto glyphCount = reader.Read<uint32_t>();
 	auto glyphData = reader.ReadArray<CGH::FontGlyph>(glyphCount);
 
+	float yOffsetCutValue = 1000.0f;
 	currFont.glyphs.assign(glyphData, glyphData + glyphCount);
 	{
 		int prevCharCode = -5;
@@ -67,8 +69,12 @@ CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 		for (auto& iter : currFont.glyphs)
 		{
 			int interval = iter.character - prevCharCode;
-
 			assert(interval > 0);
+
+			if (iter.yOffset < yOffsetCutValue)
+			{
+				yOffsetCutValue = iter.yOffset;
+			}
 
 			if (interval != 1)
 			{
@@ -94,9 +100,26 @@ CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 		}
 	}
 
+	if (yOffsetCutValue > 0.0f)
+	{
+		for (auto& iter : currFont.glyphs)
+		{
+			iter.yOffset -= yOffsetCutValue;
+		}
+	}
+
 	// Read font properties.
 	currFont.lineSpacing = reader.Read<float>();
 	currFont.defaultChar = static_cast<wchar_t>(reader.Read<uint32_t>());
+
+	if (currFont.defaultChar == 0)
+	{
+		currFont.defaultChar = 'a';
+	}
+
+	currFont.defaultGlyphIndex = currFont.GetGlyphIndex(currFont.defaultChar);
+	auto& defaultGlyph = currFont.glyphs[currFont.defaultGlyphIndex];
+	currFont.fontBaseHeight = defaultGlyph.yOffset + defaultGlyph.subrect.bottom - defaultGlyph.subrect.top;
 
 	// Read the texture data.
 	auto textureWidth = reader.Read<uint32_t>();
