@@ -22,7 +22,7 @@ namespace CGH
 		DirectX::XMFLOAT2 rightBottomP;
 		float depth = 0;
 		uint32_t glyphID = 0;
-		float pad0 = 0;
+		uint32_t parentRenderID = 0;
 		float pad1 = 0;
 	};
 

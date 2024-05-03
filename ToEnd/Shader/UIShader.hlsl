@@ -15,7 +15,7 @@ struct UIInfo
     float2 uvRB;
     float2 size;
     uint renderID;
-    float pad0;
+    uint parentRenderID;
 };
 
 cbuffer window : register(b0, space0)
@@ -25,6 +25,7 @@ cbuffer window : register(b0, space0)
 
 StructuredBuffer<UIInfo> gUIInfos : register(t0, space0);
 //Texture2D<float4> gBackgourndTexture : register(t1, space0);
+Texture2D<uint> gRenderIDTexture : register(t1, space0);
 
 struct VSOut
 {
@@ -37,6 +38,7 @@ struct GSOut
     float4 color : TEXCOORD0;
     float2 uv : TEXCOORD1;
     nointerpolation uint uiGraphicType : UITYPE;
+    nointerpolation uint parentRenderID : PARENTRENDERID;
 };
 
 struct PSOut
@@ -78,6 +80,7 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
         vertices[index].position.y = 1.0f - (vertices[index].position.y * gWinSizeReciprocal.y * 2.0f);
         vertices[index].color = info.color;
         vertices[index].uiGraphicType = info.uiGraphicType;
+        vertices[index].parentRenderID = info.parentRenderID;
     }
     
     output.Append(vertices[0]);
@@ -88,9 +91,19 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 
 PSOut PS(GSOut pin)
 {
+    if (pin.parentRenderID != 0)
+    {
+        uint currPixelParentID = gRenderIDTexture.Load(int3(pin.position.xy, 0));
+
+        if (pin.parentRenderID != currPixelParentID)
+        {
+            clip(-1);
+        }
+    }
+    
     PSOut result;
     result.color = pin.color;
-    
+   
     //switch (pin.uiGraphicType)
     //{
     //    case 1:{

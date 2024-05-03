@@ -113,16 +113,19 @@ public:
 public:
 	CGHRenderer();
 	virtual ~CGHRenderer();
-	unsigned int GetRenderID() { return m_renderID + 1; }
-
 	static void ExcuteMouseAction(unsigned int renderID);
+
+	unsigned int GetRenderID() const { return m_renderID + 1; }
+	void SetParentRender(const CGHRenderer* render); // only for ui, font rendering
 	void AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
+
 	void RemoveFuncs();
 
 protected:
 	static std::unordered_map<unsigned int, std::vector<MouseAction>> s_mouseActions;
 	static unsigned int s_currRendererInstancedNum;
 	static std::vector<unsigned int> s_renderIDPool;
+	unsigned int m_parentRenderID = 0;
 	unsigned int m_renderID = 0;
 	unsigned int m_renderFlag = 0;
 };
@@ -185,7 +188,7 @@ private:
 	unsigned int m_spriteSubIndex = 0;
 };
 
-class COMFontRenderer : public Component
+class COMFontRenderer : public Component, public CGHRenderer
 {
 public:
 	COMFontRenderer(CGHNode* node);

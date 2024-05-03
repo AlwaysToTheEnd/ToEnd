@@ -15,7 +15,8 @@ struct CharInfo
     float2 rbP;
     float depth;
     uint glyphID;
-    float2 pad0;
+    uint parentRenderID;
+    float pad0;
 };
 
 struct Glyph
@@ -27,6 +28,7 @@ struct Glyph
 StructuredBuffer<CharInfo> gCharInfos : register(t0, space0);
 StructuredBuffer<Glyph> gGlyphs : register(t1, space0);
 Texture2D<float4> gSpriteTexture : register(t2, space0);
+Texture2D<uint> gRenderIDTexture : register(t3, space0);
 
 struct VSOut
 {
@@ -50,6 +52,7 @@ struct GSOut
     float4 position : SV_position;
     float4 color : TEXCOORD0;
     float2 uv : TEXCOORD1;
+    nointerpolation uint parentRenderID : PARENTRENDERID;
 };
 
 [maxvertexcount(4)]
@@ -76,6 +79,11 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
     vertices[1].color = cInfo.color;
     vertices[2].color = cInfo.color;
     vertices[3].color = cInfo.color;
+    
+    vertices[0].parentRenderID = cInfo.parentRenderID;
+    vertices[1].parentRenderID = cInfo.parentRenderID;
+    vertices[2].parentRenderID = cInfo.parentRenderID;
+    vertices[3].parentRenderID = cInfo.parentRenderID;
 
     output.Append(vertices[0]);
     output.Append(vertices[1]);
@@ -85,6 +93,16 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 
 PSOut PS(GSOut pin)
 {
+    if (pin.parentRenderID != 0)
+    {
+        uint currPixelParentID = gRenderIDTexture.Load(int3(pin.position.xy, 0));
+
+        if (pin.parentRenderID != currPixelParentID)
+        {
+            clip(-1);
+        }
+    }
+    
     PSOut result;
     result.color = gSpriteTexture.Sample(gsamAnisotropicClamp, pin.uv) * pin.color;
     

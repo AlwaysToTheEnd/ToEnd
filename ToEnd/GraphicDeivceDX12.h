@@ -85,7 +85,7 @@ class GraphicDeviceDX12
 		DirectX::XMFLOAT2 uvRB = { 1.0f, 1.0f };
 		DirectX::XMFLOAT2 size;
 		unsigned int renderID = 0;
-		float pad0;
+		unsigned int parentRenderID = 0;
 	};
 
 	enum DEFERRED_TEXTURE
@@ -128,15 +128,18 @@ public:
 	void RenderMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
 	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
-	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID);
-	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, unsigned int renderID);
-	void RenderString(const wchar_t* str, const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float size, float rowPitch);
+	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID, unsigned int parentRenderID);
+	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, 
+		unsigned int renderID, unsigned int parentRenderID);
+	void RenderString(const wchar_t* str, const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float size, float rowPitch, unsigned int parentRenderID);
 	void RenderBegin();
 	void RenderEnd();
 
 	void OnResize(int windowWidth, int windowHeight);
 	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
+
+	ID3D12Resource* GetRenderIDTexture() { return m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get(); }
 
 private:
 	GraphicDeviceDX12();
@@ -163,9 +166,9 @@ private:
 		PSOW_SMAA_EDGE_RENDER,
 		PSOW_SMAA_BLEND_RENDER,
 		PSOW_SMAA_NEIBLEND_RENDER,
+		PSOW_UI_RENDERID_RENDER,
 		PSOW_UI_RENDER,
 		PSOW_FONT_RENDER,
-		PSOW_UI_RENDERID_RENDER,
 		PSOW_TEX_DEBUG,
 		PSOW_NUM
 	};
@@ -183,9 +186,9 @@ private:
 	void BuildShadowMapWritePipeLineWorkSet();
 	void BuildDeferredLightDirPipeLineWorkSet();
 	void BuildSMAARenderPipeLineWorkSet();
-	void BuildFontRenderPipeLineWorkSet();
-	void BuildUIRenderPipeLineWorkSet();
 	void BuildUIRenderIDRenderPipeLineWorkSet();
+	void BuildUIRenderPipeLineWorkSet();
+	void BuildFontRenderPipeLineWorkSet();
 	void BuildTextureDataDebugPipeLineWorkSet();
 
 private:

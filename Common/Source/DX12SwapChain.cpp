@@ -167,7 +167,7 @@ void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)
 	dsDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	dsDesc.Format = m_depthStencilFormat;
 	dsDesc.DepthOrArraySize = 1;
-	dsDesc.MipLevels = 0;
+	dsDesc.MipLevels = 1;
 	dsDesc.Width = x;
 	dsDesc.Height = y;
 	dsDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;

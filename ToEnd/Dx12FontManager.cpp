@@ -249,7 +249,7 @@ CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.NumDescriptors = 1;
+		desc.NumDescriptors = 2;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
 		ThrowIfFailed(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(currFont.textureHeap.GetAddressOf())));
@@ -259,9 +259,17 @@ CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Format = textureFormat;
 		srvDesc.Texture2D.MipLevels = 1;
+		
+		auto heapCpu = currFont.textureHeap->GetCPUDescriptorHandleForHeapStart();
 
 		device->CreateShaderResourceView(currFont.texture.Get(), &srvDesc,
-			currFont.textureHeap->GetCPUDescriptorHandleForHeapStart());
+			heapCpu);
+
+		heapCpu.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		srvDesc.Format = DXGI_FORMAT_R16_UINT;
+		device->CreateShaderResourceView(GraphicDeviceDX12::GetGraphic()->GetRenderIDTexture(), &srvDesc,
+			heapCpu);
 	}
 
 	return &currFont;

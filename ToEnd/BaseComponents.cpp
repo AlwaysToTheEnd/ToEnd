@@ -287,11 +287,11 @@ void COMUIRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delt
 	DirectX::XMFLOAT2 size = node->GetComponent<COMUITransform>()->GetSize();
 	if (m_isTextureBackGound)
 	{
-		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_spriteSubIndex, m_color.z, GetRenderID());
+		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_spriteSubIndex, m_color.z, GetRenderID(), m_parentRenderID);
 	}
 	else
 	{
-		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_color, GetRenderID());
+		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_color, GetRenderID(), m_parentRenderID);
 	}
 }
 
@@ -303,7 +303,7 @@ COMFontRenderer::COMFontRenderer(CGHNode* node)
 void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
 {
 	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
-	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, m_fontSize, m_rowPitch);
+	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, m_fontSize, m_rowPitch, m_parentRenderID);
 }
 
 void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
@@ -412,6 +412,11 @@ void CGHRenderer::AddFunc(int mousebutton, int mouseState, std::function<void(CG
 	action.funcMouseState = mouseState;
 
 	s_mouseActions[m_renderID].emplace_back(action);
+}
+
+void CGHRenderer::SetParentRender(const CGHRenderer* render)
+{
+	m_parentRenderID = render->GetRenderID();
 }
 
 void CGHRenderer::RemoveFuncs()

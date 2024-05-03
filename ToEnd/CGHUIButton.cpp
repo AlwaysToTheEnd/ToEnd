@@ -23,6 +23,7 @@ void CGHUIButton::Init()
 	m_childFontNode.SetParent(this, true);
 	m_fontTransform = m_childFontNode.CreateComponent<COMUITransform>();
 	m_fontRenderer = m_childFontNode.CreateComponent<COMFontRenderer>();
+	m_fontRenderer->SetParentRender(m_backRender);
 	m_fontTransform->SetPos(DirectX::XMVectorSet(0, 0, -0.010f, 0));
 }
 
