@@ -89,8 +89,22 @@ struct HSConstDataOut
 HSConstDataOut PointLightConstantHS(InputPatch<VSOut, 3> patch)
 {
     HSConstDataOut output;
+    //float3 pToEyeVec[3];
+    //pToEyeVec[0] = normalize((patch[0].pos + patch[1].pos) *0.5f - gEyePosW);
+    //pToEyeVec[1] = normalize((patch[1].pos + patch[2].pos) * 0.5f - gEyePosW);
+    //pToEyeVec[2] = normalize((patch[2].pos + patch[0].pos) * 0.5f - gEyePosW);
     
-    float tessFactor = 4.0;
+    //float3 normals[3];
+    //normals[0] = normalize(patch[0].normal + patch[1].normal);
+    //normals[1] = normalize(patch[1].normal + patch[2].normal);
+    //normals[2] = normalize(patch[2].normal + patch[0].normal);
+    
+    //output.edges[0] = 1.0f + (1.0f - abs(dot(pToEyeVec[0], normals[0]))) * 10.0f;
+    //output.edges[1] = 1.0f + (1.0f - abs(dot(pToEyeVec[1], normals[1]))) * 10.0f;
+    //output.edges[2] = 1.0f + (1.0f - abs(dot(pToEyeVec[2], normals[2]))) * 10.0f;
+    
+    //output.inside[0] = 1.0f + (output.edges[0] + output.edges[1] + output.edges[2]) * 0.33333333f;
+    float tessFactor = 4.0f;
     output.edges[0] = output.edges[1] = output.edges[2] = tessFactor;
     output.inside[0] = tessFactor;
     
@@ -99,11 +113,11 @@ HSConstDataOut PointLightConstantHS(InputPatch<VSOut, 3> patch)
 
 
 [domain("tri")]
-[partitioning("fractional_even")]
+[partitioning("integer")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(3)]
 [patchconstantfunc("PointLightConstantHS")]
-[maxtessfactor(4.0f)]
+[maxtessfactor(10.0f)]
 VSOut HS(InputPatch<VSOut, 3> patch, uint patchID : SV_PrimitiveID, uint cpId : SV_OutputControlPointID)
 {
     VSOut result;

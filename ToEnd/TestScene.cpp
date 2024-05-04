@@ -41,7 +41,7 @@ void TestScene::Init()
 		auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();
 		m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		material->SetData(&m_bodyMats.front());
-		skinnedMesh->SetMeshData(&m_bodyMeshs.front());
+		skinnedMesh->SetMeshData(&m_bodyMeshs[0]);
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -238,7 +238,7 @@ void TestScene::Init()
 
 	m_testButton.Init();
 	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1, 1));
-	m_testButton.SetSize(250, 20);
+	m_testButton.SetSize(250, 10);
 	m_testButton.SetPos(100, 100, 0.1f);
 	m_testButton.SetText(L"textButton");
 	color = DirectX::Colors::Snow;

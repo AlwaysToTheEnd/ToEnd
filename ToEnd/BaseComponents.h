@@ -59,6 +59,7 @@ private:
 	bool m_nodeTreeDirty = true;
 	std::unordered_map<std::string, const CGHNode*> m_currNodeTree;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_boneDatas;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_VNTBResource;
 	std::vector<DirectX::XMFLOAT4X4*> m_boneDatasCpu;
 };
 

@@ -362,3 +362,8 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /ToEnd/Textures
+/ToEnd/MeshData/body0.fbx
+/ToEnd/MeshData/Ch36_nonPBR.fbx
+/ToEnd/MeshData/meshes0.dae
+/ToEnd/MeshData/Remy.fbx
+/ToEnd/MeshData/Vanguard.fbx

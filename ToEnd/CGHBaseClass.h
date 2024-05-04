@@ -38,6 +38,7 @@ public:
 
 	bool GetActive() const { return m_active; }
 	CGHNode* GetParent() const { return m_parent; }
+	CGHNode* FindNode(const char* name);
 	const char* GetName() const { return m_name.c_str(); }
 	void GetChildNodes(std::vector<CGHNode*>* nodeOut);
 

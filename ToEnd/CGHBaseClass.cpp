@@ -68,6 +68,30 @@ void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 	}
 }
 
+CGHNode* CGHNode::FindNode(const char* name)
+{
+	CGHNode* result = nullptr;
+
+	if (m_name == name)
+	{
+		return this;
+	}
+	else
+	{
+		for (auto child : m_childs)
+		{
+			result = child->FindNode(name);
+
+			if (result)
+			{
+				break;
+			}
+		}
+	}
+
+    return result;
+}
+
 void CGHNode::GetChildNodes(std::vector<CGHNode*>* nodeOut)
 {
 	nodeOut->push_back(this);

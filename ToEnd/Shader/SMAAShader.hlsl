@@ -165,5 +165,7 @@ float4 NeiBlendPS(NeiBlendGSOut input) : SV_Target0
     {
         clip(0);
     }
+    
+    
     return result;
 }
