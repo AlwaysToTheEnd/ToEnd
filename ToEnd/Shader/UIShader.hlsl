@@ -15,7 +15,7 @@ struct UIInfo
     float2 uvRB;
     float2 size;
     uint renderID;
-    uint parentRenderID;
+    uint parentRenderIndex;
 };
 
 cbuffer window : register(b0, space0)
@@ -25,7 +25,6 @@ cbuffer window : register(b0, space0)
 
 StructuredBuffer<UIInfo> gUIInfos : register(t0, space0);
 //Texture2D<float4> gBackgourndTexture : register(t1, space0);
-Texture2D<uint> gRenderIDTexture : register(t1, space0);
 
 struct VSOut
 {
@@ -38,13 +37,13 @@ struct GSOut
     float4 color : TEXCOORD0;
     float2 uv : TEXCOORD1;
     nointerpolation uint uiGraphicType : UITYPE;
-    nointerpolation uint parentRenderID : PARENTRENDERID;
+    nointerpolation uint renderID : RENDERID;
 };
 
 struct PSOut
 {
     float4 color : SV_Target0;
-    //float depth : SV_Depth;
+    uint renderID : SV_Target1;
 };
 
 VSOut VS(uint vIndex : SV_VertexID)
@@ -60,49 +59,55 @@ void GS(point VSOut input[1] : SV_Position, inout TriangleStream<GSOut> output)
 {
     GSOut vertices[4];
     UIInfo info = gUIInfos[input[0].vIndex];
+    UIInfo parentInfo = gUIInfos[info.parentRenderIndex];
     // 1  3
 	// |\ |
 	// 0 \2
-    vertices[0].position = float4(info.pos.x, info.pos.y + info.size.y, info.pos.z, 1.0f);
-    vertices[1].position = float4(info.pos.x, info.pos.y, info.pos.z, 1.0f);
-    vertices[2].position = float4(info.pos.x + info.size.x, info.pos.y + info.size.y, info.pos.z, 1.0f);
-    vertices[3].position = float4(info.pos.x + info.size.x, info.pos.y, info.pos.z, 1.0f);
-
-    vertices[0].uv = float2(info.uvLT.x, info.uvRB.y);
-    vertices[1].uv = float2(info.uvLT.x, info.uvLT.y);
-    vertices[2].uv = float2(info.uvRB.x, info.uvRB.y);
-    vertices[3].uv = float2(info.uvRB.x, info.uvLT.y);
     
-    [unroll(4)]
-    for (int index = 0; index < 4; index++)
+    float2 leftTop = max(parentInfo.pos.xy, info.pos.xy);
+    float2 rightBottom = min(parentInfo.pos.xy + parentInfo.size, info.pos.xy + info.size);
+    float2 size = rightBottom - leftTop;
+    
+    if (size.x > 0.0f && size.y > 0.0f)
     {
-        vertices[index].position.x = vertices[index].position.x * gWinSizeReciprocal.x * 2.0f - 1.0f;
-        vertices[index].position.y = 1.0f - (vertices[index].position.y * gWinSizeReciprocal.y * 2.0f);
-        vertices[index].color = info.color;
-        vertices[index].uiGraphicType = info.uiGraphicType;
-        vertices[index].parentRenderID = info.parentRenderID;
-    }
+        float2 uvRange = info.uvRB - info.uvLT;
+        float2 perSize = size / info.size;
+        float2 leftTopOffsetPer = (leftTop - info.pos.xy) / info.size;
+        float2 uvLT = info.uvLT + leftTopOffsetPer * info.size;
+        float2 uvRB = uvLT + (uvRange * perSize);
+        
+        vertices[0].position = float4(leftTop.x, rightBottom.y, info.pos.z, 1.0f);
+        vertices[1].position = float4(leftTop.x, leftTop.y, info.pos.z, 1.0f);
+        vertices[2].position = float4(rightBottom.x, rightBottom.y, info.pos.z, 1.0f);
+        vertices[3].position = float4(rightBottom.x, leftTop.y, info.pos.z, 1.0f);
+
+        vertices[0].uv = float2(uvLT.x, uvRB.y);
+        vertices[1].uv = float2(uvLT.x, uvLT.y);
+        vertices[2].uv = float2(uvRB.x, uvRB.y);
+        vertices[3].uv = float2(uvRB.x, uvLT.y);
     
-    output.Append(vertices[0]);
-    output.Append(vertices[1]);
-    output.Append(vertices[2]);
-    output.Append(vertices[3]);
+        [unroll(4)]
+        for (int index = 0; index < 4; index++)
+        {
+            vertices[index].position.x = vertices[index].position.x * gWinSizeReciprocal.x * 2.0f - 1.0f;
+            vertices[index].position.y = 1.0f - (vertices[index].position.y * gWinSizeReciprocal.y * 2.0f);
+            vertices[index].color = info.color;
+            vertices[index].uiGraphicType = info.uiGraphicType;
+            vertices[index].renderID = info.renderID;
+        }
+    
+        output.Append(vertices[0]);
+        output.Append(vertices[1]);
+        output.Append(vertices[2]);
+        output.Append(vertices[3]);
+    }
 }
 
 PSOut PS(GSOut pin)
 {
-    if (pin.parentRenderID != 0)
-    {
-        uint currPixelParentID = gRenderIDTexture.Load(int3(pin.position.xy, 0));
-
-        if (pin.parentRenderID != currPixelParentID)
-        {
-            clip(-1);
-        }
-    }
-    
     PSOut result;
     result.color = pin.color;
+    result.renderID = pin.renderID;
    
     //switch (pin.uiGraphicType)
     //{

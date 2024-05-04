@@ -17,7 +17,7 @@ public:
 	void RateUpdate(float delta);
 
 private:
-	void ButtonTestFunc(CGHNode* node);
+	void ButtonTestFunc(CGHNode* node, int idex);
 
 private:
 	CGHNode* node = nullptr;

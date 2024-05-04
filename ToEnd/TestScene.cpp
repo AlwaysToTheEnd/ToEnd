@@ -237,7 +237,7 @@ void TestScene::Init()
 	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
 
 	m_testButton.Init();
-	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1));
+	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1, 1));
 	m_testButton.SetSize(250, 20);
 	m_testButton.SetPos(100, 100, 0.1f);
 	m_testButton.SetText(L"textButton");
@@ -261,7 +261,7 @@ void TestScene::Update(float delta)
 
 	static float x, y = 0;
 	//x += delta * 1.0f;
-	y += delta * 0.8f;
+	//y += delta * 0.8f;
 
 	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
@@ -287,7 +287,7 @@ void TestScene::RateUpdate(float delta)
 	m_testButton.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
 }
 
-void TestScene::ButtonTestFunc(CGHNode* node)
+void TestScene::ButtonTestFunc(CGHNode* node, int index)
 {
 	m_testButton.SetColor(DirectX::Colors::Blue);
 }

@@ -11,6 +11,7 @@ public:
 	void Init();
 	const CGH::DX12Font* LoadFont(const wchar_t* filePath);
 	const CGH::DX12Font* GetCurrFont() { return m_currfont; }
+	void ApplyRenderIDTexture();
 
 private:
 	DX12FontManger() = default;

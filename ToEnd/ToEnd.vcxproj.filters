@@ -246,9 +246,6 @@
     <FxCompile Include="Shader\UIShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shader\UIRenderIDShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
     <FxCompile Include="Shader\ShadowMapGenShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>

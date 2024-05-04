@@ -275,4 +275,25 @@ CGH::DX12Font* DX12FontManger::CreateFontData(const wchar_t* filePath)
 	return &currFont;
 }
 
+void DX12FontManger::ApplyRenderIDTexture()
+{
+	auto device = GraphicDeviceDX12::GetDevice();
+	auto graphic = GraphicDeviceDX12::GetGraphic();
+	unsigned int srvSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R16_UINT;
+	srvDesc.Texture2D.MipLevels = 1;
+
+	for (auto& currFont : m_fonts)
+	{
+		auto heapCpu = currFont.second.textureHeap->GetCPUDescriptorHandleForHeapStart();
+		heapCpu.ptr += srvSize;
+		device->CreateShaderResourceView(graphic->GetRenderIDTexture(), &srvDesc,
+			heapCpu);
+	}
+}
+
 

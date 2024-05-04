@@ -200,6 +200,15 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	
 	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
 	
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		heapDesc.NumDescriptors = 2;
+		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_uiSpriteSRVHeap.GetAddressOf())));
+	}
+
 	OnResize(windowWidth, windowHeight);
 	
 	ThrowIfFailed(m_cmdList->Reset(m_cmdListAllocs.front().Get(), nullptr));
@@ -249,48 +258,6 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		{
 			m_uiInfoMapped.push_back(mapped);
 			mapped += UIInfo::maxNumUI;
-		}
-	
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		heapDesc.NumDescriptors = 2;
-		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	
-		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_uiSpriteSRVHeap.GetAddressOf())));
-	
-		if (m_uiSpriteTexture != nullptr)
-		{
-			auto textureDesc = m_uiSpriteTexture->GetDesc();
-	
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Format = textureDesc.Format;
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0;
-			srvDesc.Texture2D.PlaneSlice = 0;
-	
-			auto heapCPU = m_uiSpriteSRVHeap->GetCPUDescriptorHandleForHeapStart();
-			m_d3dDevice->CreateShaderResourceView(m_uiSpriteTexture.Get(), &srvDesc, heapCPU);
-	
-			heapCPU.ptr += m_srvcbvuavSize;
-			srvDesc.Format = m_deferredFormat[DEFERRED_TEXTURE_RENDERID];
-			m_d3dDevice->CreateShaderResourceView(m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get(), &srvDesc, heapCPU);
-		}
-		else
-		{
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Format = m_deferredFormat[DEFERRED_TEXTURE_RENDERID];
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0;
-			srvDesc.Texture2D.PlaneSlice = 0;
-
-			auto heapCPU = m_uiSpriteSRVHeap->GetCPUDescriptorHandleForHeapStart();
-			m_d3dDevice->CreateShaderResourceView(m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get(), &srvDesc, heapCPU);
 		}
 	}
 
@@ -428,6 +395,8 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 		m_swapChain->ReSize(m_cmdList.Get(), windowWidth, windowHeight);
 		CreateDeferredTextures(windowWidth, windowHeight);
 	}
+	DX12FontManger::s_instance.ApplyRenderIDTexture();
+	CreateUISpriteSRVs();
 
 	auto smaaUPloadBuffers = m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight);
 	ThrowIfFailed(m_cmdList->Close());
@@ -527,7 +496,7 @@ void GraphicDeviceDX12::RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XM
 	temp.size = size;
 	temp.color = color;
 	temp.renderID = renderID;
-	temp.parentRenderID = parentRenderID;
+	temp.parentRenderIndex = parentRenderID;
 
 	m_reservedUIInfos.emplace_back(temp);
 }
@@ -540,9 +509,8 @@ void GraphicDeviceDX12::RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XM
 	temp.pos = pos;
 	temp.size = size;
 	temp.color.z = alpha;
-
 	temp.renderID = renderID;
-	temp.parentRenderID = parentRenderID;
+	temp.parentRenderIndex = parentRenderID;
 
 	m_reservedUIInfos.emplace_back(temp);
 }
@@ -825,7 +793,6 @@ void GraphicDeviceDX12::BuildPso()
 	BuildDeferredLightDirPipeLineWorkSet();
 	BuildFontRenderPipeLineWorkSet();
 	BuildUIRenderPipeLineWorkSet();
-	BuildUIRenderIDRenderPipeLineWorkSet();
 	BuildSMAARenderPipeLineWorkSet();
 	//BuildTextureDataDebugPipeLineWorkSet();
 }
@@ -922,6 +889,26 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 
 		viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 		m_d3dDevice->CreateShaderResourceView(m_swapChain->GetDSResource(), &viewDesc, heapCPU);
+	}
+}
+
+void GraphicDeviceDX12::CreateUISpriteSRVs()
+{
+	if (m_uiSpriteTexture != nullptr)
+	{
+		auto textureDesc = m_uiSpriteTexture->GetDesc();
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = textureDesc.Format;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0;
+		srvDesc.Texture2D.PlaneSlice = 0;
+
+		auto heapCPU = m_uiSpriteSRVHeap->GetCPUDescriptorHandleForHeapStart();
+		m_d3dDevice->CreateShaderResourceView(m_uiSpriteTexture.Get(), &srvDesc, heapCPU);
 	}
 }
 
@@ -1634,7 +1621,7 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 		textureTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		textureTableRange.RegisterSpace = 0;
 		textureTableRange.BaseShaderRegister = 1;
-		textureTableRange.NumDescriptors = 2;
+		textureTableRange.NumDescriptors = 1;
 		textureTableRange.OffsetInDescriptorsFromTableStart = 0;
 
 		rootParams[ROOT_SPRITETEX_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -1669,6 +1656,7 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.SampleMask = UINT_MAX;
 
+	psoDesc.BlendState.IndependentBlendEnable = true;
 	psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
 	psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
@@ -1679,8 +1667,9 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 
 	//OM Set
 	psoDesc.DSVFormat = m_swapChain->GetDSVFormat();
-	psoDesc.NumRenderTargets = 1;
+	psoDesc.NumRenderTargets = 2;
 	psoDesc.RTVFormats[0] = m_backBufferFormat;
+	psoDesc.RTVFormats[1] = m_deferredFormat[DEFERRED_TEXTURE_RENDERID];
 
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.SampleDesc.Quality = 0;
@@ -1690,9 +1679,38 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			auto rtv = m_swapChain->CurrRTV();
+			std::sort(m_reservedUIInfos.begin(), m_reservedUIInfos.end(), [](const UIInfo& left, const UIInfo& right)
+				{
+					return left.pos.z > right.pos.z;
+				});
+			
+			unsigned int currIndex = 0;
+			for (auto& currInfo : m_reservedUIInfos)
+			{
+				m_renderIDIndices[currInfo.renderID] = currIndex++;
+			}
+
+			for (auto& currInfo : m_reservedUIInfos)
+			{
+				auto iter = m_renderIDIndices.find(currInfo.parentRenderIndex);
+
+				if (iter == m_renderIDIndices.end())
+				{
+					currInfo.parentRenderIndex = m_renderIDIndices[currInfo.renderID];
+				}
+				else
+				{
+					currInfo.parentRenderIndex = iter->second;
+				}
+			}
+
+			std::memcpy(m_uiInfoMapped[m_currFrame], m_reservedUIInfos.data(), m_reservedUIInfos.size() * sizeof(UIInfo));
+
+			auto renderIDRTV = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
+			renderIDRTV.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_swapChain->CurrRTV(),renderIDRTV };
 			m_swapChain->ClearDS(cmd);
-			cmd->OMSetRenderTargets(1, &rtv, false, &m_swapChain->GetDSV());
+			cmd->OMSetRenderTargets(_countof(rtvs), rtvs, false, &m_swapChain->GetDSV());
 
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
@@ -1716,109 +1734,12 @@ void GraphicDeviceDX12::BuildUIRenderPipeLineWorkSet()
 			cmd->SetGraphicsRootDescriptorTable(ROOT_SPRITETEX_TABLE, m_uiSpriteSRVHeap->GetGPUDescriptorHandleForHeapStart());
 
 			cmd->DrawInstanced(m_reservedUIInfos.size(), 1, 0, 0);
-			m_reservedUIInfos.clear();
-		};
 
-	currPSOWorkSet.nodeGraphicCmdFunc = nullptr;
-}
-
-void GraphicDeviceDX12::BuildUIRenderIDRenderPipeLineWorkSet()
-{
-	enum
-	{
-		ROOT_WINSIZERECIPROCAL_CONST = 0,
-		ROOT_UIINFOS_SRV,
-		ROOT_NUM
-	};
-
-	std::string pipeLineName = "uiRenderIDRender";
-	auto& currPSOWorkSet = m_PSOWorkSets[PSOW_UI_RENDERID_RENDER];
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-
-	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
-
-		rootParams[ROOT_WINSIZERECIPROCAL_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_WINSIZERECIPROCAL_CONST].Constants.Num32BitValues = 2;
-		rootParams[ROOT_WINSIZERECIPROCAL_CONST].Constants.RegisterSpace = 0;
-		rootParams[ROOT_WINSIZERECIPROCAL_CONST].Constants.ShaderRegister = 0;
-		rootParams[ROOT_WINSIZERECIPROCAL_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
-
-		rootParams[ROOT_UIINFOS_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_UIINFOS_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_UIINFOS_SRV].Descriptor.ShaderRegister = 0;
-		rootParams[ROOT_UIINFOS_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
-
-		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
-		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootsigDesc.pStaticSamplers = nullptr;
-		rootsigDesc.NumStaticSamplers = 0;
-		rootsigDesc.NumParameters = rootParams.size();
-		rootsigDesc.pParameters = rootParams.data();
-
-		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
-		currPSOWorkSet.rootSig = psoDesc.pRootSignature;
-	}
-
-	psoDesc.NodeMask = 0;
-
-	psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "VS");
-	psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "GS");
-	psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName).c_str(), L"Shader/UIRenderIDShader.hlsl", "PS");
-
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-	psoDesc.InputLayout.NumElements = 0;
-	psoDesc.InputLayout.pInputElementDescs = nullptr;
-
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	psoDesc.SampleMask = UINT_MAX;
-
-	psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
-
-	psoDesc.DSVFormat = m_swapChain->GetDSVFormat();
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R16_UINT;
-	psoDesc.SampleDesc.Count = 1;
-	psoDesc.SampleDesc.Quality = 0;
-
-	currPSOWorkSet.renderQueue = nullptr;
-	currPSOWorkSet.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
-
-	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
-		{
-			std::sort(m_reservedUIInfos.begin(), m_reservedUIInfos.end(), [](const UIInfo& left, const UIInfo& right)
-				{
-					return left.pos.z > right.pos.z;
-				});
-
-			std::memcpy(m_uiInfoMapped[m_currFrame], m_reservedUIInfos.data(), m_reservedUIInfos.size() * sizeof(UIInfo));
-
-			auto rtv = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
-			rtv.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
-			m_swapChain->ClearDS(cmd);
-			cmd->OMSetRenderTargets(1, &rtv, false, &m_swapChain->GetDSV());
-
-			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-
-			DirectX::XMUINT2 windowReciprocal = {};
-			float windowXReciprocal = 1.0f / GlobalOptions::GO.WIN.WindowsizeX;
-			float windowYReciprocal = 1.0f / GlobalOptions::GO.WIN.WindowsizeY;
-
-			std::memcpy(&windowReciprocal.x, &windowXReciprocal, sizeof(float));
-			std::memcpy(&windowReciprocal.y, &windowYReciprocal, sizeof(float));
-
-			auto uiInfoDataGPU = m_uiInfoDatas->GetGPUVirtualAddress();
-			uiInfoDataGPU += sizeof(UIInfo) * UIInfo::maxNumUI * m_currFrame;
-
-			cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZERECIPROCAL_CONST, windowReciprocal.x, 0);
-			cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZERECIPROCAL_CONST, windowReciprocal.y, 1);
-			cmd->SetGraphicsRootShaderResourceView(ROOT_UIINFOS_SRV, uiInfoDataGPU);
-
-			cmd->DrawInstanced(m_reservedUIInfos.size(), 1, 0, 0);
 			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get(),
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+			m_reservedUIInfos.clear();
+			m_renderIDIndices.clear();
 		};
 
 	currPSOWorkSet.nodeGraphicCmdFunc = nullptr;

@@ -346,6 +346,7 @@ CGHRenderer::CGHRenderer()
 CGHRenderer::~CGHRenderer()
 {
 	s_renderIDPool.push_back(m_renderID);
+	RemoveFuncs();
 }
 
 void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
@@ -421,6 +422,5 @@ void CGHRenderer::SetParentRender(const CGHRenderer* render)
 
 void CGHRenderer::RemoveFuncs()
 {
-	auto& actions = s_mouseActions[m_renderID];
-	actions.clear();
+	s_mouseActions.erase(m_renderID);
 }
