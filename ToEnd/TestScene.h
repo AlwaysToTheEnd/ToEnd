@@ -15,6 +15,7 @@ public:
 	void Init();
 	void Update(float delta);
 	void RateUpdate(float delta);
+	void Render(unsigned int currFrame);
 
 private:
 	void ButtonTestFunc(CGHNode* node, int idex);

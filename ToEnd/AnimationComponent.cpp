@@ -14,7 +14,7 @@ void COMAnimator::Release(CGHNode* ndoe)
 {
 }
 
-void COMAnimator::Update(CGHNode* node, unsigned int, float delta)
+void COMAnimator::Update(CGHNode* node, float delta)
 {
 	const aiAnimation* currAnimation = nullptr;
 

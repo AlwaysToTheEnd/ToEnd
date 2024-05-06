@@ -219,12 +219,12 @@ void TestScene::Init()
 	}
 
 	{
-	/*	auto light = m_dirLight2.CreateComponent<COMDirLight>();
-		light->m_data.color = DirectX::XMFLOAT3(0.0f, 0.3f, 1.0f);
-		light->m_data.power = 1.0f;
-		light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
+		/*	auto light = m_dirLight2.CreateComponent<COMDirLight>();
+			light->m_data.color = DirectX::XMFLOAT3(0.0f, 0.3f, 1.0f);
+			light->m_data.power = 1.0f;
+			light->SetFlags(CGHLightComponent::LIGHT_FLAG_SHADOW);
 
-		auto lightTransform = m_dirLight2.CreateComponent<COMTransform>();*/
+			auto lightTransform = m_dirLight2.CreateComponent<COMTransform>();*/
 	}
 
 	auto fontrender = m_stringNode.CreateComponent<COMFontRenderer>();
@@ -271,20 +271,29 @@ void TestScene::Update(float delta)
 	//lightTrans2->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
 
 	CGHRenderer::ExcuteMouseAction(graphic->GetCurrMouseTargetRenderID());
-	m_rootNode->Update(graphic->GetCurrFrameIndex(), delta);
-	m_dirLight.Update(graphic->GetCurrFrameIndex(), delta);
-	m_dirLight2.Update(graphic->GetCurrFrameIndex(), delta);
-	m_stringNode.Update(graphic->GetCurrFrameIndex(), delta);
-	m_testButton.Update(graphic->GetCurrFrameIndex(), delta);
+	m_rootNode->Update(delta);
+	m_dirLight.Update(delta);
+	m_dirLight2.Update(delta);
+	m_stringNode.Update(delta);
+	m_testButton.Update(delta);
 }
 
 void TestScene::RateUpdate(float delta)
 {
-	m_rootNode->RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_dirLight.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_dirLight2.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_stringNode.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
-	m_testButton.RateUpdate(GraphicDeviceDX12::GetGraphic()->GetCurrFrameIndex(), delta);
+	m_rootNode->RateUpdate(delta);
+	m_dirLight.RateUpdate(delta);
+	m_dirLight2.RateUpdate(delta);
+	m_stringNode.RateUpdate(delta);
+	m_testButton.RateUpdate(delta);
+}
+
+void TestScene::Render(unsigned int currFrame)
+{
+	m_rootNode->Render(currFrame);
+	m_dirLight.Render(currFrame);
+	m_dirLight2.Render(currFrame);
+	m_stringNode.Render(currFrame);
+	m_testButton.Render(currFrame);
 }
 
 void TestScene::ButtonTestFunc(CGHNode* node, int index)

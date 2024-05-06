@@ -34,8 +34,8 @@ public:
 	COMAnimator(CGHNode* node);
 
 	virtual void Release(CGHNode* ndoe);
-	virtual void Update(CGHNode* node, unsigned int, float delta) override;
-	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override {}
+	virtual void Update(CGHNode* node, float delta) override;
+	virtual void RateUpdate(CGHNode* node, float delta) override {}
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_ANIMATOR; }
 

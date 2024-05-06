@@ -29,8 +29,9 @@ public:
 		}
 	}
 	virtual void Release(CGHNode* ndoe) {};
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) = 0;
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) = 0;
+	virtual void Update(CGHNode* node, float delta) = 0;
+	virtual void RateUpdate(CGHNode* node, float delta) = 0;
+	virtual void Render(CGHNode* node, unsigned int currFrame) {}
 	virtual size_t GetTypeHashCode() = 0;
 	virtual unsigned int GetPriority() { return COMPONENT_CUSTOM; }
 

@@ -13,8 +13,8 @@ class COMTransform : public Component
 public:
 	COMTransform(CGHNode* node);
 
-	virtual void Update(CGHNode* node, unsigned int, float delta) override;
-	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override {};
+	virtual void Update(CGHNode* node, float delta) override;
+	virtual void RateUpdate(CGHNode* node, float delta) override {};
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_TRANSFORM; }
 
@@ -43,8 +43,9 @@ public:
 	COMSkinnedMesh(CGHNode* node);
 	virtual ~COMSkinnedMesh();
 	virtual void Release(CGHNode* node) override;
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual void Update(CGHNode* node, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override;
+	virtual void Render(CGHNode* node, unsigned int currFrame) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH; }
 
@@ -71,8 +72,8 @@ public:
 	COMMaterial(CGHNode* node);
 	virtual ~COMMaterial();
 	virtual void Release(CGHNode* node) override;
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual void Update(CGHNode* node, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_MATERIAL; }
 
@@ -137,8 +138,9 @@ public:
 	COMDX12SkinnedMeshRenderer(CGHNode* node);
 	virtual ~COMDX12SkinnedMeshRenderer() = default;
 
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual void Update(CGHNode* node,float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override {};
+	virtual void Render(CGHNode* node, unsigned int) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
@@ -151,8 +153,8 @@ class COMUITransform : public Component
 public:
 	COMUITransform(CGHNode* node) {};
 
-	virtual void Update(CGHNode* node, unsigned int, float delta) override;
-	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override {}
+	virtual void Update(CGHNode* node, float delta) override;
+	virtual void RateUpdate(CGHNode* node, float delta) override {}
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_UITRANSFORM; }
 
@@ -175,8 +177,9 @@ public:
 	COMUIRenderer(CGHNode* node);
 	virtual ~COMUIRenderer() = default;
 
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual void Update(CGHNode* node, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override {}
+	virtual void Render(CGHNode* node, unsigned int) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
 	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color) { DirectX::XMStoreFloat4(&m_color, color); m_isTextureBackGound = false; }
@@ -195,8 +198,9 @@ public:
 	COMFontRenderer(CGHNode* node);
 	virtual ~COMFontRenderer() = default;
 
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int currFrame, float delta) override;
+	virtual void Update(CGHNode* node, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override;
+	virtual void Render(CGHNode* node, unsigned int) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
 	void SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch);

@@ -12,10 +12,10 @@ void NodeTransformController::Init()
 {
 }
 
-void NodeTransformController::Update(unsigned int currFrame, float delta)
+void NodeTransformController::Update(float delta)
 {
 }
 
-void NodeTransformController::RateUpdate(unsigned int currFrame, float delta)
+void NodeTransformController::RateUpdate(float delta)
 {
 }

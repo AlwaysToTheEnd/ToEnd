@@ -30,8 +30,9 @@ public:
 	virtual ~CGHNode();
 
 	virtual void Init() {};
-	virtual void Update(unsigned int currFrame, float delta);
-	virtual void RateUpdate(unsigned int currFrame, float delta);
+	virtual void Update(float delta);
+	virtual void RateUpdate(float delta);
+	virtual void Render(unsigned int currFrame);
 
 	template<typename T> T* CreateComponent();
 	template<typename T> T* GetComponent();

@@ -11,8 +11,8 @@ public:
 	virtual ~NodeTransformController();
 
 	virtual void Init() override;
-	virtual void Update(unsigned int currFrame, float delta) override;
-	virtual void RateUpdate(unsigned int currFrame, float delta) override;
+	virtual void Update(float delta) override;
+	virtual void RateUpdate(float delta) override;
 
 private:
 	CGHUIButton m_buttonPool[maxNumButton];

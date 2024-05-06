@@ -17,7 +17,7 @@ struct LightData
 class CGHLightComponent : public Component
 {
 public:
-	virtual void Update(CGHNode* node, unsigned int currFrame, float delta) = 0;
+	virtual void Update(CGHNode* node, float delta) = 0;
 	enum LIGHT_FLAGS : unsigned int
 	{
 		LIGHT_FLAG_NONE =0,
@@ -30,7 +30,6 @@ public:
 	LIGHT_FLAGS GetFlags() { return static_cast<LIGHT_FLAGS>(m_lightFlags); }
 
 protected:
-	unsigned int m_lightIndex = 0;
 	unsigned int m_lightFlags = 0;
 
 };
@@ -40,25 +39,24 @@ class COMDirLight : public CGHLightComponent
 public:
 	COMDirLight(CGHNode* node);
 
-	virtual void Update(CGHNode* node, unsigned int, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override;
+	virtual void Update(CGHNode* node, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override;
+	virtual void Render(CGHNode* node, unsigned int) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
 private:
 	static size_t s_hashCode;
 };
 
-
 class COMPointLight : public CGHLightComponent
 {
 public:
 	COMPointLight(CGHNode* node);
 
-	virtual void Release(CGHNode* ndoe);
-	virtual void Update(CGHNode* node, unsigned int, float delta) override {}
-	virtual void RateUpdate(CGHNode* node, unsigned int, float delta) override;
+	virtual void Update(CGHNode* node, float delta) override {}
+	virtual void RateUpdate(CGHNode* node, float delta) override;
+	virtual void Render(CGHNode* node, unsigned int) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
-	UINT64 GetLightDataGPU(unsigned int currFrameIndex);
 
 private:
 	static size_t s_hashCode;

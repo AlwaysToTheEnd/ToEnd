@@ -4,14 +4,6 @@
 class Camera
 {
 public:
-	enum class CAMERA_MOVE_DIR
-	{
-		DIR_FRONT,
-		DIR_BACK,
-		DIR_RIGHT,
-		DIR_LEFT,
-		DIR_ORIGIN
-	};
 
 public:
 	Camera();

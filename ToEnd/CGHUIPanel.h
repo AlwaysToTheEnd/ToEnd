@@ -9,8 +9,6 @@ public:
 	virtual ~CGHUIPanel();
 
 	virtual void Init() override;
-	virtual void Update(unsigned int currFrame, float delta) override;
-	virtual void RateUpdate(unsigned int currFrame, float delta) override;
 
 private:
 

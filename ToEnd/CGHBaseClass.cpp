@@ -28,7 +28,7 @@ CGHNode::~CGHNode()
 }
 
 
-void CGHNode::Update(unsigned int currFrame, float delta)
+void CGHNode::Update(float delta)
 {
 	if (m_active)
 	{
@@ -36,18 +36,18 @@ void CGHNode::Update(unsigned int currFrame, float delta)
 		{
 			if (iter.get() && iter->GetActive())
 			{
-				iter->Update(this, currFrame, delta);
+				iter->Update(this, delta);
 			}
 		}
 
 		for (auto& iter : m_childs)
 		{
-			iter->Update(currFrame, delta);
+			iter->Update(delta);
 		}
 	}
 }
 
-void CGHNode::RateUpdate(unsigned int currFrame, float delta)
+void CGHNode::RateUpdate(float delta)
 {
 	if (m_active)
 	{
@@ -55,17 +55,36 @@ void CGHNode::RateUpdate(unsigned int currFrame, float delta)
 		{
 			if (iter.get() && iter->GetActive())
 			{
-				iter->RateUpdate(this, currFrame, delta);
+				iter->RateUpdate(this, delta);
 			}
 		}
 
 		for (auto& iter : m_childs)
 		{
-			iter->RateUpdate(currFrame, delta);
+			iter->RateUpdate(delta);
+		}
+	}
+}
+
+void CGHNode::Render(unsigned int currFrame)
+{
+	if (m_active)
+	{
+		for (auto& iter : m_components)
+		{
+			if (iter.get() && iter->GetActive())
+			{
+				iter->Render(this, currFrame);
+			}
 		}
 
-		std::memcpy(&m_srt, &CGH::IdentityMatrix, sizeof(m_srt));
+		for (auto& iter : m_childs)
+		{
+			iter->Render(currFrame);
+		}
 	}
+
+	std::memcpy(&m_srt, &CGH::IdentityMatrix, sizeof(m_srt));
 }
 
 CGHNode* CGHNode::FindNode(const char* name)

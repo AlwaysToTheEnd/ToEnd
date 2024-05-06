@@ -462,7 +462,6 @@ void GraphicDeviceDX12::RenderBegin()
 	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, backColor, 0, nullptr);
 	m_cmdList->ClearRenderTargetView(m_smaa->GetColorRenderTarget(), backColor, 0, nullptr);
 
-	CreateRenderResources();
 }
 
 void GraphicDeviceDX12::RenderMesh(CGHNode* node, unsigned int renderFlag)
@@ -565,6 +564,7 @@ void GraphicDeviceDX12::RenderString(const wchar_t* str, const DirectX::XMFLOAT4
 
 void GraphicDeviceDX12::RenderEnd()
 {
+	CreateRenderResources();
 	BaseRender();
 
 	{

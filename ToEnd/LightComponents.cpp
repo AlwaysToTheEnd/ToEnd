@@ -9,41 +9,33 @@ COMDirLight::COMDirLight(CGHNode* node)
 {
 }
 
-void COMDirLight::RateUpdate(CGHNode* node, unsigned int, float delta)
+void COMDirLight::RateUpdate(CGHNode* node, float delta)
 {
-	auto graphic = GraphicDeviceDX12::GetGraphic();
-
 	DirectX::XMVECTOR dir = { 0.0f, 0.0f, 1.0f, 0.0f };
 	dir = DirectX::XMVector3Transform(dir, DirectX::XMLoadFloat4x4(&node->m_srt));
 
 	DirectX::XMStoreFloat3(&m_data.dir, dir);
-	
+}
+
+void COMDirLight::Render(CGHNode* node, unsigned int)
+{
+	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderLight(node, m_lightFlags, s_hashCode);
 }
 
 COMPointLight::COMPointLight(CGHNode* node)
 {
-	m_lightIndex = DX12GraphicResourceManager::s_insatance.CreateData<LightData>();
 }
 
-void COMPointLight::Release(CGHNode* ndoe)
+void COMPointLight::RateUpdate(CGHNode* node, float delta)
 {
-	DX12GraphicResourceManager::s_insatance.ReleaseData<LightData>(m_lightIndex);
-}
-
-void COMPointLight::RateUpdate(CGHNode* node, unsigned int, float delta)
-{
-	auto graphic = GraphicDeviceDX12::GetGraphic();
-
 	DirectX::XMVECTOR pos = { 0.0f, 0.0f, 0.0f, 1.0f };
 	pos = DirectX::XMVector3Transform(pos, DirectX::XMLoadFloat4x4(&node->m_srt));
 	DirectX::XMStoreFloat3(&m_data.pos, pos);
-
-	DX12GraphicResourceManager::s_insatance.SetData<LightData>(m_lightIndex, &m_data);
-	graphic->RenderLight(node, m_lightFlags, s_hashCode);
 }
 
-UINT64 COMPointLight::GetLightDataGPU(unsigned int currFrameIndex)
+void COMPointLight::Render(CGHNode* node, unsigned int)
 {
-	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<LightData>(m_lightIndex, currFrameIndex);
+	auto graphic = GraphicDeviceDX12::GetGraphic();
+	graphic->RenderLight(node, m_lightFlags, s_hashCode);
 }

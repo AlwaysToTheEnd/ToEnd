@@ -5,6 +5,7 @@
 #include "DX12TextureBuffer.h"
 #include "Dx12FontManager.h"
 #include "InputManager.h"
+#include <ppl.h>
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
@@ -22,21 +23,19 @@ COMTransform::COMTransform(CGHNode* node)
 {
 }
 
-void COMTransform::Update(CGHNode* node, unsigned int, float delta)
+void COMTransform::Update(CGHNode* node, float delta)
 {
-	DirectX::XMMATRIX rotateMat = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&m_queternion));
-	DirectX::XMMATRIX scaleMat = DirectX::XMMatrixScaling(m_scale.x, m_scale.y, m_scale.z);
-	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
-	DirectX::XMMATRIX ortMat = DirectX::XMLoadFloat4x4(&node->m_srt);
+	DirectX::XMMATRIX affinMat = DirectX::XMMatrixAffineTransformation(DirectX::XMLoadFloat3(&m_scale), DirectX::XMVectorZero(),
+		DirectX::XMLoadFloat4(&m_queternion), DirectX::XMLoadFloat3(&m_pos));
 
 	CGHNode* parentNode = node->GetParent();
 	if (parentNode != nullptr)
 	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, ortMat * scaleMat * rotateMat * transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
+		DirectX::XMStoreFloat4x4(&node->m_srt, affinMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
 	}
 	else
 	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, ortMat * scaleMat * rotateMat * transMat);
+		DirectX::XMStoreFloat4x4(&node->m_srt, affinMat);
 	}
 }
 
@@ -93,7 +92,7 @@ void COMSkinnedMesh::Release(CGHNode* node)
 	m_boneDatas->Unmap(0, nullptr);
 }
 
-void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+void COMSkinnedMesh::RateUpdate(CGHNode* node, float delta)
 {
 	if (m_nodeTreeDirty)
 	{
@@ -109,12 +108,16 @@ void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float del
 
 		m_nodeTreeDirty = false;
 	}
+}
 
+void COMSkinnedMesh::Render(CGHNode* node, unsigned int currFrame)
+{
 	if (m_data)
 	{
 		DirectX::XMFLOAT4X4* mapped = m_boneDatasCpu[currFrame];
+		auto& bones = m_data->bones;
 
-		for (auto& currBone : m_data->bones)
+		for (auto& currBone : bones)
 		{
 			auto iter = m_currNodeTree.find(currBone.name);
 			if (iter != m_currNodeTree.end())
@@ -129,6 +132,21 @@ void COMSkinnedMesh::RateUpdate(CGHNode* node, unsigned int currFrame, float del
 
 			mapped++;
 		}
+		//int numBone = bones.size();
+		//Concurrency::parallel_for(0, numBone, [mapped, bones, this](int boneIndex)
+		//	{
+		//		auto& currBone = bones[boneIndex];
+		//		auto iter = m_currNodeTree.find(currBone.name);
+		//		if (iter != m_currNodeTree.end())
+		//		{
+		//			DirectX::XMMATRIX mat = DirectX::XMLoadFloat4x4(&currBone.offsetMatrix) * DirectX::XMLoadFloat4x4(&iter->second->m_srt);
+		//			DirectX::XMStoreFloat4x4(mapped + boneIndex, DirectX::XMMatrixTranspose(mat));
+		//		}
+		//		else
+		//		{
+		//			assert(false);
+		//		}
+		//	});
 	}
 }
 
@@ -163,7 +181,7 @@ COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
 {
 }
 
-void COMDX12SkinnedMeshRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+void COMDX12SkinnedMeshRenderer::Render(CGHNode* node, unsigned int)
 {
 	if (node->GetComponent<COMSkinnedMesh>())
 	{
@@ -201,7 +219,7 @@ void COMMaterial::Release(CGHNode* node)
 	}
 }
 
-void COMMaterial::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+void COMMaterial::RateUpdate(CGHNode* node, float delta)
 {
 	DX12GraphicResourceManager::s_insatance.SetData<CGHMaterial>(m_currMaterialIndex, &m_material);
 }
@@ -251,7 +269,7 @@ UINT64 COMMaterial::GetMaterialDataGPU(unsigned int currFrameIndex)
 	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex, currFrameIndex);
 }
 
-void COMUITransform::Update(CGHNode* node, unsigned int, float delta)
+void COMUITransform::Update(CGHNode* node, float delta)
 {
 	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
 
@@ -281,7 +299,7 @@ COMUIRenderer::COMUIRenderer(CGHNode* node)
 	m_color = { 0.0f,0.0f,0.0f, 1.0f };
 }
 
-void COMUIRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+void COMUIRenderer::Render(CGHNode* node, unsigned int)
 {
 	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
 	DirectX::XMFLOAT2 size = node->GetComponent<COMUITransform>()->GetSize();
@@ -300,7 +318,12 @@ COMFontRenderer::COMFontRenderer(CGHNode* node)
 {
 }
 
-void COMFontRenderer::RateUpdate(CGHNode* node, unsigned int currFrame, float delta)
+void COMFontRenderer::RateUpdate(CGHNode* node, float delta)
+{
+
+}
+
+void COMFontRenderer::Render(CGHNode* node, unsigned int)
 {
 	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
 	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, m_fontSize, m_rowPitch, m_parentRenderID);
@@ -310,7 +333,6 @@ void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
 {
 	DirectX::XMStoreFloat4(&m_color, color);
 }
-
 
 void COMFontRenderer::SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch)
 {
@@ -393,7 +415,7 @@ void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
 				default:
 					assert(false);
 					break;
-				} 
+				}
 
 				if (currAction.funcMouseState == targetState)
 				{
