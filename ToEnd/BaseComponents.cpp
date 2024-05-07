@@ -15,9 +15,11 @@ size_t COMUIRenderer::s_hashCode = typeid(COMUIRenderer).hash_code();
 size_t COMUITransform::s_hashCode = typeid(COMUITransform).hash_code();
 size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
 
+unsigned int COMSkinnedMesh::s_srvUavSize = 0;
 unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
 std::vector<unsigned int> CGHRenderer::s_renderIDPool;
 std::unordered_map<unsigned int, std::vector<CGHRenderer::MouseAction>> CGHRenderer::s_mouseActions;
+const GraphicDeviceDX12::PipeLineWorkSet* COMDX12SkinnedMeshRenderer::s_skinnedMeshBoneUpdateCompute = nullptr;
 
 COMTransform::COMTransform(CGHNode* node)
 {
@@ -80,6 +82,11 @@ COMSkinnedMesh::COMSkinnedMesh(CGHNode* node)
 			std::memcpy(mapped, &CGH::IdentityMatrix, sizeof(DirectX::XMFLOAT4X4));
 			mapped++;
 		}
+	}
+
+	if (s_srvUavSize == 0)
+	{
+		s_srvUavSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 }
 
@@ -155,12 +162,84 @@ void COMSkinnedMesh::SetMeshData(const CGHMesh* meshData)
 	if (m_data == meshData) return;
 
 	m_data = meshData;
+	m_VNTBResource = nullptr;
 
 	if (m_data)
 	{
 		unsigned int numBone = 0;
+		auto device = GraphicDeviceDX12::GetDevice();
 
 		assert(m_data->bones.size() < MAXNUMBONE);
+
+		unsigned int numVertex = m_data->numData[MESHDATA_POSITION];
+		D3D12_HEAP_PROPERTIES prop = {};
+		D3D12_RESOURCE_DESC desc = {};
+
+		prop.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		desc.Alignment = 0;
+		desc.MipLevels = 1;
+		desc.DepthOrArraySize = 1;
+		desc.SampleDesc.Count = 1;
+		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		desc.Width = sizeof(DirectX::XMFLOAT3) * numVertex * MESHDATA_INDEX;
+
+		ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(m_VNTBResource.GetAddressOf())));
+
+		if (m_srvuavHeap == nullptr)
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = MESHDATA_INDEX + 2 + MESHDATA_INDEX;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+			ThrowIfFailed(device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_srvuavHeap.GetAddressOf())));
+		}
+
+		auto heapCPU = m_srvuavHeap->GetCPUDescriptorHandleForHeapStart();
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT3);
+		srvDesc.Buffer.NumElements = numVertex;
+
+		for (int i = 0; i < MESHDATA_INDEX; i++)
+		{
+			device->CreateShaderResourceView(m_data->meshData.Get(), &srvDesc, heapCPU);
+			heapCPU.ptr += s_srvUavSize;
+			srvDesc.Buffer.FirstElement += numVertex;
+		}
+
+		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMUINT2);
+		srvDesc.Buffer.NumElements = numVertex;
+		srvDesc.Buffer.FirstElement = 0;
+		device->CreateShaderResourceView(m_data->boneWeightInfos.Get(), &srvDesc, heapCPU);
+		heapCPU.ptr += s_srvUavSize;
+
+		srvDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT2);
+		srvDesc.Buffer.NumElements = m_data->numBoneWeights;
+		srvDesc.Buffer.FirstElement = 0;
+		device->CreateShaderResourceView(m_data->boneWeights.Get(), &srvDesc, heapCPU);
+		heapCPU.ptr += s_srvUavSize;
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		uavDesc.Buffer.CounterOffsetInBytes = 0;
+		uavDesc.Buffer.NumElements = numVertex;
+		uavDesc.Buffer.StructureByteStride = sizeof(DirectX::XMFLOAT3);
+
+		for (int i = 0; i < MESHDATA_INDEX; i++)
+		{
+			device->CreateUnorderedAccessView(m_VNTBResource.Get(), nullptr, &uavDesc, heapCPU);
+			heapCPU.ptr += s_srvUavSize;
+			uavDesc.Buffer.FirstElement += numVertex;
+		}
 	}
 }
 
@@ -168,9 +247,16 @@ D3D12_GPU_VIRTUAL_ADDRESS COMSkinnedMesh::GetBoneData(unsigned int currFrame)
 {
 	auto result = m_boneDatas->GetGPUVirtualAddress();
 	result += BONEDATASIZE * currFrame;
-
 	return result;
 }
+
+D3D12_GPU_VIRTUAL_ADDRESS COMSkinnedMesh::GetResultMeshData(MESHDATA_TYPE type)
+{
+	auto result = m_VNTBResource->GetGPUVirtualAddress();
+	result += m_data->numData[MESHDATA_POSITION] * sizeof(DirectX::XMFLOAT3) * type;
+	return result;
+}
+
 
 void COMSkinnedMesh::NodeTreeDirty()
 {
@@ -179,14 +265,28 @@ void COMSkinnedMesh::NodeTreeDirty()
 
 COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
 {
+	if (s_skinnedMeshBoneUpdateCompute == nullptr)
+	{
+		s_skinnedMeshBoneUpdateCompute = GraphicDeviceDX12::GetGraphic()->GetPSOWorkset("SkinnedMeshBoneUpdateCompute");
+	}
 }
 
 void COMDX12SkinnedMeshRenderer::Render(CGHNode* node, unsigned int)
 {
 	if (node->GetComponent<COMSkinnedMesh>())
 	{
-		GraphicDeviceDX12::GetGraphic()->RenderSkinnedMesh(node, m_renderFlag);
+		auto graphc = GraphicDeviceDX12::GetGraphic();
+		if (m_currPsow)
+		{
+			graphc->RenderMesh(s_skinnedMeshBoneUpdateCompute, node);
+			graphc->RenderMesh(m_currPsow, node);
+		}
 	}
+}
+
+void COMDX12SkinnedMeshRenderer::SetPSOW(const char* name)
+{
+	m_currPsow = GraphicDeviceDX12::GetGraphic()->GetPSOWorkset(name);
 }
 
 COMMaterial::COMMaterial(CGHNode* node)

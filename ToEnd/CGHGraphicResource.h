@@ -122,9 +122,11 @@ struct CGHMesh
 	std::string meshName;
 	aiPrimitiveType primitiveType = aiPrimitiveType_POINT;
 	int numData[MESHDATA_NUM] = {};
+	int numBoneWeights = 0;
 	std::vector<unsigned int> numUVComponent;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> meshData[MESHDATA_NUM];
+	Microsoft::WRL::ComPtr<ID3D12Resource> meshData;
+	Microsoft::WRL::ComPtr<ID3D12Resource> indices;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> meshDataUVs;
 
 	std::vector<CGHBone> bones;
@@ -136,4 +138,5 @@ struct CGHMesh
 		return bones.size();
 	}
 };
+
 

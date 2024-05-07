@@ -3,20 +3,9 @@
 
 struct VertexIn
 {
-    float3 posL : POSITION;
-    float3 normal : NORMAL;
-    float3 tan : TANGENT;
-    float3 bitan : BITAN;
     float3 uv0 : UV0;
     float3 uv1 : UV1;
     float3 uv2 : UV2;
-    uint2 weightInfo : BONEWEIGHTINFO; //x =numWeight , y = offsetIndex
-};
-
-struct BoneWeight
-{
-    uint boneIndex;
-    float weight;
 };
 
 cbuffer cbsettings : register(b0, space1)
@@ -26,10 +15,10 @@ cbuffer cbsettings : register(b0, space1)
     float gPhongTessAlpha;
 };
 
-StructuredBuffer<BoneWeight> gBoneWeights : register(t0, space1);
-StructuredBuffer<float4x4> gBoneData : register(t1, space1);
-
-RWStructuredBuffer<float3> gResultVertices : register(u0, space1);
+StructuredBuffer<float3> gPos : register(t0, space1);
+StructuredBuffer<float3> gNormal : register(t1, space1);
+StructuredBuffer<float3> gTangent : register(t2, space1);
+StructuredBuffer<float3> gBitan : register(t3, space1);
 
 struct VSOut
 {
@@ -46,36 +35,14 @@ VSOut VS(VertexIn vin, uint id : SV_VertexID)
 {
     VSOut vout;
    
-    float4 sumPos = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    float3 sumNormal = float3(0.0f, 0.0f, 0.0f);
-    float3 sumTangent = float3(0.0f, 0.0f, 0.0f);
-    float3 sumBitan = float3(0.0f, 0.0f, 0.0f);
-    
-    BoneWeight boenWeight;
-    [loop]
-    for (uint i = 0; i < vin.weightInfo.x; i++)
-    {
-        boenWeight = gBoneWeights[vin.weightInfo.y + i];
-        
-        sumPos += boenWeight.weight * mul(float4(vin.posL, 1.0f), gBoneData[boenWeight.boneIndex]);
-        sumNormal += boenWeight.weight * mul(vin.normal, (float3x3) gBoneData[boenWeight.boneIndex]);
-        sumTangent += boenWeight.weight * mul(vin.tan, (float3x3) gBoneData[boenWeight.boneIndex]);
-        sumBitan += boenWeight.weight * mul(vin.bitan, (float3x3) gBoneData[boenWeight.boneIndex]);
-    }
-    
-    vout.pos = sumPos.xyz;
-    vout.tangent = normalize(sumTangent);
-    vout.normal = normalize(sumNormal);
-    vout.biTan = normalize(sumBitan);
+    vout.pos = gPos[id];
+    vout.normal = gNormal[id];
+    vout.tangent = gTangent[id];
+    vout.biTan = gBitan[id];
    
     vout.uv0 = vin.uv0;
     vout.uv1 = vin.uv1;
     vout.uv2 = vin.uv2;
-    
-    if (gIsShadowGen)
-    {
-        gResultVertices[id] = sumPos.xyz;
-    }
     
     return vout;
 }

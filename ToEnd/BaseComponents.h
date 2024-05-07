@@ -52,15 +52,21 @@ public:
 	void SetMeshData(const CGHMesh* meshData);
 	const CGHMesh* GetMeshData() const { return m_data; }
 	D3D12_GPU_VIRTUAL_ADDRESS GetBoneData(unsigned int currFrame);
+	D3D12_GPU_VIRTUAL_ADDRESS GetResultMeshData(MESHDATA_TYPE type);
+	ID3D12Resource* GetResultMeshResource() { return m_VNTBResource.Get(); }
+	ID3D12DescriptorHeap* GetDescriptorHeap() { return m_srvuavHeap.Get(); }
+	
 	void NodeTreeDirty();
 
 private:
 	static size_t s_hashCode;
+	static unsigned int s_srvUavSize;
 	const CGHMesh* m_data = nullptr;
 	bool m_nodeTreeDirty = true;
 	std::unordered_map<std::string, const CGHNode*> m_currNodeTree;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_boneDatas;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_VNTBResource;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvuavHeap;
 	std::vector<DirectX::XMFLOAT4X4*> m_boneDatasCpu;
 };
 
@@ -118,6 +124,7 @@ public:
 	static void ExcuteMouseAction(unsigned int renderID);
 
 	unsigned int GetRenderID() const { return m_renderID + 1; }
+	unsigned int GetRenderFlags() const { return m_renderFlag; }
 	void SetParentRender(const CGHRenderer* render); // only for ui, font rendering
 	void AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
 
@@ -144,7 +151,11 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
+	void SetPSOW(const char* name);
+
 private:
+	static const GraphicDeviceDX12::PipeLineWorkSet* s_skinnedMeshBoneUpdateCompute;
+	const GraphicDeviceDX12::PipeLineWorkSet* m_currPsow  = nullptr;
 	static size_t s_hashCode;
 };
 

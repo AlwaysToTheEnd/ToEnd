@@ -92,6 +92,18 @@ ID3D12PipelineState* DX12PipelineMG::CreateGraphicPipeline(const char* name, con
 	return m_pipeLines[name].Get();
 }
 
+ID3D12PipelineState* DX12PipelineMG::CreateComputePipeline(const char* name, const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)
+{
+	auto GraphicDevice = GraphicDeviceDX12::GetDevice();
+
+	auto iter = m_pipeLines.find(name);
+	assert(iter == m_pipeLines.end());
+
+	ThrowIfFailed(GraphicDevice->CreateComputePipelineState(desc, IID_PPV_ARGS(m_pipeLines[name].GetAddressOf())));
+
+	return m_pipeLines[name].Get();
+}
+
 ID3D12RootSignature* DX12PipelineMG::CreateRootSignature(const char* name, const D3D12_ROOT_SIGNATURE_DESC* desc)
 {
 	auto GraphicDevice = GraphicDeviceDX12::GetDevice();

@@ -43,6 +43,15 @@ struct DX12PassConstants
 
 class GraphicDeviceDX12
 {
+public:
+	struct DX12SahdowGenMesh
+	{
+		ComPtr<ID3D12Resource> vertexBuffer;
+		ComPtr<ID3D12Resource> indicesBuffer;
+		DirectX::XMFLOAT4X4 transformMat = CGH::IdentityMatrix;
+		unsigned int numIndices = 0;
+	};
+
 	struct DX12RenderQueue
 	{
 		std::vector<std::pair<CGHNode*, unsigned int>> queue;
@@ -52,9 +61,8 @@ class GraphicDeviceDX12
 	{
 		ID3D12PipelineState* pso = nullptr;
 		ID3D12RootSignature* rootSig = nullptr;
-		DX12RenderQueue* renderQueue = nullptr;
 		std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
-		std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node, unsigned int renderFlag)> nodeGraphicCmdFunc;
+		std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node)> nodeGraphicCmdFunc;
 	};
 
 	struct ShadowMap
@@ -119,14 +127,15 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS GetCurrMainPassCBV();
 	const D3D12_RECT& GetBaseScissorRect() { return m_scissorRect; }
 	const D3D12_VIEWPORT& GetBaseViewport() { return m_screenViewport; }
+	const PipeLineWorkSet* GetPSOWorkset(const char* psowName);
 
 	GraphicDeviceDX12(const GraphicDeviceDX12& rhs) = delete;
 	GraphicDeviceDX12& operator=(const GraphicDeviceDX12& rhs) = delete;
 
 	void Update(float delta, const Camera* camera);
 
-	void RenderMesh(CGHNode* node, unsigned int renderFlag);
-	void RenderSkinnedMesh(CGHNode* node, unsigned int renderFlag);
+	void RenderMesh(const PipeLineWorkSet* psow, CGHNode* node);
+	void RenderMeshs(const PipeLineWorkSet* psow, const std::vector<CGHNode*>& nodes);
 	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
 	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID, unsigned int parentRenderID);
 	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, 
@@ -159,9 +168,8 @@ private:
 	ID3D12CommandAllocator* GetCurrRenderEndCommandAllocator();
 
 private:
-	enum PSOWORKSETLIST
+	enum PSOBASE_WORKSETLIST
 	{
-		PSOW_DEFERRED_SKINNEDMESH = 0,
 		PSOW_SHADOWMAP_WRITE,
 		PSOW_DEFERRED_LIGHT_DIR,
 		PSOW_SMAA_EDGE_RENDER,
@@ -175,13 +183,12 @@ private:
 
 	enum RENDERQUEUE
 	{
-		RENDERQUEUE_MESH = 0,
-		RENDERQUEUE_SKINNEDMESH,
-		RENDERQUEUE_LIGHT_DIR,
+		RENDERQUEUE_LIGHT_DIR =0,
 		RENDERQUEUE_LIGHT_POINT,
 		RENDERQUEUE_NUM
 	};
 
+	void BuildSkinnedMeshBoneUpdateComputePipeLineWorkSet();
 	void BuildDeferredSkinnedMeshPipeLineWorkSet();
 	void BuildShadowMapWritePipeLineWorkSet();
 	void BuildDeferredLightDirPipeLineWorkSet();
@@ -219,8 +226,9 @@ private:
 
 	DX12SwapChain*					m_swapChain = nullptr;
 
-	PipeLineWorkSet					m_PSOWorkSets[PSOW_NUM];
-	DX12RenderQueue					m_renderQueues[RENDERQUEUE_NUM];
+	PipeLineWorkSet										m_basePSOWorkSets[PSOW_NUM];
+	DX12RenderQueue										m_renderQueues[RENDERQUEUE_NUM];
+	std::unordered_map<std::string, PipeLineWorkSet>	m_meshPSOWorkSets;
 
 	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
@@ -240,13 +248,12 @@ private:
 	std::vector<CGH::CharInfo*>				m_charInfoMapped;
 	Microsoft::WRL::ComPtr<ID3D12Resource>	m_charInfos;
 
-	std::unordered_map<void*, ComPtr<ID3D12Resource>>	m_resultVertexPosBuffers;
-	ComPtr<ID3D12Resource>								m_resultVertexPosUABuffer;
-
 	const unsigned int										m_numMaxShadowMap = 8;
 	const unsigned int										m_numMaxDirLight = 32;
 	unsigned char											m_currNumShadowMap = 0;
 	unsigned int											m_numDirLight = 0;
+	std::vector<CD3DX12_RESOURCE_BARRIER>					m_afterRenderEndResourceBarriers;
+	std::vector<DX12SahdowGenMesh>							m_shadowGenMeshs;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>>		m_dirLightDatas;
 	std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>	m_shadowPassCB;
 	std::unordered_map<void*, ShadowMap>					m_dirLightShadowMaps;

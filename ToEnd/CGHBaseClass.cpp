@@ -3,7 +3,6 @@
 #include "../Common/Source/CGHUtil.h"
 
 
-
 CGHNode::CGHNode()
 {
 	DirectX::XMStoreFloat4x4(&m_srt, DirectX::XMMatrixIdentity());
@@ -26,7 +25,6 @@ CGHNode::~CGHNode()
 		}
 	}
 }
-
 
 void CGHNode::Update(float delta)
 {

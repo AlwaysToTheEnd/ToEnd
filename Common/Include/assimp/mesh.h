@@ -295,7 +295,7 @@ struct aiBone {
 
     /**
      * Matrix that transforms from mesh space to bone space in bind pose.
-     *
+     *`
      * This matrix describes the position of the mesh
      * in the local space of this bone when the skeleton was bound.
      * Thus it can be used directly to determine a desired vertex position,

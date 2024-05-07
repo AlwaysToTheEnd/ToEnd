@@ -91,6 +91,7 @@ public:
 	D3D12_SHADER_BYTECODE	CreateShader(DX12_SHADER_TYPE type, const char* shaderName, const wchar_t* filename,
 										const std::string& entrypoint, const D3D_SHADER_MACRO* defines=nullptr);
 	ID3D12PipelineState*	CreateGraphicPipeline(const char* name, const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc);
+	ID3D12PipelineState*	CreateComputePipeline(const char* name, const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc);
 	ID3D12RootSignature*	CreateRootSignature(const char* name, const D3D12_ROOT_SIGNATURE_DESC* desc);
 	ID3D12CommandSignature* CreateCommandSignature(const char* name, ID3D12RootSignature* rootsignature, const D3D12_COMMAND_SIGNATURE_DESC* desc);
 
