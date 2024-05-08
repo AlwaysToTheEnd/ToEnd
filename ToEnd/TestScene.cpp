@@ -42,6 +42,7 @@ void TestScene::Init()
 		m_bodyMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		material->SetData(&m_bodyMats.front());
 		skinnedMesh->SetMeshData(&m_bodyMeshs[0]);
+		render->SetPSOW("DeferredSkinnedMesh");
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/BaseBody/cf_m_skin_body_00_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -93,7 +94,7 @@ void TestScene::Init()
 		m_headMats.front().diffuse = { 0.9f, 0.72f, 0.65f };
 		skinnedMesh->SetMeshData(&m_headMeshs.front());
 		material->SetData(&m_headMats.front());
-
+		render->SetPSOW("DeferredSkinnedMesh");
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -143,7 +144,7 @@ void TestScene::Init()
 
 		skinnedMesh->SetMeshData(&m_hairMeshs.front());
 		material->SetData(&m_hairMats.front());
-
+		render->SetPSOW("DeferredSkinnedMesh");
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/back_MainTex.png");
 		texInfo.blend = 1.0f;

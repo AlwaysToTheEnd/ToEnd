@@ -187,6 +187,7 @@
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="LightComponents.h" />
     <ClInclude Include="NodeTransformController.h" />
+    <ClInclude Include="PipeLineWorkSet.h" />
     <ClInclude Include="PlatformHelpers.h" />
     <ClInclude Include="TestScene.h" />
     <ClInclude Include="Xml.h" />

@@ -54,7 +54,7 @@ void CS(uint3 id : SV_DispatchThreadID)
             boenWeight = gBoneWeights[weightInfo.offsetIndex + i];
             float4x4 currBone = gBoneData[boenWeight.boneIndex];
         
-            sumPos += boenWeight.weight * mul(oriPos, currBone);
+            sumPos += boenWeight.weight * mul(oriPos, currBone).xyz;
             sumNormal += boenWeight.weight * mul(oriNormal, (float3x3) currBone);
             sumTangent += boenWeight.weight * mul(oriTangent, (float3x3) currBone);
             sumBitan += boenWeight.weight * mul(oriBitan, (float3x3) currBone);

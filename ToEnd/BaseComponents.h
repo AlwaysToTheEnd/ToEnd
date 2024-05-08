@@ -7,6 +7,7 @@
 #include <wrl.h>
 #include "Component.h"
 #include "CGHGraphicResource.h"
+#include "PipeLineWorkSet.h"
 
 class COMTransform : public Component
 {
@@ -154,8 +155,8 @@ public:
 	void SetPSOW(const char* name);
 
 private:
-	static const GraphicDeviceDX12::PipeLineWorkSet* s_skinnedMeshBoneUpdateCompute;
-	const GraphicDeviceDX12::PipeLineWorkSet* m_currPsow  = nullptr;
+	static const PipeLineWorkSet* s_skinnedMeshBoneUpdateCompute;
+	const PipeLineWorkSet* m_currPsow  = nullptr;
 	static size_t s_hashCode;
 };
 

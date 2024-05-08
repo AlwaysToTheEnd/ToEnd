@@ -12,6 +12,7 @@
 #include <algorithm>
 #include "DX12UploadBuffer.h"
 #include "CGHBaseClass.h"
+#include "PipeLineWorkSet.h"
 #include "DX12FontStructs.h"
 
 #include "../Common/Source/CGHUtil.h"
@@ -55,14 +56,6 @@ public:
 	struct DX12RenderQueue
 	{
 		std::vector<std::pair<CGHNode*, unsigned int>> queue;
-	};
-
-	struct PipeLineWorkSet
-	{
-		ID3D12PipelineState* pso = nullptr;
-		ID3D12RootSignature* rootSig = nullptr;
-		std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
-		std::function<void(ID3D12GraphicsCommandList* cmd, CGHNode* node)> nodeGraphicCmdFunc;
 	};
 
 	struct ShadowMap
@@ -147,6 +140,8 @@ public:
 	void OnResize(int windowWidth, int windowHeight);
 	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
+
+	void ReservationResourceBarrierBeforeRenderStart(const CD3DX12_RESOURCE_BARRIER& barrier);
 
 	ID3D12Resource* GetRenderIDTexture() { return m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get(); }
 
@@ -252,7 +247,6 @@ private:
 	const unsigned int										m_numMaxDirLight = 32;
 	unsigned char											m_currNumShadowMap = 0;
 	unsigned int											m_numDirLight = 0;
-	std::vector<CD3DX12_RESOURCE_BARRIER>					m_afterRenderEndResourceBarriers;
 	std::vector<DX12SahdowGenMesh>							m_shadowGenMeshs;
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>>		m_dirLightDatas;
 	std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>	m_shadowPassCB;
@@ -261,6 +255,9 @@ private:
 
 	DX12SMAA*												m_smaa = nullptr;
 	float													m_testThreshold = 0.05f;
+
+	std::vector<CD3DX12_RESOURCE_BARRIER>					m_afterRenderEndResourceBarriers;
+	std::vector<CD3DX12_RESOURCE_BARRIER>					m_beforeRenderStartResourceBarriers;
 
 	ComPtr<ID3D12GraphicsCommandList>									m_cmdList;
 	ComPtr<ID3D12GraphicsCommandList>									m_dataLoaderCmdList;

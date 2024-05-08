@@ -1,26 +1,28 @@
 
-cbuffer ShadowLightPass : register(b0, space0)
+cbuffer ObejctCBPass : register(b0)
+{
+    float4x4 gObjectMat;
+};
+
+cbuffer ShadowLightPass : register(b1)
 {
     float4x4 gLightViewOrtho;
 };
 
-struct VertexIn
-{
-    float3 PosW : POSITION;
-};
+StructuredBuffer<float3> gPos : register(t0);
 
 struct VSOut
 {
     float4 posH : SV_Position;
 };
 
-VSOut VS(VertexIn vin)
+VSOut VS(uint id : SV_VertexID)
 {
     VSOut vout;
     
-    vout.posH = float4(vin.PosW, 1.0f);
+    vout.posH = float4(gPos[id], 1.0f);
     
+    vout.posH = mul(vout.posH, gObjectMat);
     vout.posH = mul(vout.posH, gLightViewOrtho);
-   
     return vout;
 }

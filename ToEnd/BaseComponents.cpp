@@ -19,7 +19,7 @@ unsigned int COMSkinnedMesh::s_srvUavSize = 0;
 unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
 std::vector<unsigned int> CGHRenderer::s_renderIDPool;
 std::unordered_map<unsigned int, std::vector<CGHRenderer::MouseAction>> CGHRenderer::s_mouseActions;
-const GraphicDeviceDX12::PipeLineWorkSet* COMDX12SkinnedMeshRenderer::s_skinnedMeshBoneUpdateCompute = nullptr;
+const PipeLineWorkSet* COMDX12SkinnedMeshRenderer::s_skinnedMeshBoneUpdateCompute = nullptr;
 
 COMTransform::COMTransform(CGHNode* node)
 {
@@ -182,13 +182,14 @@ void COMSkinnedMesh::SetMeshData(const CGHMesh* meshData)
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Alignment = 0;
 		desc.MipLevels = 1;
+		desc.Height = 1;
 		desc.DepthOrArraySize = 1;
 		desc.SampleDesc.Count = 1;
 		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 		desc.Width = sizeof(DirectX::XMFLOAT3) * numVertex * MESHDATA_INDEX;
 
 		ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(m_VNTBResource.GetAddressOf())));
+			D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(m_VNTBResource.GetAddressOf())));
 
 		if (m_srvuavHeap == nullptr)
 		{
@@ -240,6 +241,10 @@ void COMSkinnedMesh::SetMeshData(const CGHMesh* meshData)
 			heapCPU.ptr += s_srvUavSize;
 			uavDesc.Buffer.FirstElement += numVertex;
 		}
+
+		GraphicDeviceDX12::GetGraphic()->ReservationResourceBarrierBeforeRenderStart(
+			CD3DX12_RESOURCE_BARRIER::Transition(m_VNTBResource.Get(), D3D12_RESOURCE_STATE_COMMON,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	}
 }
 

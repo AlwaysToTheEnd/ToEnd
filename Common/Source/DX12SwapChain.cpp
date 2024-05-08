@@ -191,6 +191,8 @@ void DX12SwapChain::CreateResources(unsigned int x, unsigned int y)
 	ThrowIfFailed(m_device->CreateCommittedResource(
 		&heapProperties, D3D12_HEAP_FLAG_NONE, &dsDesc,
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(m_depthStencil.GetAddressOf())));
+
+	m_depthStencil->SetName(L"renderTargetDSResource");
 }
 
 
