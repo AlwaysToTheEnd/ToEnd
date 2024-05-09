@@ -56,6 +56,6 @@ void XM_CALLCONV CGHUIButton::SetFontColor(DirectX::FXMVECTOR color)
 
 void CGHUIButton::AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
 {
-	m_backRender->AddFunc(mousebutton, mouseState, func);
+	m_backRender->AddFunc(mousebutton, mouseState, this, func);
 }
 

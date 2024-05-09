@@ -18,7 +18,9 @@ size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
 unsigned int COMSkinnedMesh::s_srvUavSize = 0;
 unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
 std::vector<unsigned int> CGHRenderer::s_renderIDPool;
+std::vector<CGHNode*> CGHRenderer::s_hasNode;
 std::unordered_map<unsigned int, std::vector<CGHRenderer::MouseAction>> CGHRenderer::s_mouseActions;
+std::vector<CGHRenderer::MouseAction> CGHRenderer::s_globalActions = {};
 const PipeLineWorkSet* COMDX12SkinnedMeshRenderer::s_skinnedMeshBoneUpdateCompute = nullptr;
 
 COMTransform::COMTransform(CGHNode* node)
@@ -269,6 +271,7 @@ void COMSkinnedMesh::NodeTreeDirty()
 }
 
 COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
+	: CGHRenderer(node)
 {
 	if (s_skinnedMeshBoneUpdateCompute == nullptr)
 	{
@@ -278,13 +281,16 @@ COMDX12SkinnedMeshRenderer::COMDX12SkinnedMeshRenderer(CGHNode* node)
 
 void COMDX12SkinnedMeshRenderer::Render(CGHNode* node, unsigned int)
 {
-	if (node->GetComponent<COMSkinnedMesh>())
+	if (!m_isGroupRenderTarget)
 	{
-		auto graphc = GraphicDeviceDX12::GetGraphic();
-		if (m_currPsow)
+		if (node->GetComponent<COMSkinnedMesh>())
 		{
-			graphc->RenderMesh(s_skinnedMeshBoneUpdateCompute, node);
-			graphc->RenderMesh(m_currPsow, node);
+			auto graphc = GraphicDeviceDX12::GetGraphic();
+			if (m_currPsow)
+			{
+				graphc->RenderMesh(s_skinnedMeshBoneUpdateCompute, node);
+				graphc->RenderMesh(m_currPsow, node);
+			}
 		}
 	}
 }
@@ -400,6 +406,7 @@ void XM_CALLCONV COMUITransform::SetSize(DirectX::FXMVECTOR size)
 }
 
 COMUIRenderer::COMUIRenderer(CGHNode* node)
+	: CGHRenderer(node)
 {
 	m_color = { 0.0f,0.0f,0.0f, 1.0f };
 }
@@ -420,12 +427,12 @@ void COMUIRenderer::Render(CGHNode* node, unsigned int)
 
 
 COMFontRenderer::COMFontRenderer(CGHNode* node)
+	: CGHRenderer(node)
 {
 }
 
 void COMFontRenderer::RateUpdate(CGHNode* node, float delta)
 {
-
 }
 
 void COMFontRenderer::Render(CGHNode* node, unsigned int)
@@ -456,17 +463,21 @@ void COMFontRenderer::SetRowPitch(float rowPitch)
 	m_rowPitch = rowPitch;
 }
 
-CGHRenderer::CGHRenderer()
+CGHRenderer::CGHRenderer(CGHNode* node)
 {
 	if (s_renderIDPool.size())
 	{
 		m_renderID = s_renderIDPool.back();
 		s_renderIDPool.pop_back();
+
+		s_hasNode[m_renderID] = node;
 	}
 	else
 	{
 		assert(s_currRendererInstancedNum < UINT16_MAX);
 		m_renderID = s_currRendererInstancedNum++;
+		s_hasNode.emplace_back();
+		s_hasNode.back() = node;
 	}
 }
 
@@ -476,51 +487,76 @@ CGHRenderer::~CGHRenderer()
 	RemoveFuncs();
 }
 
+int CGHRenderer::GetMouseTargetState(int button, const void* mouse)
+{
+	DirectX::Mouse::ButtonStateTracker::ButtonState targetState = DirectX::Mouse::ButtonStateTracker::ButtonState::UP;
+
+	const DirectX::Mouse::ButtonStateTracker* mouseTracker = reinterpret_cast<const DirectX::Mouse::ButtonStateTracker*>(mouse);
+
+	switch (button)
+	{
+	case 0:
+	{
+		targetState = mouseTracker->leftButton;
+	}
+	break;
+	case 1:
+	{
+		targetState = mouseTracker->middleButton;
+	}
+	break;
+	case 2:
+	{
+		targetState = mouseTracker->rightButton;
+	}
+	break;
+	case 3:
+	{
+		targetState = mouseTracker->xButton1;
+	}
+	break;
+	case 4:
+	{
+		targetState = mouseTracker->xButton2;
+	}
+	break;
+	default:
+		assert(false);
+		break;
+	}
+
+	return targetState;
+}
+
+
 void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
 {
 	if (renderID > 0)
 	{
-		auto iter = s_mouseActions.find(renderID - 1);
+		unsigned int realRenderID = renderID - 1;
+		const auto& mouse = InputManager::GetMouse();
+
+		int targetState = DirectX::Mouse::ButtonStateTracker::ButtonState::UP;
+
+		for (auto& gAction : s_globalActions)
+		{
+			targetState = GetMouseTargetState(gAction.funcMouseButton, &mouse);
+
+			if (gAction.funcMouseState == targetState)
+			{
+				gAction.func(s_hasNode[realRenderID]);
+			}
+		}
+
+		auto iter = s_mouseActions.find(realRenderID);
 
 		if (iter != s_mouseActions.end())
 		{
 			auto& actions = iter->second;
-			const auto& mouse = InputManager::GetMouse();
+
 			for (auto& currAction : actions)
 			{
-				DirectX::Mouse::ButtonStateTracker::ButtonState targetState = DirectX::Mouse::ButtonStateTracker::ButtonState::UP;
-
-				switch (currAction.funcMouseButton)
-				{
-				case 0:
-				{
-					targetState = mouse.leftButton;
-				}
-				break;
-				case 1:
-				{
-					targetState = mouse.middleButton;
-				}
-				break;
-				case 2:
-				{
-					targetState = mouse.rightButton;
-				}
-				break;
-				case 3:
-				{
-					targetState = mouse.xButton1;
-				}
-				break;
-				case 4:
-				{
-					targetState = mouse.xButton2;
-				}
-				break;
-				default:
-					assert(false);
-					break;
-				}
+				targetState = GetMouseTargetState(currAction.funcMouseButton, &mouse);
 
 				if (currAction.funcMouseState == targetState)
 				{
@@ -529,12 +565,25 @@ void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
 			}
 		}
 	}
+
+
+	s_globalActions.clear();
 }
 
-void CGHRenderer::AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
+void CGHRenderer::AddGlobalActionCurrFrame(int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
 {
 	MouseAction action;
-	action.node = reinterpret_cast<CGHNode*>(this);
+	action.func = func;
+	action.funcMouseButton = mousebutton;
+	action.funcMouseState = mouseState;
+
+	s_globalActions.emplace_back(action);
+}
+
+void CGHRenderer::AddFunc(int mousebutton, int mouseState, CGHNode* node, std::function<void(CGHNode*)> func)
+{
+	MouseAction action;
+	action.node = node;
 	action.func = func;
 	action.funcMouseButton = mousebutton;
 	action.funcMouseState = mouseState;
@@ -551,3 +600,4 @@ void CGHRenderer::RemoveFuncs()
 {
 	s_mouseActions.erase(m_renderID);
 }
+

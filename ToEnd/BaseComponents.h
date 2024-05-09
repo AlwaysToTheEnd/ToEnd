@@ -120,21 +120,27 @@ public:
 	};
 
 public:
-	CGHRenderer();
+	CGHRenderer(CGHNode* node);
 	virtual ~CGHRenderer();
 	static void ExcuteMouseAction(unsigned int renderID);
+	static void AddGlobalActionCurrFrame(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
 
 	unsigned int GetRenderID() const { return m_renderID + 1; }
 	unsigned int GetRenderFlags() const { return m_renderFlag; }
 	void SetParentRender(const CGHRenderer* render); // only for ui, font rendering
-	void AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
+	void AddFunc(int mousebutton, int mouseState, CGHNode* node, std::function<void(CGHNode*)> func);
 
 	void RemoveFuncs();
 
+private:
+	static int GetMouseTargetState(int button,const void* mouse);
+
 protected:
 	static std::unordered_map<unsigned int, std::vector<MouseAction>> s_mouseActions;
-	static unsigned int s_currRendererInstancedNum;
+	static std::vector<CGHRenderer::MouseAction> s_globalActions;
+	static std::vector<CGHNode*> s_hasNode;
 	static std::vector<unsigned int> s_renderIDPool;
+	static unsigned int s_currRendererInstancedNum;
 	unsigned int m_parentRenderID = 0;
 	unsigned int m_renderID = 0;
 	unsigned int m_renderFlag = 0;
@@ -153,11 +159,13 @@ public:
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH_RENDERER; }
 
 	void SetPSOW(const char* name);
+	void SetGroupRender(bool value) { m_isGroupRenderTarget = value; }
 
 private:
 	static const PipeLineWorkSet* s_skinnedMeshBoneUpdateCompute;
 	const PipeLineWorkSet* m_currPsow  = nullptr;
 	static size_t s_hashCode;
+	bool m_isGroupRenderTarget = false;
 };
 
 class COMUITransform : public Component

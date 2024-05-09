@@ -262,7 +262,7 @@ void TestScene::Update(float delta)
 
 	static float x, y = 0;
 	//x += delta * 1.0f;
-	//y += delta * 0.8f;
+	y += delta * 0.8f;
 
 	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
 	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
