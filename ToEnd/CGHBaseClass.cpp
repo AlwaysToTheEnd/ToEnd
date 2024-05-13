@@ -17,6 +17,8 @@ CGHNode::CGHNode(const CGHNode& rhs)
 
 CGHNode::~CGHNode()
 {
+	ExcuteEvent(CGHNODE_EVENT_FLAG_DELETE);
+
 	for (auto& iter : m_components)
 	{
 		if (iter.get())
@@ -119,6 +121,18 @@ void CGHNode::GetChildNodes(std::vector<CGHNode*>* nodeOut)
 	}
 }
 
+void CGHNode::RemoveEvent(std::function<void()> func, int flags)
+{
+	for (auto iter = m_events.begin(); iter != m_events.end(); iter++)
+	{
+		if (iter->func.target_type() == func.target_type() && flags == iter->eventFlags)
+		{
+			m_events.erase(iter);
+			break;
+		}
+	}
+}
+
 void CGHNode::SetParent(CGHNode* parent, bool denyEvent)
 {
 	if (m_parent != parent)
@@ -167,7 +181,7 @@ void CGHNode::SetParent(CGHNode* parent, bool denyEvent)
 
 void CGHNode::ExcuteEvent(CGHNODE_EVENT_FLAGS flag)
 {
-	for (auto& iter : m_evnets)
+	for (auto& iter : m_events)
 	{
 		if (flag && iter.eventFlags)
 		{

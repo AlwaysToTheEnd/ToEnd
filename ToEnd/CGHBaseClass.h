@@ -13,7 +13,7 @@ enum CGHNODE_EVENT_FLAGS
 {
 	CGHNODE_EVENT_FLAG_NONE = 0,
 	CGHNODE_EVENT_FLAG_CHILDTREE_CHANGED = 1,
-	CGHNODE_EVENT_FLAG_END = 0xffffffff,
+	CGHNODE_EVENT_FLAG_DELETE = 2,
 };
 
 class CGHNode
@@ -43,7 +43,9 @@ public:
 	const char* GetName() const { return m_name.c_str(); }
 	void GetChildNodes(std::vector<CGHNode*>* nodeOut);
 
-	void AddEvent(std::function<void()> evnet, int flags) { m_evnets.push_back({ evnet, flags }); }
+	void AddEvent(std::function<void()> func, int flags) { m_events.push_back({ func, flags }); }
+	void ClearEvents() { m_events.clear(); }
+	void RemoveEvent(std::function<void()> func, int flags);
 	void SetActive(bool isActive) const { isActive = m_active; }
 	void SetParent(CGHNode* parent, bool denyEvent = false);
 	void SetName(const char* name) { m_name = name; }
@@ -59,7 +61,7 @@ protected:
 	bool m_active = true;
 	CGHNode* m_parent = nullptr;
 	std::vector<CGHNode*> m_childs;
-	std::vector<CGHNodeEvent> m_evnets;
+	std::vector<CGHNodeEvent> m_events;
 	std::vector<std::unique_ptr<Component>> m_components;
 };
 

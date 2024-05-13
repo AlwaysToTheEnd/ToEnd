@@ -170,6 +170,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
+    <ClInclude Include="CGHNodePicker.h" />
     <ClInclude Include="CGHUIButton.h" />
     <ClInclude Include="CGHUIPanel.h" />
     <ClInclude Include="Component.h" />
@@ -204,6 +205,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="CGHGraphicResource.cpp" />
+    <ClCompile Include="CGHNodePicker.cpp" />
     <ClCompile Include="CGHUIButton.cpp" />
     <ClCompile Include="CGHUIPanel.cpp" />
     <ClCompile Include="DX12DefaultBufferCreator.cpp" />

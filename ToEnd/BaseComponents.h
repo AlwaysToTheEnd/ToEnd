@@ -123,7 +123,8 @@ public:
 	CGHRenderer(CGHNode* node);
 	virtual ~CGHRenderer();
 	static void ExcuteMouseAction(unsigned int renderID);
-	static void AddGlobalActionCurrFrame(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
+	static void AddGlobalAction(const char* name, int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
+	static void RemoveGlobalAction(const char* name);
 
 	unsigned int GetRenderID() const { return m_renderID + 1; }
 	unsigned int GetRenderFlags() const { return m_renderFlag; }
@@ -137,7 +138,7 @@ private:
 
 protected:
 	static std::unordered_map<unsigned int, std::vector<MouseAction>> s_mouseActions;
-	static std::vector<CGHRenderer::MouseAction> s_globalActions;
+	static std::unordered_map<std::string, CGHRenderer::MouseAction> s_globalActions;
 	static std::vector<CGHNode*> s_hasNode;
 	static std::vector<unsigned int> s_renderIDPool;
 	static unsigned int s_currRendererInstancedNum;

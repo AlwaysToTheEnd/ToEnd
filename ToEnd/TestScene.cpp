@@ -17,6 +17,7 @@
 #include "LightComponents.h"
 #include "AnimationComponent.h"
 #include "AnimationNodeNameFilter.h"
+#include "CGHNodePicker.h"
 
 TestScene::TestScene()
 {
@@ -237,6 +238,7 @@ void TestScene::Init()
 	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
 	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
 
+	m_testButton.SetName("testButton");
 	m_testButton.Init();
 	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1, 1));
 	m_testButton.SetSize(250, 10);
@@ -245,6 +247,8 @@ void TestScene::Init()
 	color = DirectX::Colors::Snow;
 	color.m128_f32[3] = 0.5f;
 	m_testButton.SetColor(color);
+
+	CGHNodePicker::s_instance.Init();
 }
 
 void TestScene::Update(float delta)

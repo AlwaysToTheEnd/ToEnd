@@ -20,7 +20,7 @@ unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
 std::vector<unsigned int> CGHRenderer::s_renderIDPool;
 std::vector<CGHNode*> CGHRenderer::s_hasNode;
 std::unordered_map<unsigned int, std::vector<CGHRenderer::MouseAction>> CGHRenderer::s_mouseActions;
-std::vector<CGHRenderer::MouseAction> CGHRenderer::s_globalActions = {};
+std::unordered_map<std::string, CGHRenderer::MouseAction> CGHRenderer::s_globalActions = {};
 const PipeLineWorkSet* COMDX12SkinnedMeshRenderer::s_skinnedMeshBoneUpdateCompute = nullptr;
 
 COMTransform::COMTransform(CGHNode* node)
@@ -540,11 +540,11 @@ void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
 
 		for (auto& gAction : s_globalActions)
 		{
-			targetState = GetMouseTargetState(gAction.funcMouseButton, &mouse);
+			targetState = GetMouseTargetState(gAction.second.funcMouseButton, &mouse);
 
-			if (gAction.funcMouseState == targetState)
+			if (gAction.second.funcMouseState == targetState)
 			{
-				gAction.func(s_hasNode[realRenderID]);
+				gAction.second.func(s_hasNode[realRenderID]);
 			}
 		}
 
@@ -565,19 +565,30 @@ void CGHRenderer::ExcuteMouseAction(unsigned int renderID)
 			}
 		}
 	}
-
-
-	s_globalActions.clear();
 }
 
-void CGHRenderer::AddGlobalActionCurrFrame(int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
+void CGHRenderer::AddGlobalAction(const char* name, int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
 {
 	MouseAction action;
 	action.func = func;
 	action.funcMouseButton = mousebutton;
 	action.funcMouseState = mouseState;
 
-	s_globalActions.emplace_back(action);
+	auto iter = s_globalActions.find(name);
+
+	if (iter == s_globalActions.end())
+	{
+		s_globalActions[name] = action;
+	}
+	else
+	{
+		assert(false);
+	}
+}
+
+void CGHRenderer::RemoveGlobalAction(const char* name)
+{
+	s_globalActions.erase(name);
 }
 
 void CGHRenderer::AddFunc(int mousebutton, int mouseState, CGHNode* node, std::function<void(CGHNode*)> func)
