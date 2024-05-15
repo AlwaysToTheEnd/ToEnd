@@ -121,6 +121,18 @@ void CGHNode::GetChildNodes(std::vector<CGHNode*>* nodeOut)
 	}
 }
 
+CGHNode* CGHNode::GetRootNode()
+{
+	CGHNode* result = this;
+
+	if (m_parent)
+	{
+		result = m_parent->GetRootNode();
+	}
+
+	return result;
+}
+
 void CGHNode::RemoveEvent(std::function<void()> func, int flags)
 {
 	for (auto iter = m_events.begin(); iter != m_events.end(); iter++)

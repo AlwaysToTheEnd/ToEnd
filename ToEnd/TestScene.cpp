@@ -121,6 +121,7 @@ void TestScene::Init()
 		material->SetTexture(&texInfo, 2);
 	}
 
+	
 	{
 		dxGraphic->LoadMeshDataFile("MeshData/hair0.fbx", false, &m_hairMeshs, &m_hairMats, &m_hairNodes);
 
@@ -160,6 +161,8 @@ void TestScene::Init()
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
 		texInfo.textureOp = aiTextureOp_Subtract;
 		material->SetTexture(&texInfo, 1);
+
+
 	}
 
 	{

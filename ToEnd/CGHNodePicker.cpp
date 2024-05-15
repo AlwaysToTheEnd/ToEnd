@@ -10,24 +10,25 @@ void CGHNodePicker::Init()
 
 void CGHNodePicker::PickNode(CGHNode* node)
 {
-	if (node != m_currPickedNode)
+	if (node != nullptr)
 	{
-		if (m_currPickedNode)
-		{
-			m_currPickedNode->RemoveEvent(std::bind(&CGHNodePicker::TargetNodeDeleted, this), CGHNODE_EVENT_FLAG_DELETE);
-		}
+		auto layer = node->GetLayer();
+		unsigned int layerIndex = static_cast<unsigned int>(layer);
 
-		m_currPickedNode = node;	
-
-		if (m_currPickedNode)
+		if (node != m_currPickedNode[layerIndex])
 		{
-			m_currPickedNode->AddEvent(std::bind(&CGHNodePicker::TargetNodeDeleted, this), CGHNODE_EVENT_FLAG_DELETE);
+			if (m_currPickedNode)
+			{
+				m_currPickedNode[layerIndex]->RemoveEvent(std::bind(&CGHNodePicker::TargetNodeDeleted, this, layer), CGHNODE_EVENT_FLAG_DELETE);
+			}
+
+			m_currPickedNode[layerIndex] = node;
+			m_currPickedNode[layerIndex]->AddEvent(std::bind(&CGHNodePicker::TargetNodeDeleted, this, layer), CGHNODE_EVENT_FLAG_DELETE);
 		}
 	}
 }
 
-void CGHNodePicker::TargetNodeDeleted()
+void CGHNodePicker::TargetNodeDeleted(CGHNODE_LAYER layer)
 {
-	m_currPickedNode = nullptr;
-
+	m_currPickedNode[static_cast<unsigned int>(layer)] = nullptr;
 }

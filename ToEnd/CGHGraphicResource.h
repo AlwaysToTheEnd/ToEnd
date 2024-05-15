@@ -35,11 +35,11 @@ public:
 	ALPHAOP srcAlphaOp = ALPHAOP_ONE;
 
 public:
-	static size_t GetTextureFilePathID(const char* path);
+	static unsigned int GetTextureFilePathID(const char* path);
 	static const std::string& GetTexturePath(unsigned int pathID);
 	
 private:
-	static std::unordered_map<std::string, size_t> s_textureIndex;
+	static std::unordered_map<std::string, unsigned int> s_textureIndex;
 	static std::vector<std::string> s_textureNames;
 };
 

@@ -16,6 +16,14 @@ enum CGHNODE_EVENT_FLAGS
 	CGHNODE_EVENT_FLAG_DELETE = 2,
 };
 
+enum class CGHNODE_LAYER
+{
+	CGHNODE_LYAER_DEFAULT = 0,
+	CGHNODE_LYAER_CHARACTER,
+	CGHNODE_LYAER_MAP,
+	CGHNODE_LYAER_NUM,
+};
+
 class CGHNode
 {
 	struct CGHNodeEvent
@@ -42,6 +50,8 @@ public:
 	CGHNode* FindNode(const char* name);
 	const char* GetName() const { return m_name.c_str(); }
 	void GetChildNodes(std::vector<CGHNode*>* nodeOut);
+	CGHNode* GetRootNode();
+	CGHNODE_LAYER GetLayer() const { return m_nodeLayer; }
 
 	void AddEvent(std::function<void()> func, int flags) { m_events.push_back({ func, flags }); }
 	void ClearEvents() { m_events.clear(); }
@@ -49,6 +59,7 @@ public:
 	void SetActive(bool isActive) const { isActive = m_active; }
 	void SetParent(CGHNode* parent, bool denyEvent = false);
 	void SetName(const char* name) { m_name = name; }
+	void SetLayer(CGHNODE_LAYER layer) { m_nodeLayer = layer; }
 
 protected:
 	void ExcuteEvent(CGHNODE_EVENT_FLAGS flag);
@@ -60,6 +71,7 @@ protected:
 	std::string m_name;
 	bool m_active = true;
 	CGHNode* m_parent = nullptr;
+	CGHNODE_LAYER m_nodeLayer = CGHNODE_LAYER::COMMON_LYAER_DEFAULT;
 	std::vector<CGHNode*> m_childs;
 	std::vector<CGHNodeEvent> m_events;
 	std::vector<std::unique_ptr<Component>> m_components;

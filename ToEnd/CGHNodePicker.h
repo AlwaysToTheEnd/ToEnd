@@ -8,16 +8,16 @@ public:
 
 public:
 	void Init();
-	CGHNode* GetCurrPickedNode() { m_currPickedNode; }
+	CGHNode* GetCurrPickedNode(CGHNODE_LAYER layer) { return m_currPickedNode[static_cast<unsigned int>(layer)]; }
 
 private:
 	CGHNodePicker() = default;
 	~CGHNodePicker() = default;
 
 	void PickNode(CGHNode* node);
-	void TargetNodeDeleted();
+	void TargetNodeDeleted(CGHNODE_LAYER layer);
 
 private:
-	CGHNode* m_currPickedNode = nullptr;
+	CGHNode* m_currPickedNode[static_cast<unsigned int>(CGHNODE_LAYER::COMMON_LYAER_NUM)];
 };
 
