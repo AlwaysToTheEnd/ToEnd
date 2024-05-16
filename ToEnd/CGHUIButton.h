@@ -16,6 +16,7 @@ public:
 	void XM_CALLCONV SetColor(DirectX::FXMVECTOR color);
 	void XM_CALLCONV SetFontColor(DirectX::FXMVECTOR color);
 	void AddFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
+	void SetFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func);
 
 private:
 	CGHNode m_childFontNode;

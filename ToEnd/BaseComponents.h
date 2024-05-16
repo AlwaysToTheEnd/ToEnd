@@ -130,6 +130,7 @@ public:
 	unsigned int GetRenderFlags() const { return m_renderFlag; }
 	void SetParentRender(const CGHRenderer* render); // only for ui, font rendering
 	void AddFunc(int mousebutton, int mouseState, CGHNode* node, std::function<void(CGHNode*)> func);
+	void SetFunc(int mousebutton, int mouseState, CGHNode* node, std::function<void(CGHNode*)> func);
 
 	void RemoveFuncs();
 

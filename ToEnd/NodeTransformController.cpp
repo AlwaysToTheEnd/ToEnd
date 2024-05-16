@@ -14,12 +14,6 @@ void NodeTransformController::Init()
 	m_uiTransform = CreateComponent<COMUITransform>();
 	m_backRender = CreateComponent<COMUIRenderer>();
 
-	for (auto& iter : m_buttonPool)
-	{
-		iter.Init();
-		iter.SetParent(this, true);
-		iter.GetComponent<COMUIRenderer>()->SetParentRender(m_backRender);
-	}
 }
 
 void NodeTransformController::Update(float delta)
@@ -49,6 +43,7 @@ void NodeTransformController::Update(float delta)
 		m_currButtonIndex = 0;
 
 
+
 	}
 
 	m_prevTarget = currTarget;
@@ -67,9 +62,4 @@ void NodeTransformController::SetSize(unsigned int x, unsigned int y)
 void NodeTransformController::SetPos(unsigned int x, unsigned int y, float z)
 {
 	m_uiTransform->SetPos(DirectX::XMVectorSet(x, y, z, 0));
-}
-
-CGHUIButton& NodeTransformController::GetButton()
-{
-	return m_buttonPool[m_currButtonIndex++];
 }

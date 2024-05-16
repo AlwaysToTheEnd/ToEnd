@@ -71,7 +71,7 @@ protected:
 	std::string m_name;
 	bool m_active = true;
 	CGHNode* m_parent = nullptr;
-	CGHNODE_LAYER m_nodeLayer = CGHNODE_LAYER::COMMON_LYAER_DEFAULT;
+	CGHNODE_LAYER m_nodeLayer = CGHNODE_LAYER::CGHNODE_LYAER_DEFAULT;
 	std::vector<CGHNode*> m_childs;
 	std::vector<CGHNodeEvent> m_events;
 	std::vector<std::unique_ptr<Component>> m_components;

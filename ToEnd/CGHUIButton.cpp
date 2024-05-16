@@ -59,3 +59,8 @@ void CGHUIButton::AddFunc(int mousebutton, int mouseState, std::function<void(CG
 	m_backRender->AddFunc(mousebutton, mouseState, this, func);
 }
 
+void CGHUIButton::SetFunc(int mousebutton, int mouseState, std::function<void(CGHNode*)> func)
+{
+	m_backRender->SetFunc(mousebutton, mouseState, this, func);
+}
+

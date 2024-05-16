@@ -602,6 +602,19 @@ void CGHRenderer::AddFunc(int mousebutton, int mouseState, CGHNode* node, std::f
 	s_mouseActions[m_renderID].emplace_back(action);
 }
 
+void CGHRenderer::SetFunc(int mousebutton, int mouseState, CGHNode* node, std::function<void(CGHNode*)> func)
+{
+	MouseAction action;
+	action.node = node;
+	action.func = func;
+	action.funcMouseButton = mousebutton;
+	action.funcMouseState = mouseState;
+
+	s_mouseActions[m_renderID].clear();
+	s_mouseActions[m_renderID].emplace_back(action);
+}
+
+
 void CGHRenderer::SetParentRender(const CGHRenderer* render)
 {
 	m_parentRenderID = render->GetRenderID();

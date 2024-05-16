@@ -17,10 +17,6 @@ public:
 	void SetPos(unsigned int x, unsigned int y, float z);
 
 private:
-	CGHUIButton& GetButton();
-
-private:
-	CGHUIButton m_buttonPool[maxNumButton];
 	std::vector<CGHNode*> m_currNodeTree;
 	std::vector<COMTransform*> m_currTransforms;
 	CGHNode* m_prevTarget = nullptr;
