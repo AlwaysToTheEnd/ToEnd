@@ -18,6 +18,6 @@ private:
 	void TargetNodeDeleted(CGHNODE_LAYER layer);
 
 private:
-	CGHNode* m_currPickedNode[static_cast<unsigned int>(CGHNODE_LAYER::COMMON_LYAER_NUM)];
+	CGHNode* m_currPickedNode[static_cast<unsigned int>(CGHNODE_LAYER::CGHNODE_LYAER_NUM)];
 };
 

@@ -4,6 +4,27 @@
 
 class CGHUIPanel : public CGHNode
 {
+	enum UILAYOUT
+	{
+		HORIZONTAL,
+		HORIZONTALEND,
+		VERTICAL,
+		VERTICALEND,
+		BUTTON,
+		FONT,
+	};
+
+	struct UILayoutDesc
+	{
+		UILAYOUT type;
+		union
+		{
+			unsigned int buttonIndex;
+			unsigned int fontIndex;
+			bool isScroll;
+		};
+	};
+
 	static const size_t maxNumButton = 512;
 public:
 	CGHUIPanel();
@@ -17,21 +38,16 @@ public:
 	void SetSize(unsigned int x, unsigned int y);
 	void SetPos(unsigned int x, unsigned int y, float z);
 
-	void BeginHorizontal();
-	void BeginVertical();
-	void ActiveScroll(bool active, bool isHorizontal);
+	void BeginHorizontal(bool activeScroll);
+	void BeginVertical(bool activeScroll);
 	void EndHorizontal();
 	void EndVertical();
 
 	void Button(unsigned int width, unsigned int hegith, std::function<void(CGHNode*)> func, int mousebutton =0, int mouseState = 2);
-	void Font(const char* text, unsigned int fontSize, unsigned int rowPitch, DirectX::FXMVECTOR color);
+	void Font(const wchar_t* text, unsigned int fontSize, unsigned int rowPitch, DirectX::FXMVECTOR color);
 
 	static void InitUIPanelSys();
 	static void ResetButtonIndex();
-
-private:
-	unsigned int GetButtonindex();
-	unsigned int GetFontindex();
 
 private:
 	static unsigned int s_currButtonIndex;
@@ -45,9 +61,6 @@ private:
 	COMUIRenderer* m_backRender = nullptr;
 	DirectX::XMFLOAT2 m_scrollPos = { 0,0 };
 	
-	bool m_activeHorizontalScroll = false;
-	bool m_activeVerticalScroll = false;
-	bool m_isHorizontal = false;
-	bool m_isVertical = false;
+	std::vector<UILayoutDesc> m_layoutStack;
 };
 
