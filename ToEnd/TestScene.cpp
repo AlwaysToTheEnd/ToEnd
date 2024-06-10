@@ -259,7 +259,6 @@ void TestScene::Update(float delta)
 	m_rootNode->Update(delta);
 	m_dirLight.Update(delta);
 	m_dirLight2.Update(delta);
-	m_stringNode.Update(delta);
 }
 
 void TestScene::RateUpdate(float delta)
@@ -267,7 +266,6 @@ void TestScene::RateUpdate(float delta)
 	m_rootNode->RateUpdate(delta);
 	m_dirLight.RateUpdate(delta);
 	m_dirLight2.RateUpdate(delta);
-	m_stringNode.RateUpdate(delta);
 }
 
 void TestScene::Render(unsigned int currFrame)
@@ -275,14 +273,13 @@ void TestScene::Render(unsigned int currFrame)
 	m_rootNode->Render(currFrame);
 	m_dirLight.Render(currFrame);
 	m_dirLight2.Render(currFrame);
-	m_stringNode.Render(currFrame);
-
-
 }
 
-void TestScene::UiRender(unsigned int currFrame)
+void TestScene::UIRender(unsigned int currFrame)
 {
-
+	m_rootNode->RenderGUI(currFrame);
+	m_dirLight.RenderGUI(currFrame);
+	m_dirLight2.RenderGUI(currFrame);
 }
 
 void TestScene::ButtonTestFunc(CGHNode* node, int index)

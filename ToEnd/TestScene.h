@@ -14,7 +14,7 @@ public:
 	void Update(float delta);
 	void RateUpdate(float delta);
 	void Render(unsigned int currFrame);
-	void UiRender(unsigned int currFrame);
+	void UIRender(unsigned int currFrame);
 
 private:
 	void ButtonTestFunc(CGHNode* node, int idex);
@@ -36,7 +36,6 @@ private:
 	CGHNode* m_rootNode = nullptr;
 	CGHNode m_dirLight;
 	CGHNode m_dirLight2;
-	CGHNode	m_stringNode;
 
 	CGHAnimationGroup* m_aniGroup = nullptr;
 };

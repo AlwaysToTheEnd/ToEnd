@@ -16,7 +16,6 @@
 #include "Dx12FontManager.h"
 #include "imgui.h"
 #include "Imgui/backends/imgui_impl_win32.h"
-#include "Imgui/backends/imgui_impl_dx12.h"
 #include "imgui_internal.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -103,8 +102,13 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
-	DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
-	DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
+
+	ImGuiContext* ctx = ImGui::GetCurrentContext();
+	if (ctx != nullptr && ctx->HoveredWindow == nullptr)
+	{
+		DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
+		DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
+	}
 
 	switch (msg)
 	{
@@ -248,7 +252,7 @@ void App::Render()
 	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderBegin();
 	m_testScene->Render(graphic->GetCurrFrameIndex());
-	m_testScene->UiRender(graphic->GetCurrFrameIndex());
+	m_testScene->UIRender(graphic->GetCurrFrameIndex());
 	graphic->RenderEnd();
 }
 
