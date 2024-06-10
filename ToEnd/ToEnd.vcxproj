@@ -214,7 +214,9 @@
     <ClCompile Include="GraphicDeivceDX12.cpp" />
     <ClCompile Include="GraphicResourceLoader.cpp" />
     <ClCompile Include="Imgui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="Imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Imgui\imgui.cpp" />
+    <ClCompile Include="Imgui\imgui_demo.cpp" />
     <ClCompile Include="Imgui\imgui_draw.cpp" />
     <ClCompile Include="Imgui\imgui_tables.cpp" />
     <ClCompile Include="Imgui\imgui_widgets.cpp" />

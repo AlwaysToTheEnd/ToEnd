@@ -133,7 +133,6 @@ public:
 	void RenderBegin();
 	void RenderEnd();
 
-
 	void OnResize(int windowWidth, int windowHeight);
 	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
@@ -184,7 +183,6 @@ private:
 	void BuildShadowMapWritePipeLineWorkSet();
 	void BuildDeferredLightDirPipeLineWorkSet();
 	void BuildSMAARenderPipeLineWorkSet();
-	void BuildFontRenderPipeLineWorkSet();
 	void BuildTextureDataDebugPipeLineWorkSet();
 
 private:
@@ -227,11 +225,6 @@ private:
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 
 	ComPtr<ID3D12DescriptorHeap>	m_uiSRVHeap;
-
-	const unsigned int						m_maxNumChar = 4096;
-	unsigned int							m_numRenderChar = 0;
-	std::vector<CGH::CharInfo*>				m_charInfoMapped;
-	Microsoft::WRL::ComPtr<ID3D12Resource>	m_charInfos;
 
 	const unsigned int										m_numMaxShadowMap = 8;
 	const unsigned int										m_numMaxDirLight = 32;

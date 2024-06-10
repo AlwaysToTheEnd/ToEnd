@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include "CGHBaseClass.h"
-#include "CGHUIButton.h"
 
 class NodeTransformController : public CGHNode
 {
@@ -20,8 +19,6 @@ private:
 	std::vector<CGHNode*> m_currNodeTree;
 	std::vector<COMTransform*> m_currTransforms;
 	CGHNode* m_prevTarget = nullptr;
-	COMUITransform* m_uiTransform = nullptr;
-	COMUIRenderer* m_backRender = nullptr;
 	unsigned int m_currButtonIndex = 0;
 };
 

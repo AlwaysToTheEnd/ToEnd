@@ -11,8 +11,6 @@ NodeTransformController::~NodeTransformController()
 
 void NodeTransformController::Init()
 {
-	m_uiTransform = CreateComponent<COMUITransform>();
-	m_backRender = CreateComponent<COMUIRenderer>();
 
 }
 
@@ -56,10 +54,8 @@ void NodeTransformController::RateUpdate(float delta)
 
 void NodeTransformController::SetSize(unsigned int x, unsigned int y)
 {
-	m_uiTransform->SetSize(DirectX::XMVectorSet(x, y, 0, 0));
 }
 
 void NodeTransformController::SetPos(unsigned int x, unsigned int y, float z)
 {
-	m_uiTransform->SetPos(DirectX::XMVectorSet(x, y, z, 0));
 }

@@ -229,6 +229,12 @@
     <ClCompile Include="..\Common\Source\CGHUtil.cpp">
       <Filter>BaseUtil</Filter>
     </ClCompile>
+    <ClCompile Include="Imgui\backends\imgui_impl_win32.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_demo.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

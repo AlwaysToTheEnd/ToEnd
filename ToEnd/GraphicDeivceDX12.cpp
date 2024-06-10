@@ -89,15 +89,14 @@ GraphicDeviceDX12::GraphicDeviceDX12()
 
 GraphicDeviceDX12::~GraphicDeviceDX12()
 {
-	if (m_charInfos != nullptr)
-	{
-		m_charInfos->Unmap(0, nullptr);
-	}
-
 	if (m_smaa != nullptr)
 	{
 		delete m_smaa;
 	}
+
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 void GraphicDeviceDX12::BaseRender()
@@ -243,35 +242,6 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 		reDesc.SampleDesc.Count = 1;
 
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_renderIDatMouseRead.GetAddressOf())));
-	}
-
-	{
-		D3D12_HEAP_PROPERTIES prop = {};
-		D3D12_RESOURCE_DESC desc = {};
-
-		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
-		desc.DepthOrArraySize = 1;
-		desc.Height = 1;
-		desc.MipLevels = 1;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		desc.Width = sizeof(CGH::CharInfo) * m_maxNumChar * m_numFrameResource;
-
-		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_charInfos.GetAddressOf())));
-
-		CGH::CharInfo* mapped = nullptr;
-		ThrowIfFailed(m_charInfos->Map(0, nullptr, reinterpret_cast<void**>(&mapped)));
-
-		m_charInfoMapped.resize(m_numFrameResource);
-
-		for (auto& iter : m_charInfoMapped)
-		{
-			iter = mapped;
-			mapped += m_maxNumChar;
-		}
 	}
 
 	m_dirLightDatas = std::make_unique<DX12UploadBuffer<DX12DirLightData>>(m_d3dDevice.Get(), m_numMaxDirLight * m_numFrameResource, false);
@@ -553,8 +523,8 @@ void GraphicDeviceDX12::RenderEnd()
 		D3D12_RESOURCE_BARRIER bar = {};
 		bar.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		bar.Transition.pResource = renderIDTexture;
-		bar.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
-		bar.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		bar.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		bar.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
 		bar.Transition.Subresource = 0;
 
 		D3D12_TEXTURE_COPY_LOCATION src = {};
@@ -575,6 +545,8 @@ void GraphicDeviceDX12::RenderEnd()
 
 		auto mouseState = InputManager::GetMouse().GetLastState();
 
+		m_cmdList->ResourceBarrier(1, &bar);
+
 		if (mouseState.x < GlobalOptions::GO.WIN.WindowsizeX && mouseState.y < GlobalOptions::GO.WIN.WindowsizeY)
 		{
 			D3D12_BOX rect = {};
@@ -589,11 +561,23 @@ void GraphicDeviceDX12::RenderEnd()
 			m_cmdList->CopyTextureRegion(&dest, 0, 0, 0, &src, &rect);
 		}
 
+		bar.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
+		bar.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
 		m_cmdList->ResourceBarrier(1, &bar);
 	}
 
-	ImGui::Render();
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_cmdList.Get());
+	{
+		static bool test = false;
+
+		ImGui::ShowDemoWindow(&test);
+
+		ImGui::Render();
+
+		m_cmdList->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), false, nullptr);
+		m_cmdList->SetDescriptorHeaps(1, m_uiSRVHeap.GetAddressOf());
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_cmdList.Get());
+	}
 
 	m_swapChain->RenderEnd(m_cmdList.Get());
 
@@ -746,7 +730,6 @@ void GraphicDeviceDX12::BuildPso()
 	BuildDeferredSkinnedMeshPipeLineWorkSet();
 	BuildShadowMapWritePipeLineWorkSet();
 	BuildDeferredLightDirPipeLineWorkSet();
-	BuildFontRenderPipeLineWorkSet();
 	BuildSMAARenderPipeLineWorkSet();
 	//BuildTextureDataDebugPipeLineWorkSet();
 }
@@ -1479,116 +1462,6 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 
 			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
 				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-		};
-}
-
-void GraphicDeviceDX12::BuildFontRenderPipeLineWorkSet()
-{
-	enum
-	{
-		ROOT_CHARINFO_SRV = 0,
-		ROOT_GLYPHS_SRV,
-		ROOT_SPRITETEX_TABLE,
-		ROOT_NUM
-	};
-
-	std::string pipeLineName = "fontRender";
-	auto& currPSOWorkSet = m_basePSOWorkSets[PSOW_FONT_RENDER];
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-
-	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
-		rootParams[ROOT_CHARINFO_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_CHARINFO_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_CHARINFO_SRV].Descriptor.ShaderRegister = 0;
-		rootParams[ROOT_CHARINFO_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
-
-		rootParams[ROOT_GLYPHS_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		rootParams[ROOT_GLYPHS_SRV].Descriptor.RegisterSpace = 0;
-		rootParams[ROOT_GLYPHS_SRV].Descriptor.ShaderRegister = 1;
-		rootParams[ROOT_GLYPHS_SRV].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
-
-		D3D12_DESCRIPTOR_RANGE textureTableRange = {};
-		textureTableRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		textureTableRange.RegisterSpace = 0;
-		textureTableRange.BaseShaderRegister = 2;
-		textureTableRange.NumDescriptors = 2;
-		textureTableRange.OffsetInDescriptorsFromTableStart = 0;
-
-		rootParams[ROOT_SPRITETEX_TABLE].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParams[ROOT_SPRITETEX_TABLE].DescriptorTable.NumDescriptorRanges = 1;
-		rootParams[ROOT_SPRITETEX_TABLE].DescriptorTable.pDescriptorRanges = &textureTableRange;
-		rootParams[ROOT_SPRITETEX_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-		D3D12_ROOT_SIGNATURE_DESC rootsigDesc = {};
-		rootsigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootsigDesc.pStaticSamplers = s_StaticSamplers;
-		rootsigDesc.NumStaticSamplers = _countof(s_StaticSamplers);
-		rootsigDesc.NumParameters = rootParams.size();
-		rootsigDesc.pParameters = rootParams.data();
-
-		psoDesc.pRootSignature = DX12PipelineMG::instance.CreateRootSignature(pipeLineName.c_str(), &rootsigDesc);
-		currPSOWorkSet.rootSig = psoDesc.pRootSignature;
-	}
-
-	psoDesc.NodeMask = 0;
-
-	psoDesc.VS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_VERTEX, (pipeLineName).c_str(), L"Shader/FontRender.hlsl", "VS");
-	psoDesc.GS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_GEOMETRY, (pipeLineName).c_str(), L"Shader/FontRender.hlsl", "GS");
-	psoDesc.PS = DX12PipelineMG::instance.CreateShader(DX12_SHADER_PIXEL, (pipeLineName).c_str(), L"Shader/FontRender.hlsl", "PS");
-
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-	psoDesc.InputLayout.NumElements = 0;
-	psoDesc.InputLayout.pInputElementDescs = nullptr;
-
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	psoDesc.SampleMask = UINT_MAX;
-
-	psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
-	psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_MAX;
-	psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;
-
-	psoDesc.DSVFormat = m_swapChain->GetDSVFormat();
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = m_backBufferFormat;
-	psoDesc.SampleDesc.Count = 1;
-	psoDesc.SampleDesc.Quality = 0;
-
-	DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
-
-	currPSOWorkSet.pso = DX12PipelineMG::instance.GetGraphicPipeline(pipeLineName.c_str());
-
-	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
-		{
-			auto currFont = DX12FontManger::s_instance.GetCurrFont();
-			if (currFont && m_numRenderChar)
-			{
-				unsigned int numRenderChar = 0;
-				unsigned int charInfoStructSize = sizeof(CGH::CharInfo);
-				auto charInfoGPU = m_charInfos->GetGPUVirtualAddress();
-				charInfoGPU += m_maxNumChar * sizeof(CGH::CharInfo) * m_currFrame;
-
-				ID3D12DescriptorHeap* heaps[] = { currFont->textureHeap.Get() };
-				cmd->SetDescriptorHeaps(1, heaps);
-
-				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-				cmd->SetGraphicsRootShaderResourceView(ROOT_CHARINFO_SRV, charInfoGPU);
-				cmd->SetGraphicsRootShaderResourceView(ROOT_GLYPHS_SRV, currFont->glyphDatas->GetGPUVirtualAddress());
-				cmd->SetGraphicsRootDescriptorTable(ROOT_SPRITETEX_TABLE, currFont->textureHeap->GetGPUDescriptorHandleForHeapStart());
-
-				cmd->IASetVertexBuffers(0, 0, nullptr);
-				cmd->IASetIndexBuffer(nullptr);
-
-				cmd->DrawInstanced(m_numRenderChar, 1, 0, 0);
-
-				m_numRenderChar = 0;
-			}
 		};
 }
 

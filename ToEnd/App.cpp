@@ -14,6 +14,10 @@
 #include "DX12TextureBuffer.h"
 #include "InputManager.h"
 #include "Dx12FontManager.h"
+#include "imgui.h"
+#include "Imgui/backends/imgui_impl_win32.h"
+#include "Imgui/backends/imgui_impl_dx12.h"
+#include "imgui_internal.h"
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -94,8 +98,11 @@ App* App::GetApp()
 	return s_App;
 }
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 LRESULT App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
 	DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
 	DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
 
@@ -241,6 +248,7 @@ void App::Render()
 	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderBegin();
 	m_testScene->Render(graphic->GetCurrFrameIndex());
+	m_testScene->UiRender(graphic->GetCurrFrameIndex());
 	graphic->RenderEnd();
 }
 

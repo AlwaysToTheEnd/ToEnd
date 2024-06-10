@@ -232,25 +232,6 @@ void TestScene::Init()
 			auto lightTransform = m_dirLight2.CreateComponent<COMTransform>();*/
 	}
 
-	auto fontrender = m_stringNode.CreateComponent<COMFontRenderer>();
-	auto fontTrans = m_stringNode.CreateComponent<COMUITransform>();
-	DirectX::XMVECTOR color = DirectX::Colors::Aqua;
-	color.m128_f32[3] = 0.5f;
-	fontrender->SetRenderString(L"Test Rendering", color, 350.0f);
-	fontrender->SetFontSize(20.0f);
-	fontTrans->SetPos(DirectX::XMVectorSet(10, 10, 0.1f, 0));
-	fontTrans->SetSize(DirectX::XMVectorSet(1.0f, 1.0f, 0, 0));
-
-	m_testButton.SetName("testButton");
-	m_testButton.Init();
-	m_testButton.AddFunc(0, 3, std::bind(&TestScene::ButtonTestFunc, this, std::placeholders::_1, 1));
-	m_testButton.SetSize(250, 10);
-	m_testButton.SetPos(100, 100, 0.1f);
-	m_testButton.SetText(L"textButton");
-	color = DirectX::Colors::Snow;
-	color.m128_f32[3] = 0.5f;
-	m_testButton.SetColor(color);
-
 	CGHNodePicker::s_instance.Init();
 }
 
@@ -271,10 +252,6 @@ void TestScene::Update(float delta)
 	//x += delta * 1.0f;
 	y += delta * 0.8f;
 
-	auto fontrender = m_stringNode.GetComponent<COMFontRenderer>();
-	std::wstring rotXvalue = L"curr rotY : " + std::to_wstring(int(y * 180 / 3.141592));
-	fontrender->SetText(rotXvalue.c_str());
-
 	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
 	//lightTrans2->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
 
@@ -283,7 +260,6 @@ void TestScene::Update(float delta)
 	m_dirLight.Update(delta);
 	m_dirLight2.Update(delta);
 	m_stringNode.Update(delta);
-	m_testButton.Update(delta);
 }
 
 void TestScene::RateUpdate(float delta)
@@ -292,7 +268,6 @@ void TestScene::RateUpdate(float delta)
 	m_dirLight.RateUpdate(delta);
 	m_dirLight2.RateUpdate(delta);
 	m_stringNode.RateUpdate(delta);
-	m_testButton.RateUpdate(delta);
 }
 
 void TestScene::Render(unsigned int currFrame)
@@ -301,10 +276,15 @@ void TestScene::Render(unsigned int currFrame)
 	m_dirLight.Render(currFrame);
 	m_dirLight2.Render(currFrame);
 	m_stringNode.Render(currFrame);
-	m_testButton.Render(currFrame);
+
+
+}
+
+void TestScene::UiRender(unsigned int currFrame)
+{
+
 }
 
 void TestScene::ButtonTestFunc(CGHNode* node, int index)
 {
-	m_testButton.SetColor(DirectX::Colors::Blue);
 }
