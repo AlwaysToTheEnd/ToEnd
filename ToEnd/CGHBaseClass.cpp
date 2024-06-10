@@ -87,6 +87,17 @@ void CGHNode::Render(unsigned int currFrame)
 	std::memcpy(&m_srt, &CGH::IdentityMatrix, sizeof(m_srt));
 }
 
+void CGHNode::RenderGUI(unsigned int currFrame)
+{
+	if (m_active)
+	{
+		for (auto& iter : m_childs)
+		{
+			iter->RenderGUI(currFrame);
+		}
+	}
+}
+
 CGHNode* CGHNode::FindNode(const char* name)
 {
 	CGHNode* result = nullptr;

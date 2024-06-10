@@ -30,6 +30,9 @@
     <Filter Include="Shader\Header">
       <UniqueIdentifier>{4eb48efd-1924-4024-a769-75fac16c66d5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Imgui">
+      <UniqueIdentifier>{0d8b75e1-2d6c-4237-a77c-694f09ac138a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -113,9 +116,6 @@
     <ClInclude Include="..\Common\Source\DxException.h">
       <Filter>BaseUtil</Filter>
     </ClInclude>
-    <ClInclude Include="CGHUIButton.h">
-      <Filter>Nodes</Filter>
-    </ClInclude>
     <ClInclude Include="AnimationComponent.h">
       <Filter>Component</Filter>
     </ClInclude>
@@ -124,9 +124,6 @@
     </ClInclude>
     <ClInclude Include="NodeTransformController.h">
       <Filter>EndObject</Filter>
-    </ClInclude>
-    <ClInclude Include="CGHUIPanel.h">
-      <Filter>Nodes</Filter>
     </ClInclude>
     <ClInclude Include="DX12SMAA.h">
       <Filter>Graphic</Filter>
@@ -202,26 +199,35 @@
     <ClCompile Include="Xml.cpp">
       <Filter>BaseUtil</Filter>
     </ClCompile>
-    <ClCompile Include="CGHUIButton.cpp">
-      <Filter>Nodes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Common\Source\CGHUtil.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="AnimationComponent.cpp">
       <Filter>Component</Filter>
     </ClCompile>
     <ClCompile Include="NodeTransformController.cpp">
       <Filter>EndObject</Filter>
     </ClCompile>
-    <ClCompile Include="CGHUIPanel.cpp">
-      <Filter>Nodes</Filter>
-    </ClCompile>
     <ClCompile Include="DX12SMAA.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
     <ClCompile Include="CGHNodePicker.cpp">
       <Filter>EndObject</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_draw.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_tables.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_widgets.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\backends\imgui_impl_dx12.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\Source\CGHUtil.cpp">
+      <Filter>BaseUtil</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -247,12 +253,6 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shader\DeferredLightPoint.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\FontRender.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\UIShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shader\ShadowMapGenShader.hlsl">

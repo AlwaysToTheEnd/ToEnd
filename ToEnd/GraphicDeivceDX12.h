@@ -130,12 +130,9 @@ public:
 	void RenderMesh(const PipeLineWorkSet* psow, CGHNode* node);
 	void RenderMeshs(const PipeLineWorkSet* psow, const std::vector<CGHNode*>& nodes);
 	void RenderLight(CGHNode* node, unsigned int lightFlags, size_t lightType);
-	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, const DirectX::XMFLOAT4 color, unsigned int renderID, unsigned int parentRenderID);
-	void RenderUI(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT2 size, unsigned int spriteTextureSubIndex, float alpha, 
-		unsigned int renderID, unsigned int parentRenderID);
-	void RenderString(const wchar_t* str, const DirectX::XMFLOAT4& color, const DirectX::XMFLOAT3& pos, float size, float rowPitch, unsigned int parentRenderID);
 	void RenderBegin();
 	void RenderEnd();
+
 
 	void OnResize(int windowWidth, int windowHeight);
 	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
@@ -157,7 +154,6 @@ private:
 
 	void BuildPso();
 	void CreateDeferredTextures(int windowWidth, int windowHeight);
-	void CreateUISpriteSRVs();
 
 	ID3D12CommandAllocator* GetCurrRenderBeginCommandAllocator();
 	ID3D12CommandAllocator* GetCurrRenderEndCommandAllocator();
@@ -188,7 +184,6 @@ private:
 	void BuildShadowMapWritePipeLineWorkSet();
 	void BuildDeferredLightDirPipeLineWorkSet();
 	void BuildSMAARenderPipeLineWorkSet();
-	void BuildUIRenderPipeLineWorkSet();
 	void BuildFontRenderPipeLineWorkSet();
 	void BuildTextureDataDebugPipeLineWorkSet();
 
@@ -231,12 +226,7 @@ private:
 	UINT16							m_currMouseTargetRenderID = 0;
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 
-	std::vector<UIInfo>								m_reservedUIInfos;
-	std::vector<UIInfo*>							m_uiInfoMapped;
-	ComPtr<ID3D12Resource>							m_uiInfoDatas;
-	ComPtr<ID3D12Resource>							m_uiSpriteTexture;
-	ComPtr<ID3D12DescriptorHeap>					m_uiSpriteSRVHeap;
-	std::unordered_map<unsigned int, unsigned int>	m_renderIDIndices;
+	ComPtr<ID3D12DescriptorHeap>	m_uiSRVHeap;
 
 	const unsigned int						m_maxNumChar = 4096;
 	unsigned int							m_numRenderChar = 0;

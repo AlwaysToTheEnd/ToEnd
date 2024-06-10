@@ -11,9 +11,6 @@ size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
 size_t COMMaterial::s_hashCode = typeid(COMMaterial).hash_code();
 size_t COMSkinnedMesh::s_hashCode = typeid(COMSkinnedMesh).hash_code();
 size_t COMDX12SkinnedMeshRenderer::s_hashCode = typeid(COMDX12SkinnedMeshRenderer).hash_code();
-size_t COMUIRenderer::s_hashCode = typeid(COMUIRenderer).hash_code();
-size_t COMUITransform::s_hashCode = typeid(COMUITransform).hash_code();
-size_t COMFontRenderer::s_hashCode = typeid(COMFontRenderer).hash_code();
 
 unsigned int COMSkinnedMesh::s_srvUavSize = 0;
 unsigned int CGHRenderer::s_currRendererInstancedNum = 0;
@@ -378,89 +375,6 @@ void COMMaterial::SetTexture(const TextureInfo* textureInfo, unsigned int index)
 UINT64 COMMaterial::GetMaterialDataGPU(unsigned int currFrameIndex)
 {
 	return DX12GraphicResourceManager::s_insatance.GetGpuAddress<CGHMaterial>(m_currMaterialIndex, currFrameIndex);
-}
-
-void COMUITransform::Update(CGHNode* node, float delta)
-{
-	DirectX::XMMATRIX transMat = DirectX::XMMatrixTranslation(m_pos.x, m_pos.y, m_pos.z);
-
-	CGHNode* parentNode = node->GetParent();
-	if (parentNode != nullptr)
-	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, transMat * DirectX::XMLoadFloat4x4(&parentNode->m_srt));
-	}
-	else
-	{
-		DirectX::XMStoreFloat4x4(&node->m_srt, transMat);
-	}
-}
-
-void XM_CALLCONV COMUITransform::SetPos(DirectX::FXMVECTOR pos)
-{
-	DirectX::XMStoreFloat3(&m_pos, pos);
-}
-
-void XM_CALLCONV COMUITransform::SetSize(DirectX::FXMVECTOR size)
-{
-	DirectX::XMStoreFloat2(&m_size, size);
-}
-
-COMUIRenderer::COMUIRenderer(CGHNode* node)
-	: CGHRenderer(node)
-{
-	m_color = { 0.0f,0.0f,0.0f, 1.0f };
-}
-
-void COMUIRenderer::Render(CGHNode* node, unsigned int)
-{
-	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
-	DirectX::XMFLOAT2 size = node->GetComponent<COMUITransform>()->GetSize();
-	if (m_isTextureBackGound)
-	{
-		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_spriteSubIndex, m_color.z, GetRenderID(), m_parentRenderID);
-	}
-	else
-	{
-		GraphicDeviceDX12::GetGraphic()->RenderUI(pos, size, m_color, GetRenderID(), m_parentRenderID);
-	}
-}
-
-
-COMFontRenderer::COMFontRenderer(CGHNode* node)
-	: CGHRenderer(node)
-{
-}
-
-void COMFontRenderer::RateUpdate(CGHNode* node, float delta)
-{
-}
-
-void COMFontRenderer::Render(CGHNode* node, unsigned int)
-{
-	DirectX::XMFLOAT3 pos = { node->m_srt._41,node->m_srt._42,node->m_srt._43 };
-	GraphicDeviceDX12::GetGraphic()->RenderString(m_str.c_str(), m_color, pos, m_fontSize, m_rowPitch, m_parentRenderID);
-}
-
-void XM_CALLCONV COMFontRenderer::SetColor(DirectX::FXMVECTOR color)
-{
-	DirectX::XMStoreFloat4(&m_color, color);
-}
-
-void COMFontRenderer::SetRenderString(const wchar_t* str, DirectX::FXMVECTOR color, float rowPitch)
-{
-	m_str = str;
-	DirectX::XMStoreFloat4(&m_color, color);
-	m_rowPitch = rowPitch;
-}
-
-void COMFontRenderer::SetText(const wchar_t* str)
-{
-	m_str = str;
-}
-
-void COMFontRenderer::SetRowPitch(float rowPitch)
-{
-	m_rowPitch = rowPitch;
 }
 
 CGHRenderer::CGHRenderer(CGHNode* node)

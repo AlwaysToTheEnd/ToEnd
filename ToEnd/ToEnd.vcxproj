@@ -118,7 +118,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectoryNoRoot); ../Common/Include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectoryNoRoot); ../Common/Include; imgui;</AdditionalIncludeDirectories>
       <DiagnosticsFormat>Classic</DiagnosticsFormat>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <DisableSpecificWarnings>
@@ -171,8 +171,6 @@
     <ClInclude Include="CGHBaseClass.h" />
     <ClInclude Include="CGHGraphicResource.h" />
     <ClInclude Include="CGHNodePicker.h" />
-    <ClInclude Include="CGHUIButton.h" />
-    <ClInclude Include="CGHUIPanel.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="DX12DefaultBufferCreator.h" />
     <ClInclude Include="Dx12FontManager.h" />
@@ -206,8 +204,6 @@
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="CGHGraphicResource.cpp" />
     <ClCompile Include="CGHNodePicker.cpp" />
-    <ClCompile Include="CGHUIButton.cpp" />
-    <ClCompile Include="CGHUIPanel.cpp" />
     <ClCompile Include="DX12DefaultBufferCreator.cpp" />
     <ClCompile Include="Dx12FontManager.cpp" />
     <ClCompile Include="DX12GarbageFrameResourceMG.cpp" />
@@ -217,6 +213,11 @@
     <ClCompile Include="DX12TextureBuffer.cpp" />
     <ClCompile Include="GraphicDeivceDX12.cpp" />
     <ClCompile Include="GraphicResourceLoader.cpp" />
+    <ClCompile Include="Imgui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="Imgui\imgui.cpp" />
+    <ClCompile Include="Imgui\imgui_draw.cpp" />
+    <ClCompile Include="Imgui\imgui_tables.cpp" />
+    <ClCompile Include="Imgui\imgui_widgets.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LightComponents.cpp" />
     <ClCompile Include="NodeTransformController.cpp" />
@@ -267,10 +268,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shader\FontRender.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
     <FxCompile Include="Shader\ShadowMapGenShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
@@ -301,10 +298,6 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Shader\UIShader.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>

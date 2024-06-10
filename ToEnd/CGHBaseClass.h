@@ -41,6 +41,7 @@ public:
 	virtual void Update(float delta);
 	virtual void RateUpdate(float delta);
 	virtual void Render(unsigned int currFrame);
+	virtual void RenderGUI(unsigned int currFrame);
 
 	template<typename T> T* CreateComponent();
 	template<typename T> T* GetComponent();
@@ -143,23 +144,6 @@ template<>
 inline COMDX12SkinnedMeshRenderer* CGHNode::GetComponent()
 {
 	return reinterpret_cast<COMDX12SkinnedMeshRenderer*>(m_components[COMPONENT_SKINNEDMESH_RENDERER].get());
-}
-
-template<>
-inline COMUITransform* CGHNode::CreateComponent()
-{
-	COMUITransform* result = new COMUITransform(this);
-	std::unique_ptr<Component> uniqueTemp(result);
-
-	m_components[COMPONENT_UITRANSFORM] = std::move(uniqueTemp);
-
-	return result;
-}
-
-template<>
-inline COMUITransform* CGHNode::GetComponent()
-{
-	return reinterpret_cast<COMUITransform*>(m_components[COMPONENT_UITRANSFORM].get());
 }
 
 template<>
