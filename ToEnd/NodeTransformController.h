@@ -22,5 +22,6 @@ private:
 private:
 	CGHNode* m_currTarget = nullptr;
 	CGHNode* m_currSelected = nullptr;
+	DirectX::XMFLOAT3 m_rotation = {};
 };
 

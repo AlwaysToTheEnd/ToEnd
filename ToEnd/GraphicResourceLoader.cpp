@@ -160,6 +160,8 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<C
 			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);
 			transform->SetPos(pos);
 			transform->SetScale(scale);
+
+
 			transform->SetRotateQuter(rotQuter);
 
 			nodeOut[i].SetName(nodes[i]->mName.C_Str());

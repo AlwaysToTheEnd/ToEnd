@@ -545,7 +545,8 @@ void GraphicDeviceDX12::RenderEnd()
 
 		m_cmdList->ResourceBarrier(1, &bar);
 
-		if (mouseState.x < GlobalOptions::GO.WIN.WindowsizeX && mouseState.y < GlobalOptions::GO.WIN.WindowsizeY)
+		if (mouseState.x < GlobalOptions::GO.WIN.WindowsizeX && mouseState.y < GlobalOptions::GO.WIN.WindowsizeY 
+			&& mouseState.x > 0 && mouseState.y > 0)
 		{
 			D3D12_BOX rect = {};
 

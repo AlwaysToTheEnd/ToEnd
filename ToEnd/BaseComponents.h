@@ -19,16 +19,16 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_TRANSFORM; }
 
-	DirectX::FXMVECTOR XM_CALLCONV GetPos() const { return DirectX::XMLoadFloat3(&m_pos); }
+	const DirectX::XMFLOAT3& GetPos() const { return m_pos; }
+	const DirectX::XMFLOAT3& GetScale() const { return m_scale; }
+	const DirectX::XMFLOAT4& GetRotationQuter() const { return m_queternion; }
 
 	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
 	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
 	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR quterRotate);
 	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
 	void SetScale(const DirectX::XMFLOAT3& scale) { m_scale = scale; }
-	void SetRotation(const DirectX::XMFLOAT4& quter) { m_queternion = quter; }
-
-	DirectX::FXMVECTOR XM_CALLCONV GetRotateQuter() { return DirectX::XMLoadFloat4(&m_queternion); }
+	void SetRotateQuter(const DirectX::XMFLOAT4& quter) { m_queternion = quter; }
 
 private:
 	static size_t s_hashCode;
@@ -58,7 +58,7 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS GetResultMeshData(MESHDATA_TYPE type);
 	ID3D12Resource* GetResultMeshResource() { return m_VNTBResource.Get(); }
 	ID3D12DescriptorHeap* GetDescriptorHeap() { return m_srvuavHeap.Get(); }
-	
+
 	void NodeTreeDirty();
 
 private:
@@ -137,7 +137,7 @@ public:
 	void RemoveFuncs();
 
 private:
-	static int GetMouseTargetState(int button,const void* mouse);
+	static int GetMouseTargetState(int button, const void* mouse);
 
 protected:
 	static std::unordered_map<unsigned int, std::vector<MouseAction>> s_mouseActions;
@@ -156,7 +156,7 @@ public:
 	COMDX12SkinnedMeshRenderer(CGHNode* node);
 	virtual ~COMDX12SkinnedMeshRenderer() = default;
 
-	virtual void Update(CGHNode* node,float delta) override {}
+	virtual void Update(CGHNode* node, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, float delta) override {};
 	virtual void Render(CGHNode* node, unsigned int) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
@@ -167,7 +167,7 @@ public:
 
 private:
 	static const PipeLineWorkSet* s_skinnedMeshBoneUpdateCompute;
-	const PipeLineWorkSet* m_currPsow  = nullptr;
+	const PipeLineWorkSet* m_currPsow = nullptr;
 	static size_t s_hashCode;
 	bool m_isGroupRenderTarget = false;
 };
