@@ -128,11 +128,11 @@
     <ClInclude Include="DX12SMAA.h">
       <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="PipeLineWorkSet.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="CGHNodePicker.h">
       <Filter>EndObject</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeLineWorkSet.h">
+      <Filter>Graphic</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -18,6 +18,7 @@
 #include "AnimationComponent.h"
 #include "AnimationNodeNameFilter.h"
 #include "CGHNodePicker.h"
+#include "NodeTransformController.h"
 
 TestScene::TestScene()
 {
@@ -26,6 +27,7 @@ TestScene::TestScene()
 TestScene::~TestScene()
 {
 	delete m_aniGroup;
+	delete m_nodeTransformController;
 }
 
 void TestScene::Init()
@@ -36,6 +38,7 @@ void TestScene::Init()
 	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
 	{
 		m_rootNode = &m_bodyNodes.front();
+		m_rootNode->SetLayer(CGHNODE_LAYER::CGHNODE_LYAER_CHARACTER);
 
 		auto render = m_rootNode->CreateComponent<COMDX12SkinnedMeshRenderer>();
 		auto material = m_rootNode->CreateComponent<COMMaterial>();
@@ -233,6 +236,7 @@ void TestScene::Init()
 	}
 
 	CGHNodePicker::s_instance.Init();
+	m_nodeTransformController = new NodeTransformController;
 }
 
 void TestScene::Update(float delta)
@@ -259,6 +263,7 @@ void TestScene::Update(float delta)
 	m_rootNode->Update(delta);
 	m_dirLight.Update(delta);
 	m_dirLight2.Update(delta);
+	m_nodeTransformController->Update(delta);
 }
 
 void TestScene::RateUpdate(float delta)
@@ -266,6 +271,7 @@ void TestScene::RateUpdate(float delta)
 	m_rootNode->RateUpdate(delta);
 	m_dirLight.RateUpdate(delta);
 	m_dirLight2.RateUpdate(delta);
+	m_nodeTransformController->RateUpdate(delta);
 }
 
 void TestScene::Render(unsigned int currFrame)
@@ -280,6 +286,7 @@ void TestScene::UIRender(unsigned int currFrame)
 	m_rootNode->RenderGUI(currFrame);
 	m_dirLight.RenderGUI(currFrame);
 	m_dirLight2.RenderGUI(currFrame);
+	m_nodeTransformController->RenderGUI(currFrame);
 }
 
 void TestScene::ButtonTestFunc(CGHNode* node, int index)

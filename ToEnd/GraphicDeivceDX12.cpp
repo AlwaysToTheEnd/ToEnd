@@ -276,8 +276,6 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	ImGui_ImplWin32_Init(hWnd);
 	ImGui_ImplDX12_Init(m_d3dDevice.Get(), m_numFrameResource, m_backBufferFormat, m_uiSRVHeap.Get(), m_uiSRVHeap->GetCPUDescriptorHandleForHeapStart(),
 		m_uiSRVHeap->GetGPUDescriptorHandleForHeapStart());
-
-
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -571,7 +569,6 @@ void GraphicDeviceDX12::RenderEnd()
 		static bool test = false;
 
 		ImGui::ShowDemoWindow(&test);
-
 		ImGui::Render();
 
 		m_cmdList->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), false, nullptr);

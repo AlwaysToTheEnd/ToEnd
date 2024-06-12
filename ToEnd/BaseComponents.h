@@ -19,6 +19,8 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_TRANSFORM; }
 
+	DirectX::FXMVECTOR XM_CALLCONV GetPos() const { return DirectX::XMLoadFloat3(&m_pos); }
+
 	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
 	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
 	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR quterRotate);

@@ -51,6 +51,7 @@ public:
 	CGHNode* FindNode(const char* name);
 	const char* GetName() const { return m_name.c_str(); }
 	void GetChildNodes(std::vector<CGHNode*>* nodeOut);
+	std::vector<CGHNode*>& GetChilds() { return m_childs; }
 	CGHNode* GetRootNode();
 	CGHNODE_LAYER GetLayer() const { return m_nodeLayer; }
 

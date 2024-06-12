@@ -12,13 +12,15 @@ public:
 	virtual void Init() override;
 	virtual void Update(float delta) override;
 	virtual void RateUpdate(float delta) override;
+	virtual void RenderGUI(unsigned int currFrame) override;
 	void SetSize(unsigned int x, unsigned int y);
 	void SetPos(unsigned int x, unsigned int y, float z);
 
 private:
-	std::vector<CGHNode*> m_currNodeTree;
-	std::vector<COMTransform*> m_currTransforms;
-	CGHNode* m_prevTarget = nullptr;
-	unsigned int m_currButtonIndex = 0;
+	void RenderNodeTransform(CGHNode* node, unsigned int uid);
+
+private:
+	CGHNode* m_currTarget = nullptr;
+	CGHNode* m_currSelected = nullptr;
 };
 
