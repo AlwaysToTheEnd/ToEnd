@@ -10,12 +10,9 @@ NodeTransformController::NodeTransformController()
 
 NodeTransformController::~NodeTransformController()
 {
-}
-
-void NodeTransformController::Init()
-{
 
 }
+
 
 void NodeTransformController::Update(float delta)
 {
@@ -28,14 +25,6 @@ void NodeTransformController::Update(float delta)
 			m_currTarget = currPicked;
 			m_currSelected = nullptr;
 		}
-	}
-}
-
-void NodeTransformController::RateUpdate(float delta)
-{
-	if (m_active)
-	{
-
 	}
 }
 
@@ -81,9 +70,32 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 					auto& pos = transform->GetPos();
 					auto& scale = transform->GetScale();
 
-					ImGui::DragFloat3("Pos", const_cast<float*>(&pos.x), 0.1f);
-					ImGui::DragFloat3("Rot", const_cast<float*>(&m_rotation.x), 0.1f);
-					ImGui::DragFloat3("Scale", const_cast<float*>(&scale.x), 0.01f);
+					ImGui::PushID(0);
+					ImGui::DragFloat3("Pos", const_cast<float*>(&pos.x), 0.1f, 0.0f, 0.0f, "%.2f");
+					ImGui::SameLine();
+					if (ImGui::Button("Reset"))
+					{
+						transform->SetPos(DirectX::XMVectorZero());
+					}
+					ImGui::PopID();
+				
+					ImGui::PushID(1);
+					ImGui::DragFloat3("Rot", const_cast<float*>(&m_rotation.x), 0.1f, 0.0f, 0.0f, "%.2f");
+					ImGui::SameLine();
+					if (ImGui::Button("Reset"))
+					{
+						m_rotation = {};
+					}
+					ImGui::PopID();
+
+					ImGui::PushID(2);
+					ImGui::DragFloat3("Scale", const_cast<float*>(&scale.x), 0.01f, 0.0f, 0.0f, "%.2f");
+					ImGui::SameLine();
+					if (ImGui::Button("Reset"))
+					{
+						transform->SetScale(DirectX::XMVectorSet(1, 1, 1, 0));
+					}
+					ImGui::PopID();
 
 					float piTransform = DirectX::XM_PI/ 180.0f;
 
@@ -91,20 +103,14 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 				}
 
 			}
-			ImGui::EndChild();
+
 		}
+
+		ImGui::EndChild();
 
 		ImGui::PopStyleVar();
 		ImGui::End();
 	}
-}
-
-void NodeTransformController::SetSize(unsigned int x, unsigned int y)
-{
-}
-
-void NodeTransformController::SetPos(unsigned int x, unsigned int y, float z)
-{
 }
 
 void NodeTransformController::RenderNodeTransform(CGHNode* node, unsigned int uid)
