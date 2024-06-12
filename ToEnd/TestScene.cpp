@@ -99,6 +99,7 @@ void TestScene::Init()
 		skinnedMesh->SetMeshData(&m_headMeshs.front());
 		material->SetData(&m_headMats.front());
 		render->SetPSOW("DeferredSkinnedMesh");
+		render->ChangeHashNode(m_rootNode);
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -150,6 +151,7 @@ void TestScene::Init()
 		skinnedMesh->SetMeshData(&m_hairMeshs.front());
 		material->SetData(&m_hairMats.front());
 		render->SetPSOW("DeferredSkinnedMesh");
+		render->ChangeHashNode(m_rootNode);
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/back_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -164,8 +166,6 @@ void TestScene::Init()
 		texInfo.type = aiTextureType_NORMAL_CAMERA;
 		texInfo.textureOp = aiTextureOp_Subtract;
 		material->SetTexture(&texInfo, 1);
-
-
 	}
 
 	{
@@ -246,11 +246,7 @@ void TestScene::Update(float delta)
 	//auto lightTrans2 = m_dirLight2.GetComponent<COMTransform>();
 	auto rootTrans = m_rootNode->GetComponent<COMTransform>();
 
-	static float posY = 0.0f;
 	//posY += delta * 1.0f;
-
-	DirectX::XMFLOAT3 pos = { 0.0f,posY, 0.0f };
-	rootTrans->SetPos(pos);
 
 	static float x, y = 0;
 	//x += delta * 1.0f;

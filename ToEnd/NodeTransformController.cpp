@@ -21,7 +21,7 @@ void NodeTransformController::Update(float delta)
 {
 	if (m_active)
 	{
-		auto currPicked = CGHNodePicker::s_instance.GetCurrPickedNode(CGHNODE_LAYER::CGHNODE_LYAER_CHARACTER);
+		auto currPicked = CGHNodePicker::s_instance.GetCurrPickedNode();
 
 		if (m_currTarget != currPicked)
 		{
@@ -115,6 +115,7 @@ void NodeTransformController::RenderNodeTransform(CGHNode* node, unsigned int ui
 	ImGui::AlignTextToFramePadding();
 
 	ImGuiTreeNodeFlags flags = node == m_currSelected? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None;
+	flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
 	if(node->GetChilds().size() == 0)
 	{

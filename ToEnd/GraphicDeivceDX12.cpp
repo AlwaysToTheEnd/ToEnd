@@ -567,9 +567,9 @@ void GraphicDeviceDX12::RenderEnd()
 	}
 
 	{
-		static bool test = false;
+		/*static bool test = false;
 
-		ImGui::ShowDemoWindow(&test);
+		ImGui::ShowDemoWindow(&test);*/
 		ImGui::Render();
 
 		m_cmdList->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), false, nullptr);

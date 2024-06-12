@@ -528,11 +528,11 @@ void CGHRenderer::SetFunc(int mousebutton, int mouseState, CGHNode* node, std::f
 	s_mouseActions[m_renderID].emplace_back(action);
 }
 
-
-void CGHRenderer::SetParentRender(const CGHRenderer* render)
+void CGHRenderer::ChangeHashNode(CGHNode* node)
 {
-	m_parentRenderID = render->GetRenderID();
+	s_hasNode[m_renderID] = node;
 }
+
 
 void CGHRenderer::RemoveFuncs()
 {
