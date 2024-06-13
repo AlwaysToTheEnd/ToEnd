@@ -10,9 +10,7 @@ NodeTransformController::NodeTransformController()
 
 NodeTransformController::~NodeTransformController()
 {
-
 }
-
 
 void NodeTransformController::Update(float delta)
 {
@@ -32,7 +30,7 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 {
 	if (m_active)
 	{
-		if (!ImGui::Begin("NodeTransformController"))
+		if (!ImGui::Begin("NodeTransformController", &m_active))
 		{
 			ImGui::End();
 			return;

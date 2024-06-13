@@ -61,7 +61,7 @@ float4 PS(GSOut pin) : SV_Target0
 {
     float4 color = float4(1, 1, 1, 1);
     
-    color.rgb = gBlendTex.SampleLevel(gsamLinearClamp, pin.uv, 0).rgb;
+    color = gBlendTex.Sample(gsamLinearWrap, pin.uv);
 
     return color;
 }

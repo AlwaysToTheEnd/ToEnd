@@ -252,7 +252,7 @@ void TestScene::Update(float delta)
 	//x += delta * 1.0f;
 	y += delta * 0.8f;
 
-	lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
+	//lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
 	//lightTrans2->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
 
 	CGHRenderer::ExcuteMouseAction(graphic->GetCurrMouseTargetRenderID());
@@ -267,7 +267,6 @@ void TestScene::RateUpdate(float delta)
 	m_rootNode->RateUpdate(delta);
 	m_dirLight.RateUpdate(delta);
 	m_dirLight2.RateUpdate(delta);
-	m_nodeTransformController->RateUpdate(delta);
 }
 
 void TestScene::Render(unsigned int currFrame)

@@ -28,10 +28,9 @@ D3D12_CPU_DESCRIPTOR_HANDLE DX12SMAA::GetColorRenderTarget()
 	return result;
 }
 
-std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Device* device,
-	ID3D12GraphicsCommandList* cmd, unsigned int winX, unsigned int winY)
+void DX12SMAA::Resize(ID3D12Device* device,
+	ID3D12GraphicsCommandList* cmd, unsigned int winX, unsigned int winY, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& upBuffers)
 {
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> upBuffers;
 	m_textures[TEXTYPE_EDGES].Reset();
 	m_textures[TEXTYPE_BLEND].Reset();
 	m_textures[TEXTYPE_COLOR].Reset();
@@ -148,7 +147,7 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 		{
 			DirectX::TexMetadata metaData;
 			DirectX::ScratchImage scratch;
-			ThrowIfFailed(DirectX::LoadFromDDSFile(L"Textures/SMAA/SearchTex.dds", DirectX::DDS_FLAGS_NO_LEGACY_EXPANSION, &metaData, scratch));
+			ThrowIfFailed(DirectX::LoadFromDDSFile(L"Textures/SMAA/SearchTex.dds", DirectX::DDS_FLAGS_NONE, &metaData, scratch));
 
 			const uint8_t* pixelMemory = scratch.GetPixels();
 			const DirectX::Image* image = scratch.GetImages();
@@ -158,7 +157,8 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 			desc.Height = image->height;
 			desc.Format = image->format;
 			desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-			upDesc.Width = scratch.GetPixelsSize() * 1.5;
+
+			upDesc.Width = ((image->width + 255) & ~255) * image->height;
 
 			ThrowIfFailed(device->CreateCommittedResource(&upProp, D3D12_HEAP_FLAG_NONE, &upDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(upBuffers[1].GetAddressOf())));
@@ -187,6 +187,7 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	{
 		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -215,6 +216,4 @@ std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DX12SMAA::Resize(ID3D12Devic
 		device->CreateRenderTargetView(m_textures[i].Get(), &rtvDesc, rtvHeapCPU);
 		rtvHeapCPU.ptr += m_rtvSize;
 	}
-
-	return upBuffers;
 }

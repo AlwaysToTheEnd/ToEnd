@@ -29,7 +29,7 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetEdgeRenderTarget();
 	D3D12_CPU_DESCRIPTOR_HANDLE GetBlendRenderTarget();
 	D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTarget();
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> Resize(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, unsigned int winX, unsigned int winY);
+	void Resize(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, unsigned int winX, unsigned int winY, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& upbuffers);
 
 private:
 	unsigned int m_rtvSize = 0;

@@ -4,6 +4,7 @@
 #include <intsafe.h>
 #include <string>
 #include <DirectXMath.h>
+#include <DirectXColors.h>
 
 #define GET_NAME(n) #n
 
@@ -60,10 +61,24 @@ struct GlobalOptions
 
 	struct GraphicOption
 	{
-		const std::wstring	TextureFolderPath = L"Texture";
-		const std::wstring	FontFolderPath = L"Fonts";
-		float				Shadowlength = 100.0f;
-		float				phongTessAlpha = 0.75f;
+		DirectX::XMVECTORF32	BGColor = { { { 0.f, 0.f, 0.f, 0.f } } };
+		bool 					EnableWireFrame = false;
+		bool					EnableTextureDebugPSO = true;
+
+		bool					EnableShadow = true;
+		float					ShadowDistance = 1000.0f;
+		float					ShadowNear = 0.1f;
+		float					ShadowFar = 100.0f;
+
+		float					PhongTessAlpha = 0.75f;
+		float					PhongTessFactor = 4.0f;
+
+		bool					EnableSMAA = true;	
+		float 					SMAAEdgeDetectionThreshold = 0.1f;
+		int						SMAAMaxSearchSteps = 16;
+		int						SMAAMaxSearchStepsDiag = 8;
+		int						SMAACornerRounding = 25;
+
 	}GRAPHIC;
 
 	static GlobalOptions GO;

@@ -1,19 +1,22 @@
-SamplerState PointSampler : register(s1);
-SamplerState LinearSampler : register(s3);
+SamplerState PointSampler : register(s4);
+SamplerState LinearSampler : register(s4);
 
 cbuffer gSMAAPassCB : register(b0, space0)
 {
     float4 gWindowReciprocalnSize;
     float4 gSubsampleIndices;
     float gThreshold;
+    int gMaxSearchSteps;
+    int gMaxSearchStepsDiag;
+    int gCornerRounding;
 };
 
 #define SMAA_RT_METRICS gWindowReciprocalnSize
 #define SMAA_HLSL_4_1
 #define SMAA_THRESHOLD gThreshold
-#define SMAA_MAX_SEARCH_STEPS 32
-#define SMAA_MAX_SEARCH_STEPS_DIAG 16
-#define SMAA_CORNER_ROUNDING 25
+#define SMAA_MAX_SEARCH_STEPS gMaxSearchSteps
+#define SMAA_MAX_SEARCH_STEPS_DIAG gMaxSearchStepsDiag
+#define SMAA_CORNER_ROUNDING gCornerRounding
 #include "SMAA.hlsl"
 
 //#if defined(SMAA_PRESET_LOW)
@@ -159,12 +162,8 @@ void NeiBlendGS(point float4 input[1] : SV_Position, inout TriangleStream<NeiBle
 float4 NeiBlendPS(NeiBlendGSOut input) : SV_Target0 
 {
     float4 result = SMAANeighborhoodBlendingPS(input.uv, input.offset, gColorTexGamma, gBlendTex);
-    
     //result.rgb = pow(result.rgb, 1.0f / 2.2f);
-    if (result.a == 0)
-    {
-        clip(0);
-    }
+    
     
     
     return result;

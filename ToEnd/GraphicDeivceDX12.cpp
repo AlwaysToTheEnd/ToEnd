@@ -420,7 +420,8 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 	}
 	DX12FontManger::s_instance.ApplyRenderIDTexture();
 
-	auto smaaUPloadBuffers = m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight);
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> smaaUPloadBuffers;
+	m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight, smaaUPloadBuffers);
 	ThrowIfFailed(m_cmdList->Close());
 	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
@@ -474,9 +475,7 @@ void GraphicDeviceDX12::RenderBegin()
 		m_beforeRenderStartResourceBarriers.clear();
 	}
 
-	auto backColor = DirectX::Colors::Gray;
-	backColor.f[3] = 0;
-	m_swapChain->RenderBegin(m_cmdList.Get(), backColor);
+	m_swapChain->RenderBegin(m_cmdList.Get(), GlobalOptions::GO.GRAPHIC.BGColor);
 
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
@@ -486,12 +485,9 @@ void GraphicDeviceDX12::RenderBegin()
 	renderIDTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_RENDERID;
 	renderDiffuseTexture.ptr += m_rtvSize * DEFERRED_TEXTURE_DIFFUSE;
 
-	backColor = DirectX::Colors::Black;
-	backColor.f[3] = 0;
-
-	m_cmdList->ClearRenderTargetView(renderIDTexture, backColor, 0, nullptr);
-	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, backColor, 0, nullptr);
-	m_cmdList->ClearRenderTargetView(m_smaa->GetColorRenderTarget(), backColor, 0, nullptr);
+	m_cmdList->ClearRenderTargetView(renderIDTexture, GlobalOptions::GO.GRAPHIC.BGColor, 0, nullptr);
+	m_cmdList->ClearRenderTargetView(renderDiffuseTexture, GlobalOptions::GO.GRAPHIC.BGColor, 0, nullptr);
+	m_cmdList->ClearRenderTargetView(m_smaa->GetColorRenderTarget(), GlobalOptions::GO.GRAPHIC.BGColor, 0, nullptr);
 
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -568,8 +564,8 @@ void GraphicDeviceDX12::RenderEnd()
 
 	{
 		/*static bool test = false;
-
 		ImGui::ShowDemoWindow(&test);*/
+		GraphicOptionGUIRender();
 		ImGui::Render();
 
 		m_cmdList->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), false, nullptr);
@@ -729,7 +725,7 @@ void GraphicDeviceDX12::BuildPso()
 	BuildShadowMapWritePipeLineWorkSet();
 	BuildDeferredLightDirPipeLineWorkSet();
 	BuildSMAARenderPipeLineWorkSet();
-	//BuildTextureDataDebugPipeLineWorkSet();
+	BuildTextureDataDebugPipeLineWorkSet();
 }
 
 void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight)
@@ -758,10 +754,7 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 	{
 		D3D12_CLEAR_VALUE clearValue = {};
 		clearValue.Format = m_deferredFormat[i];
-		clearValue.Color[0] = 0;
-		clearValue.Color[1] = 0;
-		clearValue.Color[2] = 0;
-		clearValue.Color[3] = 0;
+		std::memcpy(clearValue.Color, &GlobalOptions::GO.GRAPHIC.BGColor, sizeof(DirectX::XMVECTORF32));
 		m_deferredResources[i] = nullptr;
 		rDesc.Format = m_deferredFormat[i];
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
@@ -824,6 +817,40 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 
 		viewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 		m_d3dDevice->CreateShaderResourceView(m_swapChain->GetDSResource(), &viewDesc, heapCPU);
+	}
+}
+
+void GraphicDeviceDX12::GraphicOptionGUIRender()
+{
+	if (m_isShowGraphicOption)
+	{
+		if (ImGui::Begin("GraphicOption", &m_isShowGraphicOption, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Checkbox("EnableWireFrame", &GlobalOptions::GO.GRAPHIC.EnableWireFrame);
+			ImGui::Checkbox("EnableTextureDebugPSO", &GlobalOptions::GO.GRAPHIC.EnableTextureDebugPSO);
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			ImGui::Checkbox("EnableShadow", &GlobalOptions::GO.GRAPHIC.EnableShadow);
+			ImGui::DragFloat("ShadowDistance", &GlobalOptions::GO.GRAPHIC.ShadowDistance, 1.0f, 0.0f, 1000.0f);
+			ImGui::DragFloat("ShadowFar", &GlobalOptions::GO.GRAPHIC.ShadowFar, 1.0f, 0.0f, 1000.0f);
+			ImGui::DragFloat("ShadowNear", &GlobalOptions::GO.GRAPHIC.ShadowNear, 0.1f, 0.0f, 1000.0f);
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			ImGui::DragFloat("PhongTessAlpha", &GlobalOptions::GO.GRAPHIC.PhongTessAlpha, 0.02f, 0.0f, 1.0f);
+			ImGui::DragFloat("PhongTessFactor", &GlobalOptions::GO.GRAPHIC.PhongTessFactor, 0.1f, 1.0f, 8.0f);
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			ImGui::Checkbox("EnableSMAA", &GlobalOptions::GO.GRAPHIC.EnableSMAA);
+			ImGui::DragFloat("SMAAEdgeThreshold", &GlobalOptions::GO.GRAPHIC.SMAAEdgeDetectionThreshold, 0.001f, 0.001f, 0.2f);
+			ImGui::DragInt("SMAAMaxSearchStep", &GlobalOptions::GO.GRAPHIC.SMAAMaxSearchSteps, 1, 0, 64);
+			ImGui::DragInt("SMAAMaxSearchStepDiag", &GlobalOptions::GO.GRAPHIC.SMAAMaxSearchStepsDiag, 1, 0, 32);
+			ImGui::DragInt("SMAAConerRounding", &GlobalOptions::GO.GRAPHIC.SMAACornerRounding, 1, 0, 50);
+		}
+
+		ImGui::End();
 	}
 }
 
@@ -929,7 +956,7 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 		ROOT_MAINPASS_CB = 0,
 		ROOT_MATERIAL_CB,
 		ROOT_TEXTURE_TABLE,
-		ROOT_OBJECTINFO_CB,
+		ROOT_OBJECTINFO_CONST,
 		ROOT_VERTEX_RESULT_SRV,
 		ROOT_NORMAL_RESULT_SRV,
 		ROOT_TANGENT_RESULT_SRV,
@@ -967,11 +994,11 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 		rootParams[ROOT_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = textureTableRange;
 		rootParams[ROOT_TEXTURE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		rootParams[ROOT_OBJECTINFO_CB].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_OBJECTINFO_CB].Constants.Num32BitValues = 3;
-		rootParams[ROOT_OBJECTINFO_CB].Constants.RegisterSpace = 1;
-		rootParams[ROOT_OBJECTINFO_CB].Constants.ShaderRegister = 0;
-		rootParams[ROOT_OBJECTINFO_CB].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParams[ROOT_OBJECTINFO_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[ROOT_OBJECTINFO_CONST].Constants.Num32BitValues = 4;
+		rootParams[ROOT_OBJECTINFO_CONST].Constants.RegisterSpace = 1;
+		rootParams[ROOT_OBJECTINFO_CONST].Constants.ShaderRegister = 0;
+		rootParams[ROOT_OBJECTINFO_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		rootParams[ROOT_VERTEX_RESULT_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 		rootParams[ROOT_VERTEX_RESULT_SRV].Descriptor.RegisterSpace = 1;
@@ -1100,7 +1127,7 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 				vbView[i].StrideInBytes = sizeof(aiVector3D);
 			}
 
-			UINT phongTessAlpha = reinterpret_cast<UINT&>(GlobalOptions::GO.GRAPHIC.phongTessAlpha);
+			UINT PhongTessAlpha = reinterpret_cast<UINT&>(GlobalOptions::GO.GRAPHIC.PhongTessAlpha);
 			D3D12_INDEX_BUFFER_VIEW ibView = {};
 			ibView.BufferLocation = currMesh->indices->GetGPUVirtualAddress();
 			ibView.Format = DXGI_FORMAT_R32_UINT;
@@ -1112,9 +1139,10 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MATERIAL_CB, matCB);
 			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, descHeapHandle);
-			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, id, 0);
-			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, isShadowGen, 1);
-			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CB, phongTessAlpha, 2);
+			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CONST, id, 0);
+			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CONST, isShadowGen, 1);
+			cmd->SetGraphicsRoot32BitConstant(ROOT_OBJECTINFO_CONST, PhongTessAlpha, 2);
+			cmd->SetGraphicsRoot32BitConstants(ROOT_OBJECTINFO_CONST, 1, &GlobalOptions::GO.GRAPHIC.PhongTessFactor, 3);
 
 			cmd->SetGraphicsRootShaderResourceView(ROOT_VERTEX_RESULT_SRV, meshCom->GetResultMeshData(MESHDATA_POSITION));
 			cmd->SetGraphicsRootShaderResourceView(ROOT_NORMAL_RESULT_SRV, meshCom->GetResultMeshData(MESHDATA_NORMAL));
@@ -1435,7 +1463,17 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 
 
 			cmd->ResourceBarrier(_countof(resourceBars), resourceBars);
-			auto rtv = m_smaa->GetColorRenderTarget();
+			D3D12_CPU_DESCRIPTOR_HANDLE rtv = {};
+
+			if (GlobalOptions::GO.GRAPHIC.EnableSMAA)
+			{
+				rtv = m_smaa->GetColorRenderTarget();
+			}
+			else
+			{
+				rtv = m_swapChain->CurrRTV();
+			}
+
 			cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
 
 			if (m_numDirLight)
@@ -1478,7 +1516,7 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams(ROOT_NUM);
 		rootParams[ROOT_SMAA_PASS_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_SMAA_PASS_CONST].Constants.Num32BitValues = 9;
+		rootParams[ROOT_SMAA_PASS_CONST].Constants.Num32BitValues = 12;
 		rootParams[ROOT_SMAA_PASS_CONST].Constants.RegisterSpace = 0;
 		rootParams[ROOT_SMAA_PASS_CONST].Constants.ShaderRegister = 0;
 		rootParams[ROOT_SMAA_PASS_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -1539,24 +1577,27 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 			{
-				XMVECTOR vecZero = XMVectorZero();
-				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-				cmd->ClearRenderTargetView(m_smaa->GetEdgeRenderTarget(), vecZero.m128_f32, 0, nullptr);
+				if (GlobalOptions::GO.GRAPHIC.EnableSMAA)
+				{
+					XMVECTOR vecZero = XMVectorZero();
+					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					cmd->ClearRenderTargetView(m_smaa->GetEdgeRenderTarget(), vecZero.m128_f32, 0, nullptr);
 
-				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
-				cmd->SetDescriptorHeaps(1, heaps);
-				cmd->OMSetRenderTargets(1, &m_smaa->GetEdgeRenderTarget(), true, &m_swapChain->GetDSV());
-				cmd->OMSetStencilRef(1);
+					ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
+					cmd->SetDescriptorHeaps(1, heaps);
+					cmd->OMSetRenderTargets(1, &m_smaa->GetEdgeRenderTarget(), true, &m_swapChain->GetDSV());
+					cmd->OMSetStencilRef(1);
 
-				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
-					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
+					XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
+						GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 1, &m_testThreshold, 8);
-				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &GlobalOptions::GO.GRAPHIC.SMAAEdgeDetectionThreshold, 8);
+					cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
 
-				cmd->DrawInstanced(1, 1, 0, 0);
+					cmd->DrawInstanced(1, 1, 0, 0);
+				}
 			};
 
 		currPSOWorkSet->nodeGraphicCmdFunc = nullptr;
@@ -1588,24 +1629,27 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 			{
-				XMVECTOR vecZero = XMVectorZero();
-				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-				cmd->ClearRenderTargetView(m_smaa->GetBlendRenderTarget(), vecZero.m128_f32, 0, nullptr);
+				if (GlobalOptions::GO.GRAPHIC.EnableSMAA)
+				{
+					XMVECTOR vecZero = XMVectorZero();
+					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					cmd->ClearRenderTargetView(m_smaa->GetBlendRenderTarget(), vecZero.m128_f32, 0, nullptr);
 
-				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
-				cmd->SetDescriptorHeaps(1, heaps);
-				cmd->OMSetRenderTargets(1, &m_smaa->GetBlendRenderTarget(), true, &m_swapChain->GetDSV());
-				cmd->OMSetStencilRef(1);
+					ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
+					cmd->SetDescriptorHeaps(1, heaps);
+					cmd->OMSetRenderTargets(1, &m_smaa->GetBlendRenderTarget(), false, &m_swapChain->GetDSV());
+					cmd->OMSetStencilRef(1);
 
-				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
-					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
+					XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
+						GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 1, &m_testThreshold, 8);
-				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &GlobalOptions::GO.GRAPHIC.SMAAEdgeDetectionThreshold, 8);
+					cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
 
-				cmd->DrawInstanced(1, 1, 0, 0);
+					cmd->DrawInstanced(1, 1, 0, 0);
+				}
 			};
 	}
 
@@ -1624,7 +1668,7 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 		psoDesc.SampleMask = UINT_MAX;
 
 		psoDesc.BlendState.AlphaToCoverageEnable = true;
-		psoDesc.BlendState.RenderTarget[0].BlendEnable = true;
+		psoDesc.BlendState.RenderTarget[0].BlendEnable = false;
 		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 		psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -1641,25 +1685,28 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 
 		currPSOWorkSet->baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 			{
-				XMVECTOR vecZero = XMVectorZero();
-				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+				if (GlobalOptions::GO.GRAPHIC.EnableSMAA)
+				{
+					XMVECTOR vecZero = XMVectorZero();
+					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-				ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
-				cmd->SetDescriptorHeaps(1, heaps);
-				cmd->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), true, nullptr);
-				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaa->GetBlendTex(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+					ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
+					cmd->SetDescriptorHeaps(1, heaps);
+					cmd->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), true, nullptr);
+					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaa->GetBlendTex(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
-				XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
-					GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
+					XMVECTOR windowInfo = XMVectorSet(1.0f / GlobalOptions::GO.WIN.WindowsizeX, 1.0f / GlobalOptions::GO.WIN.WindowsizeY,
+						GlobalOptions::GO.WIN.WindowsizeX, GlobalOptions::GO.WIN.WindowsizeY);
 
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
-				cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 1, &m_testThreshold, 8);
-				cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &windowInfo, 0);
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &vecZero, 4);
+					cmd->SetGraphicsRoot32BitConstants(ROOT_SMAA_PASS_CONST, 4, &GlobalOptions::GO.GRAPHIC.SMAAEdgeDetectionThreshold, 8);
+					cmd->SetGraphicsRootDescriptorTable(ROOT_SMAA_RESORUCE_TABLE, m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
 
-				cmd->DrawInstanced(1, 1, 0, 0);
+					cmd->DrawInstanced(1, 1, 0, 0);
 
-				cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaa->GetBlendTex(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET));
+					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaa->GetBlendTex(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET));
+				}
 			};
 	}
 }
@@ -1731,19 +1778,22 @@ void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			auto rtv = m_swapChain->CurrRTV();
-			cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
+			if (GlobalOptions::GO.GRAPHIC.EnableTextureDebugPSO)
+			{
+				auto rtv = m_swapChain->CurrRTV();
+				cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
 
-			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-			ID3D12DescriptorHeap* descHeaps[] = { m_smaa->GetSRVHeap() };
-			cmd->SetDescriptorHeaps(1, descHeaps);
-			cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeX, 0);
-			cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeY, 1);
+				ID3D12DescriptorHeap* descHeaps[] = { m_smaa->GetSRVHeap() };
+				cmd->SetDescriptorHeaps(1, descHeaps);
+				cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeX, 0);
+				cmd->SetGraphicsRoot32BitConstant(ROOT_WINSIZE_CONST, GlobalOptions::GO.WIN.WindowsizeY, 1);
 
-			auto srvHeap = m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart();
-			cmd->SetGraphicsRootDescriptorTable(ROOT_DEBUG_TEXTURE_TABLE, srvHeap);
+				auto srvHeap = m_smaa->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart();
+				cmd->SetGraphicsRootDescriptorTable(ROOT_DEBUG_TEXTURE_TABLE, srvHeap);
 
-			cmd->DrawInstanced(1, 1, 0, 0);
+				cmd->DrawInstanced(1, 1, 0, 0);
+			}
 		};
 }

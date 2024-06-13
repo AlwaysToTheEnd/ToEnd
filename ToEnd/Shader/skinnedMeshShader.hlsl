@@ -13,6 +13,7 @@ cbuffer cbsettings : register(b0, space1)
     uint gRenderID;
     bool gIsShadowGen;
     float gPhongTessAlpha;
+    float gPhongTessFactor;
 };
 
 StructuredBuffer<float3> gPos : register(t0, space1);
@@ -71,9 +72,8 @@ HSConstDataOut PointLightConstantHS(InputPatch<VSOut, 3> patch)
     //output.edges[2] = 1.0f + (1.0f - abs(dot(pToEyeVec[2], normals[2]))) * 10.0f;
     
     //output.inside[0] = 1.0f + (output.edges[0] + output.edges[1] + output.edges[2]) * 0.33333333f;
-    float tessFactor = 4.0f;
-    output.edges[0] = output.edges[1] = output.edges[2] = tessFactor;
-    output.inside[0] = tessFactor;
+    output.edges[0] = output.edges[1] = output.edges[2] = gPhongTessFactor;
+    output.inside[0] = gPhongTessFactor;
     
     return output;
 }

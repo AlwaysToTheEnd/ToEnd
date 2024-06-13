@@ -153,6 +153,7 @@ private:
 
 	void BuildPso();
 	void CreateDeferredTextures(int windowWidth, int windowHeight);
+	void GraphicOptionGUIRender();
 
 	ID3D12CommandAllocator* GetCurrRenderBeginCommandAllocator();
 	ID3D12CommandAllocator* GetCurrRenderEndCommandAllocator();
@@ -165,8 +166,6 @@ private:
 		PSOW_SMAA_EDGE_RENDER,
 		PSOW_SMAA_BLEND_RENDER,
 		PSOW_SMAA_NEIBLEND_RENDER,
-		PSOW_UI_RENDER,
-		PSOW_FONT_RENDER,
 		PSOW_TEX_DEBUG,
 		PSOW_NUM
 	};
@@ -225,6 +224,7 @@ private:
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 
 	ComPtr<ID3D12DescriptorHeap>	m_uiSRVHeap;
+	bool							m_isShowGraphicOption = true;
 
 	const unsigned int										m_numMaxShadowMap = 8;
 	const unsigned int										m_numMaxDirLight = 32;
@@ -237,7 +237,6 @@ private:
 	ComPtr<ID3D12DescriptorHeap>							m_SRVHeap;
 
 	DX12SMAA*												m_smaa = nullptr;
-	float													m_testThreshold = 0.05f;
 
 	std::vector<CD3DX12_RESOURCE_BARRIER>					m_afterRenderEndResourceBarriers;
 	std::vector<CD3DX12_RESOURCE_BARRIER>					m_beforeRenderStartResourceBarriers;
