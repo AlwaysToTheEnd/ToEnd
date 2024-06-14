@@ -122,7 +122,7 @@
     <ClInclude Include="AnimationNodeNameFilter.h">
       <Filter>Component</Filter>
     </ClInclude>
-    <ClInclude Include="NodeTransformController.h">
+    <ClInclude Include="NodeController.h">
       <Filter>EndObject</Filter>
     </ClInclude>
     <ClInclude Include="DX12SMAA.h">
@@ -202,7 +202,7 @@
     <ClCompile Include="AnimationComponent.cpp">
       <Filter>Component</Filter>
     </ClCompile>
-    <ClCompile Include="NodeTransformController.cpp">
+    <ClCompile Include="NodeController.cpp">
       <Filter>EndObject</Filter>
     </ClCompile>
     <ClCompile Include="DX12SMAA.cpp">

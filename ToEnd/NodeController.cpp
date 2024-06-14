@@ -1,18 +1,18 @@
-#include "NodeTransformController.h"
+#include "NodeController.h"
 #include "CGHNodePicker.h"
 #include "../Common/Source/CGHUtil.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 
-NodeTransformController::NodeTransformController()
+NodeController::NodeController()
 {
 }
 
-NodeTransformController::~NodeTransformController()
+NodeController::~NodeController()
 {
 }
 
-void NodeTransformController::Update(float delta)
+void NodeController::Update(float delta)
 {
 	if (m_active)
 	{
@@ -26,11 +26,11 @@ void NodeTransformController::Update(float delta)
 	}
 }
 
-void NodeTransformController::RenderGUI(unsigned int currFrame)
+void NodeController::RenderGUI(unsigned int currFrame)
 {
 	if (m_active)
 	{
-		if (!ImGui::Begin("NodeTransformController", &m_active))
+		if (!ImGui::Begin("NodeController", &m_active))
 		{
 			ImGui::End();
 			return;
@@ -47,7 +47,7 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 
 			if (m_currTarget)
 			{
-				RenderNodeTransform(m_currTarget, 0);
+				RenderNodeTree(m_currTarget, 0);
 			}
 
 			ImGui::EndTable();
@@ -55,17 +55,17 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 
 		ImGui::SameLine();
 
-		if (ImGui::BeginChild("TransformInfo"))
+		if (ImGui::BeginChild("ComponentsInfo"))
 		{
 			if (m_currTarget && m_currSelected)
 			{
-				ImGui::SeparatorText(m_currSelected->GetName());
+				ImGui::Text(m_currSelected->GetName());
+				std::vector<Component*> comps;
+				m_currSelected->GetHasComponents(comps);
 
-				auto transform = m_currSelected->GetComponent<COMTransform>();
-
-				if (transform)
+				for(unsigned int i =0; i<comps.size(); ++i)
 				{
-					transform->GUIRender(currFrame,0);
+					comps[i]->GUIRender(currFrame, i);
 				}
 			}
 		}
@@ -77,7 +77,7 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 	}
 }
 
-void NodeTransformController::RenderNodeTransform(CGHNode* node, unsigned int uid)
+void NodeController::RenderNodeTree(CGHNode* node, unsigned int uid)
 {
 	ImGui::PushID(uid);
 	ImGui::TableNextRow();
@@ -104,7 +104,7 @@ void NodeTransformController::RenderNodeTransform(CGHNode* node, unsigned int ui
 		unsigned int index = 0;
 		for (auto iter : node->GetChilds())
 		{
-			RenderNodeTransform(iter, index++);
+			RenderNodeTree(iter, index++);
 		}
 
 		ImGui::TreePop();

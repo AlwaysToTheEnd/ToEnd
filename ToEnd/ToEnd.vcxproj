@@ -185,7 +185,7 @@
     <ClInclude Include="GraphicResourceLoader.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="LightComponents.h" />
-    <ClInclude Include="NodeTransformController.h" />
+    <ClInclude Include="NodeController.h" />
     <ClInclude Include="PipeLineWorkSet.h" />
     <ClInclude Include="PlatformHelpers.h" />
     <ClInclude Include="TestScene.h" />
@@ -223,7 +223,7 @@
     <ClCompile Include="Imgui\imgui_widgets.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LightComponents.cpp" />
-    <ClCompile Include="NodeTransformController.cpp" />
+    <ClCompile Include="NodeController.cpp" />
     <ClCompile Include="TestScene.cpp" />
     <ClCompile Include="Xml.cpp" />
   </ItemGroup>

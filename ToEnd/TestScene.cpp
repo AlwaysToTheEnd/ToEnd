@@ -18,7 +18,7 @@
 #include "AnimationComponent.h"
 #include "AnimationNodeNameFilter.h"
 #include "CGHNodePicker.h"
-#include "NodeTransformController.h"
+#include "NodeController.h"
 
 TestScene::TestScene()
 {
@@ -236,7 +236,7 @@ void TestScene::Init()
 	}
 
 	CGHNodePicker::s_instance.Init();
-	m_nodeTransformController = new NodeTransformController;
+	m_nodeTransformController = new NodeController;
 }
 
 void TestScene::Update(float delta)

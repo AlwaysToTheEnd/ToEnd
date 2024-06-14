@@ -18,7 +18,6 @@ public:
 	virtual void RateUpdate(CGHNode* node, float delta) override {};
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_TRANSFORM; }
-	virtual void GUIRender(unsigned int currFrame, unsigned int uid) override;
 
 	const DirectX::XMFLOAT3& GetPos() const { return m_pos; }
 	const DirectX::XMFLOAT3& GetScale() const { return m_scale; }
@@ -29,6 +28,9 @@ public:
 	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
 	void SetScale(const DirectX::XMFLOAT3& scale) { m_scale = scale; }
 	void SetRotate(const DirectX::XMFLOAT3& rotate) { m_rotate = rotate; }
+
+private:
+	virtual void GUIRender_Internal(unsigned int currFrame) override;
 
 private:
 	static size_t s_hashCode;
@@ -49,7 +51,6 @@ public:
 	virtual void Update(CGHNode* node, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, float delta) override;
 	virtual void Render(CGHNode* node, unsigned int currFrame) override;
-	virtual void GUIRender(unsigned int currFrame, unsigned int uid) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH; }
 
@@ -61,6 +62,9 @@ public:
 	ID3D12DescriptorHeap* GetDescriptorHeap() { return m_srvuavHeap.Get(); }
 
 	void NodeTreeDirty();
+
+private:
+	virtual void GUIRender_Internal(unsigned int currFrame) override;
 
 private:
 	static size_t s_hashCode;
@@ -165,6 +169,9 @@ public:
 
 	void SetPSOW(const char* name);
 	void SetGroupRender(bool value) { m_isGroupRenderTarget = value; }
+
+private:
+	virtual void GUIRender_Internal(unsigned int currFrame) override;
 
 private:
 	static const PipeLineWorkSet* s_skinnedMeshBoneUpdateCompute;

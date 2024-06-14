@@ -43,10 +43,8 @@ void COMTransform::Update(CGHNode* node, float delta)
 	}
 }
 
-void COMTransform::GUIRender(unsigned int currFrame, unsigned int uid)
+void COMTransform::GUIRender_Internal(unsigned int currFrame)
 {
-	ImGui::PushID(uid);
-	Component::GUIRender(currFrame, uid);
 	ImGui::Text("Pos");
 	ImGui::SameLine();
 	ImGui::DragFloat3("##Position", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
@@ -56,8 +54,6 @@ void COMTransform::GUIRender(unsigned int currFrame, unsigned int uid)
 	ImGui::Text("Rot");
 	ImGui::SameLine();
 	ImGui::DragFloat3("##Rotate", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
-
-	ImGui::PopID();
 }
 
 void XM_CALLCONV COMTransform::SetPos(DirectX::FXMVECTOR pos)
@@ -181,18 +177,13 @@ void COMSkinnedMesh::Render(CGHNode* node, unsigned int currFrame)
 }
 
 
-void COMSkinnedMesh::GUIRender(unsigned int currFrame, unsigned int uid)
+void COMSkinnedMesh::GUIRender_Internal(unsigned int currFrame)
 {
-	ImGui::PushID(uid);
-	Component::GUIRender(currFrame, uid);
-
 	if (m_data)
 	{
 		ImGui::Text("Mesh name : %s", m_data->meshName.c_str());
 		ImGui::Text("Bone num : %d", m_data->bones.size());
 	}
-
-	ImGui::PopID();
 }
 
 void COMSkinnedMesh::SetMeshData(const CGHMesh* meshData)
@@ -329,6 +320,10 @@ void COMDX12SkinnedMeshRenderer::Render(CGHNode* node, unsigned int)
 			}
 		}
 	}
+}
+
+void COMDX12SkinnedMeshRenderer::GUIRender_Internal(unsigned int currFrame)
+{
 }
 
 void COMDX12SkinnedMeshRenderer::SetPSOW(const char* name)

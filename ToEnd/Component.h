@@ -31,16 +31,19 @@ public:
 	virtual void Update(CGHNode* node, float delta) = 0;
 	virtual void RateUpdate(CGHNode* node, float delta) = 0;
 	virtual void Render(CGHNode* node, unsigned int currFrame) {}
-	virtual void GUIRender(unsigned int currFrame, unsigned int);
 	virtual size_t GetTypeHashCode() = 0;
 	virtual unsigned int GetPriority() { return COMPONENT_CUSTOM; }
 
+	void GUIRender(unsigned int currFrame, unsigned int uid);
 	void AddDeleteEvent(std::function<void(Component*)> func)
 	{
 		m_deleteEvent.emplace_back(func);
 	}
 	void SetActvie(bool value) { m_active = value; }
 	bool GetActive() { return m_active; }
+
+protected:
+	virtual void GUIRender_Internal(unsigned int currFrame) {};
 
 protected:
 	bool m_active = true;

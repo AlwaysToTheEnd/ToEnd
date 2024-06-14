@@ -2,17 +2,17 @@
 #include <vector>
 #include "CGHBaseClass.h"
 
-class NodeTransformController : public CGHNode
+class NodeController : public CGHNode
 {
 public:
-	NodeTransformController();
-	virtual ~NodeTransformController();
+	NodeController();
+	virtual ~NodeController();
 
 	virtual void Update(float delta) override;
 	virtual void RenderGUI(unsigned int currFrame) override;
 
 private:
-	void RenderNodeTransform(CGHNode* node, unsigned int uid);
+	void RenderNodeTree(CGHNode* node, unsigned int uid);
 
 private:
 	CGHNode* m_currTarget = nullptr;

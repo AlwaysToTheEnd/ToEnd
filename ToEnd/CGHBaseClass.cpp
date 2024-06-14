@@ -98,6 +98,17 @@ void CGHNode::RenderGUI(unsigned int currFrame)
 	}
 }
 
+void CGHNode::GetHasComponents(std::vector<Component*>& outComps)
+{
+	for (auto& iter : m_components)
+	{
+		if (iter.get())
+		{
+			outComps.push_back(iter.get());
+		}
+	}
+}
+
 CGHNode* CGHNode::FindNode(const char* name)
 {
 	CGHNode* result = nullptr;
@@ -119,7 +130,7 @@ CGHNode* CGHNode::FindNode(const char* name)
 		}
 	}
 
-    return result;
+	return result;
 }
 
 void CGHNode::GetChildNodes(std::vector<CGHNode*>* nodeOut)

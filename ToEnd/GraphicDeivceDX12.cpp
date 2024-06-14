@@ -570,8 +570,8 @@ void GraphicDeviceDX12::RenderEnd()
 	}
 
 	{
-		/*static bool test = false;
-		ImGui::ShowDemoWindow(&test);*/
+		//static bool test = false;
+		//ImGui::ShowDemoWindow(&test);
 		GraphicOptionGUIRender();
 		ImGui::Render();
 
@@ -838,7 +838,7 @@ void GraphicDeviceDX12::GraphicOptionGUIRender()
 			ImGui::Spacing();
 
 			ImGui::Separator();
-			ImGui::DragFloat("PhongTessAlpha", &GlobalOptions::GO.GRAPHIC.PhongTessAlpha, 0.02f, 0.0f, 1.0f);
+			ImGui::DragFloat("PhongTessAlpha", &GlobalOptions::GO.GRAPHIC.PhongTessAlpha, 0.01f, 0.0f, 1.0f);
 			ImGui::DragFloat("PhongTessFactor", &GlobalOptions::GO.GRAPHIC.PhongTessFactor, 0.3f, 1.0f, 8.0f, "%.0f");
 			ImGui::Spacing();
 
