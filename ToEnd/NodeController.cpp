@@ -55,22 +55,10 @@ void NodeController::RenderGUI(unsigned int currFrame)
 
 		ImGui::SameLine();
 
-		if (ImGui::BeginChild("ComponentsInfo"))
+		if (m_currTarget && m_currSelected)
 		{
-			if (m_currTarget && m_currSelected)
-			{
-				ImGui::Text(m_currSelected->GetName());
-				std::vector<Component*> comps;
-				m_currSelected->GetHasComponents(comps);
-
-				for(unsigned int i =0; i<comps.size(); ++i)
-				{
-					comps[i]->GUIRender(currFrame, i);
-				}
-			}
+			m_currSelected->RenderGUI(currFrame);
 		}
-
-		ImGui::EndChild();
 
 		ImGui::PopStyleVar();
 		ImGui::End();
@@ -84,10 +72,10 @@ void NodeController::RenderNodeTree(CGHNode* node, unsigned int uid)
 	ImGui::TableSetColumnIndex(0);
 	ImGui::AlignTextToFramePadding();
 
-	ImGuiTreeNodeFlags flags = node == m_currSelected? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None;
+	ImGuiTreeNodeFlags flags = node == m_currSelected ? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None;
 	flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
-	if(node->GetChilds().size() == 0)
+	if (node->GetChilds().size() == 0)
 	{
 		flags |= ImGuiTreeNodeFlags_Leaf;
 	}

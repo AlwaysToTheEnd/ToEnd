@@ -45,7 +45,6 @@ public:
 
 	template<typename T> T* CreateComponent();
 	template<typename T> T* GetComponent();
-	void GetHasComponents(std::vector<Component*>& outComps);
 
 	bool GetActive() const { return m_active; }
 	CGHNode* GetParent() const { return m_parent; }

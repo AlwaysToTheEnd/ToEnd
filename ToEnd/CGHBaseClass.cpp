@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "CGHBaseClass.h"
 #include "../Common/Source/CGHUtil.h"
+#include "imgui.h"
 
 
 CGHNode::CGHNode()
@@ -89,24 +90,22 @@ void CGHNode::Render(unsigned int currFrame)
 
 void CGHNode::RenderGUI(unsigned int currFrame)
 {
-	if (m_active)
-	{
-		for (auto& iter : m_childs)
-		{
-			iter->RenderGUI(currFrame);
-		}
-	}
-}
+	ImGui::BeginChild(m_name.c_str(), ImVec2(0,0), ImGuiChildFlags_Border);
+	ImGui::Checkbox(m_name.c_str(), &m_active);
+	ImGui::Text("Layer : %d", m_nodeLayer);
+	ImGui::Spacing();
 
-void CGHNode::GetHasComponents(std::vector<Component*>& outComps)
-{
+	ImGui::BeginChild("Components", ImVec2(0, 0), ImGuiChildFlags_Border);
 	for (auto& iter : m_components)
 	{
 		if (iter.get())
 		{
-			outComps.push_back(iter.get());
+			iter->GUIRender(currFrame, reinterpret_cast<unsigned int>(iter.get()));
 		}
 	}
+
+	ImGui::EndChild();
+	ImGui::EndChild();
 }
 
 CGHNode* CGHNode::FindNode(const char* name)

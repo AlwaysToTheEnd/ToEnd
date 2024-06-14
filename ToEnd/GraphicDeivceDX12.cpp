@@ -570,8 +570,8 @@ void GraphicDeviceDX12::RenderEnd()
 	}
 
 	{
-		//static bool test = false;
-		//ImGui::ShowDemoWindow(&test);
+	/*	static bool test = false;
+		ImGui::ShowDemoWindow(&test);*/
 		GraphicOptionGUIRender();
 		ImGui::Render();
 

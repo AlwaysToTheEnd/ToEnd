@@ -278,9 +278,6 @@ void TestScene::Render(unsigned int currFrame)
 
 void TestScene::UIRender(unsigned int currFrame)
 {
-	m_rootNode->RenderGUI(currFrame);
-	m_dirLight.RenderGUI(currFrame);
-	m_dirLight2.RenderGUI(currFrame);
 	m_nodeTransformController->RenderGUI(currFrame);
 }
 
