@@ -65,43 +65,9 @@ void NodeTransformController::RenderGUI(unsigned int currFrame)
 
 				if (transform)
 				{
-					auto& pos = transform->GetPos();
-					auto& scale = transform->GetScale();
-
-					ImGui::PushID(0);
-					ImGui::DragFloat3("Pos", const_cast<float*>(&pos.x), 0.1f, 0.0f, 0.0f, "%.2f");
-					ImGui::SameLine();
-					if (ImGui::Button("Reset"))
-					{
-						transform->SetPos(DirectX::XMVectorZero());
-					}
-					ImGui::PopID();
-				
-					ImGui::PushID(1);
-					ImGui::DragFloat3("Rot", const_cast<float*>(&m_rotation.x), 0.1f, 0.0f, 0.0f, "%.2f");
-					ImGui::SameLine();
-					if (ImGui::Button("Reset"))
-					{
-						m_rotation = {};
-					}
-					ImGui::PopID();
-
-					ImGui::PushID(2);
-					ImGui::DragFloat3("Scale", const_cast<float*>(&scale.x), 0.01f, 0.0f, 0.0f, "%.2f");
-					ImGui::SameLine();
-					if (ImGui::Button("Reset"))
-					{
-						transform->SetScale(DirectX::XMVectorSet(1, 1, 1, 0));
-					}
-					ImGui::PopID();
-
-					float piTransform = DirectX::XM_PI/ 180.0f;
-
-					transform->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(m_rotation.x * piTransform, m_rotation.y * piTransform, m_rotation.z * piTransform));
+					transform->GUIRender(currFrame,0);
 				}
-
 			}
-
 		}
 
 		ImGui::EndChild();
@@ -131,14 +97,6 @@ void NodeTransformController::RenderNodeTransform(CGHNode* node, unsigned int ui
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
 		m_currSelected = node;
-
-		auto transform = m_currSelected->GetComponent<COMTransform>();
-		if (transform)
-		{
-			auto& quter = transform->GetRotationQuter();
-			DirectX::XMVECTOR quterVec = DirectX::XMLoadFloat4(&quter);
-			CGH::QuaternionToEulerAngles(quterVec, m_rotation.x, m_rotation.y, m_rotation.z);
-		}
 	}
 
 	if (opned)

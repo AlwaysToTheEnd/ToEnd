@@ -73,6 +73,10 @@ public:
 		DirectX::XMFLOAT3 color = {};
 		int shadowMapIndex = -1;
 		DirectX::XMFLOAT4X4 shadowMapMat = CGH::IdentityMatrix;
+		bool enableShadow = true;
+		float shadowDistance = 1000.0f;
+		float shadowNear = 0.1f;
+		float shadowFar = 100.0f;
 	};
 
 	struct UIInfo

@@ -5,6 +5,7 @@
 #include "DX12TextureBuffer.h"
 #include "Dx12FontManager.h"
 #include "InputManager.h"
+#include "imgui.h"
 #include <ppl.h>
 
 size_t COMTransform::s_hashCode = typeid(COMTransform).hash_code();
@@ -26,8 +27,10 @@ COMTransform::COMTransform(CGHNode* node)
 
 void COMTransform::Update(CGHNode* node, float delta)
 {
+	static const float piTransform = DirectX::XM_PI/180.0f;
+	DirectX::XMFLOAT3 radian = { m_rotate.x * piTransform, m_rotate.y * piTransform, m_rotate.z * piTransform };
 	DirectX::XMMATRIX affinMat = DirectX::XMMatrixAffineTransformation(DirectX::XMLoadFloat3(&m_scale), DirectX::XMVectorZero(),
-		DirectX::XMLoadFloat4(&m_queternion), DirectX::XMLoadFloat3(&m_pos));
+		DirectX::XMQuaternionRotationRollPitchYaw(radian.x, radian.y, radian.z), DirectX::XMLoadFloat3(&m_pos));
 
 	CGHNode* parentNode = node->GetParent();
 	if (parentNode != nullptr)
@@ -40,6 +43,23 @@ void COMTransform::Update(CGHNode* node, float delta)
 	}
 }
 
+void COMTransform::GUIRender(unsigned int currFrame, unsigned int uid)
+{
+	ImGui::PushID(uid);
+	Component::GUIRender(currFrame, uid);
+	ImGui::Text("Pos");
+	ImGui::SameLine();
+	ImGui::DragFloat3("##Position", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::Text("Scale");
+	ImGui::SameLine();
+	ImGui::DragFloat3("##Scale", &m_scale.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::Text("Rot");
+	ImGui::SameLine();
+	ImGui::DragFloat3("##Rotate", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
+
+	ImGui::PopID();
+}
+
 void XM_CALLCONV COMTransform::SetPos(DirectX::FXMVECTOR pos)
 {
 	DirectX::XMStoreFloat3(&m_pos, pos);
@@ -50,9 +70,13 @@ void XM_CALLCONV COMTransform::SetScale(DirectX::FXMVECTOR scale)
 	DirectX::XMStoreFloat3(&m_scale, scale);
 }
 
-void XM_CALLCONV COMTransform::SetRotateQuter(DirectX::FXMVECTOR quterRotate)
+void XM_CALLCONV COMTransform::SetRotateQuter(DirectX::FXMVECTOR rotate)
 {
-	DirectX::XMStoreFloat4(&m_queternion, quterRotate);
+	CGH::QuaternionToAngularAngles(rotate, m_rotate.x, m_rotate.y, m_rotate.z);
+	
+	m_rotate.x *= 180.0f / DirectX::XM_PI;
+	m_rotate.y *= 180.0f / DirectX::XM_PI;
+	m_rotate.z *= 180.0f / DirectX::XM_PI;
 }
 
 COMSkinnedMesh::COMSkinnedMesh(CGHNode* node)
@@ -154,6 +178,21 @@ void COMSkinnedMesh::Render(CGHNode* node, unsigned int currFrame)
 		//		}
 		//	});
 	}
+}
+
+
+void COMSkinnedMesh::GUIRender(unsigned int currFrame, unsigned int uid)
+{
+	ImGui::PushID(uid);
+	Component::GUIRender(currFrame, uid);
+
+	if (m_data)
+	{
+		ImGui::Text("Mesh name : %s", m_data->meshName.c_str());
+		ImGui::Text("Bone num : %d", m_data->bones.size());
+	}
+
+	ImGui::PopID();
 }
 
 void COMSkinnedMesh::SetMeshData(const CGHMesh* meshData)

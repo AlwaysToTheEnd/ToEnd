@@ -18,23 +18,23 @@ public:
 	virtual void RateUpdate(CGHNode* node, float delta) override {};
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_TRANSFORM; }
+	virtual void GUIRender(unsigned int currFrame, unsigned int uid) override;
 
 	const DirectX::XMFLOAT3& GetPos() const { return m_pos; }
 	const DirectX::XMFLOAT3& GetScale() const { return m_scale; }
-	const DirectX::XMFLOAT4& GetRotationQuter() const { return m_queternion; }
 
 	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
 	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
-	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR quterRotate);
+	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR rotate);
 	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
 	void SetScale(const DirectX::XMFLOAT3& scale) { m_scale = scale; }
-	void SetRotateQuter(const DirectX::XMFLOAT4& quter) { m_queternion = quter; }
+	void SetRotate(const DirectX::XMFLOAT3& rotate) { m_rotate = rotate; }
 
 private:
 	static size_t s_hashCode;
 	DirectX::XMFLOAT3 m_pos = {};
 	DirectX::XMFLOAT3 m_scale = { 1.0f,1.0f,1.0f };
-	DirectX::XMFLOAT4 m_queternion = {};
+	DirectX::XMFLOAT3 m_rotate = {};
 };
 
 class COMSkinnedMesh : public Component
@@ -49,6 +49,7 @@ public:
 	virtual void Update(CGHNode* node, float delta) override {}
 	virtual void RateUpdate(CGHNode* node, float delta) override;
 	virtual void Render(CGHNode* node, unsigned int currFrame) override;
+	virtual void GUIRender(unsigned int currFrame, unsigned int uid) override;
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 	virtual unsigned int GetPriority() override { return COMPONENT_SKINNEDMESH; }
 

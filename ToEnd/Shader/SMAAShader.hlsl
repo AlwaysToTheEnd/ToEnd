@@ -165,6 +165,5 @@ float4 NeiBlendPS(NeiBlendGSOut input) : SV_Target0
     //result.rgb = pow(result.rgb, 1.0f / 2.2f);
     
     
-    
     return result;
 }

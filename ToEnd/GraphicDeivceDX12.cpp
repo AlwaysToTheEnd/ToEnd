@@ -315,7 +315,7 @@ void GraphicDeviceDX12::Update(float delta, const Camera* camera)
 
 	XMVECTOR rayOrigin = XMVectorZero();
 	XMVECTOR ray = XMLoadFloat3(&camera->GetViewRay(m_projMat, static_cast<unsigned int>(m_screenViewport.Width), static_cast<unsigned int>(m_screenViewport.Height)));
-
+	
 	rayOrigin = XMVector3Transform(rayOrigin, xminvView);
 	ray = (xminvView.r[0] * ray.m128_f32[0]) + (xminvView.r[1] * ray.m128_f32[1]) + (xminvView.r[2] * ray.m128_f32[2]);
 
@@ -329,7 +329,14 @@ void GraphicDeviceDX12::RenderMesh(const PipeLineWorkSet* psow, CGHNode* node)
 {
 	if (psow->pso)
 	{
-		m_cmdList->SetPipelineState(psow->pso);
+		if (GlobalOptions::GO.GRAPHIC.EnableWireFrame && psow->wireframePSO)
+		{
+			m_cmdList->SetPipelineState(psow->wireframePSO);
+		}
+		else
+		{
+			m_cmdList->SetPipelineState(psow->pso);
+		}
 
 		switch (psow->psoType)
 		{
@@ -828,26 +835,19 @@ void GraphicDeviceDX12::GraphicOptionGUIRender()
 		{
 			ImGui::Checkbox("EnableWireFrame", &GlobalOptions::GO.GRAPHIC.EnableWireFrame);
 			ImGui::Checkbox("EnableTextureDebugPSO", &GlobalOptions::GO.GRAPHIC.EnableTextureDebugPSO);
-			ImGui::Separator();
 			ImGui::Spacing();
 
-			ImGui::Checkbox("EnableShadow", &GlobalOptions::GO.GRAPHIC.EnableShadow);
-			ImGui::DragFloat("ShadowDistance", &GlobalOptions::GO.GRAPHIC.ShadowDistance, 1.0f, 0.0f, 1000.0f);
-			ImGui::DragFloat("ShadowFar", &GlobalOptions::GO.GRAPHIC.ShadowFar, 1.0f, 0.0f, 1000.0f);
-			ImGui::DragFloat("ShadowNear", &GlobalOptions::GO.GRAPHIC.ShadowNear, 0.1f, 0.0f, 1000.0f);
 			ImGui::Separator();
-			ImGui::Spacing();
-
 			ImGui::DragFloat("PhongTessAlpha", &GlobalOptions::GO.GRAPHIC.PhongTessAlpha, 0.02f, 0.0f, 1.0f);
-			ImGui::DragFloat("PhongTessFactor", &GlobalOptions::GO.GRAPHIC.PhongTessFactor, 0.1f, 1.0f, 8.0f);
-			ImGui::Separator();
+			ImGui::DragFloat("PhongTessFactor", &GlobalOptions::GO.GRAPHIC.PhongTessFactor, 0.3f, 1.0f, 8.0f, "%.0f");
 			ImGui::Spacing();
 
+			ImGui::Separator();
 			ImGui::Checkbox("EnableSMAA", &GlobalOptions::GO.GRAPHIC.EnableSMAA);
 			ImGui::DragFloat("SMAAEdgeThreshold", &GlobalOptions::GO.GRAPHIC.SMAAEdgeDetectionThreshold, 0.001f, 0.001f, 0.2f);
-			ImGui::DragInt("SMAAMaxSearchStep", &GlobalOptions::GO.GRAPHIC.SMAAMaxSearchSteps, 1, 0, 64);
-			ImGui::DragInt("SMAAMaxSearchStepDiag", &GlobalOptions::GO.GRAPHIC.SMAAMaxSearchStepsDiag, 1, 0, 32);
-			ImGui::DragInt("SMAAConerRounding", &GlobalOptions::GO.GRAPHIC.SMAACornerRounding, 1, 0, 50);
+			ImGui::DragInt("SMAAMaxSearchStep", &GlobalOptions::GO.GRAPHIC.SMAAMaxSearchSteps, 0.3f, 0, 64);
+			ImGui::DragInt("SMAAMaxSearchStepDiag", &GlobalOptions::GO.GRAPHIC.SMAAMaxSearchStepsDiag, 0.3f, 0, 32);
+			ImGui::DragInt("SMAAConerRounding", &GlobalOptions::GO.GRAPHIC.SMAACornerRounding, 0.3f, 0, 50);
 		}
 
 		ImGui::End();
@@ -1081,6 +1081,8 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 	psoDesc.SampleDesc.Quality = 0;
 
 	currPSOWorkSet.pso = DX12PipelineMG::instance.CreateGraphicPipeline(pipeLineName.c_str(), &psoDesc);
+	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	currPSOWorkSet.wireframePSO = DX12PipelineMG::instance.CreateGraphicPipeline((pipeLineName +"W").c_str(), &psoDesc);
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
@@ -1323,7 +1325,7 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 	{
 		ROOT_MAINPASS_CB = 0,
 		ROOT_TEXTURE_TABLE,
-		ROOT_NUMLIGHT_CONST,
+		ROOT_LIGHTOPTION_CONST,
 		ROOT_LIGHTDATA_SRV,
 		ROOT_NUM
 	};
@@ -1349,11 +1351,11 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 		rootParams[ROOT_TEXTURE_TABLE].DescriptorTable.pDescriptorRanges = shadowTexTableRange;
 		rootParams[ROOT_TEXTURE_TABLE].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		rootParams[ROOT_NUMLIGHT_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParams[ROOT_NUMLIGHT_CONST].Constants.RegisterSpace = 0;
-		rootParams[ROOT_NUMLIGHT_CONST].Constants.ShaderRegister = 1;
-		rootParams[ROOT_NUMLIGHT_CONST].Constants.Num32BitValues = 1;
-		rootParams[ROOT_NUMLIGHT_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParams[ROOT_LIGHTOPTION_CONST].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[ROOT_LIGHTOPTION_CONST].Constants.RegisterSpace = 0;
+		rootParams[ROOT_LIGHTOPTION_CONST].Constants.ShaderRegister = 1;
+		rootParams[ROOT_LIGHTOPTION_CONST].Constants.Num32BitValues = 1;
+		rootParams[ROOT_LIGHTOPTION_CONST].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 		rootParams[ROOT_LIGHTDATA_SRV].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 		rootParams[ROOT_LIGHTDATA_SRV].Descriptor.RegisterSpace = 0;
@@ -1428,8 +1430,9 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 					lightData.color = lightCom->m_data.color;
 					lightData.power = lightCom->m_data.power;
 					lightData.dir = lightCom->m_data.dir;
+					lightData.enableShadow = lights[m_numDirLight].second & CGHLightComponent::LIGHT_FLAG_SHADOW;
 
-					if (lights[m_numDirLight].second & CGHLightComponent::LIGHT_FLAG_SHADOW)
+					if (lightData.enableShadow)
 					{
 						auto& shadowMap = m_dirLightShadowMaps[lightCom];
 
@@ -1475,26 +1478,21 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 			}
 
 			cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
+			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+			cmd->IASetVertexBuffers(0, 0, nullptr);
 
-			if (m_numDirLight)
-			{
-				cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-				cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+			ID3D12DescriptorHeap* heaps[] = { m_SRVHeap.Get() };
+			cmd->SetDescriptorHeaps(1, heaps);
 
-				ID3D12DescriptorHeap* heaps[] = { m_SRVHeap.Get() };
-				cmd->SetDescriptorHeaps(1, heaps);
+			auto ligthDataStart = m_dirLightDatas->Resource()->GetGPUVirtualAddress();
+			ligthDataStart += (m_numMaxDirLight * m_currFrame) * m_dirLightDatas->GetElementByteSize();
 
-				cmd->IASetVertexBuffers(0, 0, nullptr);
+			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
+			cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, m_SRVHeap->GetGPUDescriptorHandleForHeapStart());
+			cmd->SetGraphicsRoot32BitConstant(ROOT_LIGHTOPTION_CONST, m_numDirLight, 0);
+			cmd->SetGraphicsRootShaderResourceView(ROOT_LIGHTDATA_SRV, ligthDataStart);
 
-				auto ligthDataStart = m_dirLightDatas->Resource()->GetGPUVirtualAddress();
-				ligthDataStart += (m_numMaxDirLight * m_currFrame) * m_dirLightDatas->GetElementByteSize();
-
-				cmd->SetGraphicsRootDescriptorTable(ROOT_TEXTURE_TABLE, m_SRVHeap->GetGPUDescriptorHandleForHeapStart());
-				cmd->SetGraphicsRoot32BitConstant(ROOT_NUMLIGHT_CONST, m_numDirLight, 0);
-				cmd->SetGraphicsRootShaderResourceView(ROOT_LIGHTDATA_SRV, ligthDataStart);
-
-				cmd->DrawInstanced(1, 1, 0, 0);
-			}
+			cmd->DrawInstanced(1, 1, 0, 0);
 
 			cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
 				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));

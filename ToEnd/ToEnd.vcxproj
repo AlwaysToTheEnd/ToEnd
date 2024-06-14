@@ -142,7 +142,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectoryNoRoot); ../Common/Include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectoryNoRoot); ../Common/Include; imgui;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -204,6 +204,7 @@
     <ClCompile Include="CGHBaseClass.cpp" />
     <ClCompile Include="CGHGraphicResource.cpp" />
     <ClCompile Include="CGHNodePicker.cpp" />
+    <ClCompile Include="Component.cpp" />
     <ClCompile Include="DX12DefaultBufferCreator.cpp" />
     <ClCompile Include="Dx12FontManager.cpp" />
     <ClCompile Include="DX12GarbageFrameResourceMG.cpp" />

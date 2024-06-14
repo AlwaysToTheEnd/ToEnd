@@ -31,6 +31,7 @@ public:
 	virtual void Update(CGHNode* node, float delta) = 0;
 	virtual void RateUpdate(CGHNode* node, float delta) = 0;
 	virtual void Render(CGHNode* node, unsigned int currFrame) {}
+	virtual void GUIRender(unsigned int currFrame, unsigned int);
 	virtual size_t GetTypeHashCode() = 0;
 	virtual unsigned int GetPriority() { return COMPONENT_CUSTOM; }
 

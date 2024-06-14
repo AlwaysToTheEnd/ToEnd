@@ -7,6 +7,10 @@ struct LightData
     float3 color;
     int shadowMapIndex;
     float4x4 shadowMapMat;
+    bool enableShadow;
+    float shadowDistance;
+    float shadowNear;
+    float shadowFar;
 };
 
 Texture2D<float> gShadowMapTexture[8] : register(t0, space1);

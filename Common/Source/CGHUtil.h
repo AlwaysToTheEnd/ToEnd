@@ -28,7 +28,7 @@ namespace CGH
 											 0.0f, 0.0f, 0.0f, 1.0f);
 	const unsigned int NumFrameresource = 3;
 
-	inline void QuaternionToEulerAngles(const DirectX::XMVECTOR& q, float& roll, float& pitch, float& yaw)
+	inline void QuaternionToAngularAngles(const DirectX::XMVECTOR& q, float& roll, float& pitch, float& yaw)
 	{
 		float qx = DirectX::XMVectorGetX(q);
 		float qy = DirectX::XMVectorGetY(q);
@@ -63,12 +63,7 @@ struct GlobalOptions
 	{
 		DirectX::XMVECTORF32	BGColor = { { { 0.f, 0.f, 0.f, 0.f } } };
 		bool 					EnableWireFrame = false;
-		bool					EnableTextureDebugPSO = true;
-
-		bool					EnableShadow = true;
-		float					ShadowDistance = 1000.0f;
-		float					ShadowNear = 0.1f;
-		float					ShadowFar = 100.0f;
+		bool					EnableTextureDebugPSO = false;
 
 		float					PhongTessAlpha = 0.75f;
 		float					PhongTessFactor = 4.0f;

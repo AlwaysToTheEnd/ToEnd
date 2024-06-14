@@ -235,6 +235,9 @@
     <ClCompile Include="Imgui\imgui_demo.cpp">
       <Filter>Imgui</Filter>
     </ClCompile>
+    <ClCompile Include="Component.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

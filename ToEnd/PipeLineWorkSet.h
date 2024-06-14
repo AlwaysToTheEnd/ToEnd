@@ -5,6 +5,7 @@
 struct PipeLineWorkSet
 {
 	int psoType = 0;
+	ID3D12PipelineState* wireframePSO = nullptr;
 	ID3D12PipelineState* pso = nullptr;
 	ID3D12RootSignature* rootSig = nullptr;
 	std::function<void(ID3D12GraphicsCommandList* cmd)> baseGraphicCmdFunc;
