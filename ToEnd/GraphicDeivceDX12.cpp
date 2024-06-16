@@ -568,7 +568,7 @@ void GraphicDeviceDX12::RenderEnd()
 
 		m_cmdList->ResourceBarrier(1, &bar);
 	}
-
+	
 	{
 	/*	static bool test = false;
 		ImGui::ShowDemoWindow(&test);*/

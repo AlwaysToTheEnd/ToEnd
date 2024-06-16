@@ -1,5 +1,4 @@
 #include "NodeController.h"
-#include "CGHNodePicker.h"
 #include "../Common/Source/CGHUtil.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -14,16 +13,7 @@ NodeController::~NodeController()
 
 void NodeController::Update(float delta)
 {
-	if (m_active)
-	{
-		auto currPicked = CGHNodePicker::s_instance.GetCurrPickedNode();
-
-		if (m_currTarget != currPicked)
-		{
-			m_currTarget = currPicked;
-			m_currSelected = nullptr;
-		}
-	}
+	
 }
 
 void NodeController::RenderGUI(unsigned int currFrame)
@@ -44,10 +34,10 @@ void NodeController::RenderGUI(unsigned int currFrame)
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn("Nodes");
 			ImGui::TableHeadersRow();
-
-			if (m_currTarget)
+			
+			for(auto iter : m_rootNodeList)
 			{
-				RenderNodeTree(m_currTarget, 0);
+				RenderNodeTree(iter, iter);
 			}
 
 			ImGui::EndTable();
@@ -55,7 +45,7 @@ void NodeController::RenderGUI(unsigned int currFrame)
 
 		ImGui::SameLine();
 
-		if (m_currTarget && m_currSelected)
+		if (m_currSelected)
 		{
 			m_currSelected->RenderGUI(currFrame);
 		}
@@ -65,7 +55,12 @@ void NodeController::RenderGUI(unsigned int currFrame)
 	}
 }
 
-void NodeController::RenderNodeTree(CGHNode* node, unsigned int uid)
+void NodeController::RenderRootNodes(std::vector<CGHNode*>& rootNodes)
+{
+	m_rootNodeList.assign(rootNodes.begin(), rootNodes.end());
+}
+
+void NodeController::RenderNodeTree(CGHNode* node, void* uid)
 {
 	ImGui::PushID(uid);
 	ImGui::TableNextRow();
@@ -84,7 +79,16 @@ void NodeController::RenderNodeTree(CGHNode* node, unsigned int uid)
 
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
+		if (m_currSelected != node)
+		{
+			if (m_currSelected)
+			{
+				m_currSelected->RemoveEvent(std::bind(&NodeController::SelectedNodeRemoved, this, m_currSelected), CGHNODE_EVENT_FLAG_DELETE);
+			}
+		}
+
 		m_currSelected = node;
+		m_currSelected->AddEvent(std::bind(&NodeController::SelectedNodeRemoved, this, m_currSelected), CGHNODE_EVENT_FLAG_DELETE);
 	}
 
 	if (opned)
@@ -92,11 +96,19 @@ void NodeController::RenderNodeTree(CGHNode* node, unsigned int uid)
 		unsigned int index = 0;
 		for (auto iter : node->GetChilds())
 		{
-			RenderNodeTree(iter, index++);
+			RenderNodeTree(iter, iter);
 		}
 
 		ImGui::TreePop();
 	}
 
 	ImGui::PopID();
+}
+
+void NodeController::SelectedNodeRemoved(CGHNode* node)
+{
+	if (m_currSelected == node)
+	{
+		m_currSelected = nullptr;
+	}
 }

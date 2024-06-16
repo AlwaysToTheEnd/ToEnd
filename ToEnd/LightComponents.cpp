@@ -1,6 +1,7 @@
 #include "LightComponents.h"
 #include "GraphicDeivceDX12.h"
 #include "DX12GraphicResourceManager.h"
+#include "imgui.h"
 
 size_t COMDirLight::s_hashCode = typeid(COMDirLight).hash_code();
 size_t COMPointLight::s_hashCode = typeid(COMPointLight).hash_code();
@@ -21,6 +22,15 @@ void COMDirLight::Render(CGHNode* node, unsigned int)
 {
 	auto graphic = GraphicDeviceDX12::GetGraphic();
 	graphic->RenderLight(node, m_lightFlags, s_hashCode);
+}
+
+void COMDirLight::GUIRender_Internal(unsigned int currFrame)
+{
+	ImGui::Text("DirLight");
+	ImGui::DragFloat3("Dir", &m_data.dir.x, 0.01f);
+	ImGui::DragFloat3("Color", &m_data.color.x, 0.01f);
+	ImGui::DragFloat("Power", &m_data.power, 0.01f);
+	ImGui::CheckboxFlags("Shadow", &m_lightFlags, LIGHT_FLAG_SHADOW);
 }
 
 COMPointLight::COMPointLight(CGHNode* node)

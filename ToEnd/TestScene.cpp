@@ -237,6 +237,12 @@ void TestScene::Init()
 
 	CGHNodePicker::s_instance.Init();
 	m_nodeTransformController = new NodeController;
+
+	m_dirLight.SetName("DirLight");
+	m_dirLight2.SetName("DirLight2");
+	m_rootNodeList.push_back(m_rootNode);
+	m_rootNodeList.push_back(&m_dirLight);
+	m_rootNodeList.push_back(&m_dirLight2);
 }
 
 void TestScene::Update(float delta)
@@ -259,7 +265,8 @@ void TestScene::Update(float delta)
 	m_rootNode->Update(delta);
 	m_dirLight.Update(delta);
 	m_dirLight2.Update(delta);
-	m_nodeTransformController->Update(delta);
+	
+	reinterpret_cast<NodeController*>(m_nodeTransformController)->RenderRootNodes(m_rootNodeList);
 }
 
 void TestScene::RateUpdate(float delta)

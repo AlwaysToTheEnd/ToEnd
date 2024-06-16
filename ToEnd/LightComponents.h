@@ -45,6 +45,9 @@ public:
 	virtual size_t GetTypeHashCode() override { return s_hashCode; }
 
 private:
+	virtual void GUIRender_Internal(unsigned int currFrame) override;
+
+private:
 	static size_t s_hashCode;
 };
 
