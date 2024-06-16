@@ -9,12 +9,12 @@ public:
 public:
 	void Init();
 	CGHNode* GetCurrPickedNode() { return m_currPickedNode; }
+	void PickNode(CGHNode* node);
 
 private:
 	CGHNodePicker() = default;
 	~CGHNodePicker() = default;
 
-	void PickNode(CGHNode* node);
 	void TargetNodeDeleted();
 
 private:

@@ -70,7 +70,7 @@ public:
 	DirectX::XMFLOAT4X4 m_srt;
 
 protected:
-	std::string m_name;
+	std::string m_name = "Node";
 	bool m_active = true;
 	CGHNode* m_parent = nullptr;
 	CGHNODE_LAYER m_nodeLayer = CGHNODE_LAYER::CGHNODE_LYAER_DEFAULT;

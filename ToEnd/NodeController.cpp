@@ -1,4 +1,5 @@
 #include "NodeController.h"
+#include "CGHNodePicker.h"
 #include "../Common/Source/CGHUtil.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -13,7 +14,24 @@ NodeController::~NodeController()
 
 void NodeController::Update(float delta)
 {
-	
+	if (m_active)
+	{
+		auto pickedNode = CGHNodePicker::s_instance.GetCurrPickedNode();
+		
+		if (pickedNode)
+		{
+			if (pickedNode != m_currSelected)
+			{
+				if (m_currSelected)
+				{
+					m_currSelected->RemoveEvent(std::bind(&NodeController::SelectedNodeRemoved, this, m_currSelected), CGHNODE_EVENT_FLAG_DELETE);
+				}
+
+				m_currSelected = pickedNode;
+				m_currSelected->AddEvent(std::bind(&NodeController::SelectedNodeRemoved, this, m_currSelected), CGHNODE_EVENT_FLAG_DELETE);
+			}
+		}
+	}
 }
 
 void NodeController::RenderGUI(unsigned int currFrame)
@@ -79,6 +97,8 @@ void NodeController::RenderNodeTree(CGHNode* node, void* uid)
 
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
+		CGHNodePicker::s_instance.PickNode(node);
+
 		if (m_currSelected != node)
 		{
 			if (m_currSelected)

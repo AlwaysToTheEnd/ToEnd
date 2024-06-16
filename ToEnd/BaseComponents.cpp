@@ -45,15 +45,9 @@ void COMTransform::Update(CGHNode* node, float delta)
 
 void COMTransform::GUIRender_Internal(unsigned int currFrame)
 {
-	ImGui::Text("Pos");
-	ImGui::SameLine();
-	ImGui::DragFloat3("##Position", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
-	ImGui::Text("Scale");
-	ImGui::SameLine();
-	ImGui::DragFloat3("##Scale", &m_scale.x, 0.1f, 0.0f, 0.0f, "%.2f");
-	ImGui::Text("Rot");
-	ImGui::SameLine();
-	ImGui::DragFloat3("##Rotate", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::DragFloat3("Pos", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::DragFloat3("Scale", &m_scale.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::DragFloat3("Rot", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
 }
 
 void XM_CALLCONV COMTransform::SetPos(DirectX::FXMVECTOR pos)

@@ -99,7 +99,6 @@ void TestScene::Init()
 		skinnedMesh->SetMeshData(&m_headMeshs.front());
 		material->SetData(&m_headMats.front());
 		render->SetPSOW("DeferredSkinnedMesh");
-		render->ChangeHashNode(m_rootNode);
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/cf_m_skin_head_01_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -151,7 +150,6 @@ void TestScene::Init()
 		skinnedMesh->SetMeshData(&m_hairMeshs.front());
 		material->SetData(&m_hairMats.front());
 		render->SetPSOW("DeferredSkinnedMesh");
-		render->ChangeHashNode(m_rootNode);
 		TextureInfo texInfo;
 		texInfo.textureFilePathID = TextureInfo::GetTextureFilePathID("Textures/baseHeadPart/back_MainTex.png");
 		texInfo.blend = 1.0f;
@@ -265,7 +263,7 @@ void TestScene::Update(float delta)
 	m_rootNode->Update(delta);
 	m_dirLight.Update(delta);
 	m_dirLight2.Update(delta);
-	
+	m_nodeTransformController->Update(delta);
 	reinterpret_cast<NodeController*>(m_nodeTransformController)->RenderRootNodes(m_rootNodeList);
 }
 
