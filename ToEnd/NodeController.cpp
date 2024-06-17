@@ -17,7 +17,7 @@ void NodeController::Update(float delta)
 	if (m_active)
 	{
 		auto pickedNode = CGHNodePicker::s_instance.GetCurrPickedNode();
-		
+
 		if (pickedNode)
 		{
 			if (pickedNode != m_currSelected)
@@ -29,6 +29,14 @@ void NodeController::Update(float delta)
 
 				m_currSelected = pickedNode;
 				m_currSelected->AddEvent(std::bind(&NodeController::SelectedNodeRemoved, this, m_currSelected), CGHNODE_EVENT_FLAG_DELETE);
+
+				m_nodeOpenList.clear();
+				const CGHNode* parent = m_currSelected;
+				while (parent)
+				{
+					m_nodeOpenList[parent] = true;
+					parent = parent->GetParent();
+				}
 			}
 		}
 	}
@@ -52,8 +60,8 @@ void NodeController::RenderGUI(unsigned int currFrame)
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn("Nodes");
 			ImGui::TableHeadersRow();
-			
-			for(auto iter : m_rootNodeList)
+
+			for (auto iter : m_rootNodeList)
 			{
 				RenderNodeTree(iter, iter);
 			}
@@ -71,6 +79,8 @@ void NodeController::RenderGUI(unsigned int currFrame)
 		ImGui::PopStyleVar();
 		ImGui::End();
 	}
+
+	m_nodeOpenList.clear();
 }
 
 void NodeController::RenderRootNodes(std::vector<CGHNode*>& rootNodes)
@@ -93,7 +103,19 @@ void NodeController::RenderNodeTree(CGHNode* node, void* uid)
 		flags |= ImGuiTreeNodeFlags_Leaf;
 	}
 
+	if (m_nodeOpenList.size())
+	{
+		ImGui::SetNextItemOpen(m_nodeOpenList.find(node) != m_nodeOpenList.end(), ImGuiCond_Always);
+	}
+
 	bool opned = ImGui::TreeNodeEx(node->GetName(), flags);
+
+	if (m_nodeOpenList.size() && node == m_currSelected)
+	{
+		m_nodeOpenList.clear();
+		ImGui::SetScrollHereX(0.0f);
+		ImGui::SetScrollHereY();
+	}
 
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{

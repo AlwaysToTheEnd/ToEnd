@@ -63,7 +63,7 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
-	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded | aiProcess_Triangulate;
 
 	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
 	std::string error = importer.GetErrorString();
@@ -90,6 +90,12 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 
 					assert(currAnimation->mNumMeshChannels == 0);
 					assert(currAnimation->mNumMorphMeshChannels == 0);
+				}
+				std::vector<aiNodeAnim*> nodeAnims;
+
+				for(int i = 0; i < currAnimation->mNumChannels; i++)
+				{
+					nodeAnims.push_back(currAnimation->mChannels[i]);
 				}
 
 				if (currAnimation->mNumMeshChannels > 0)
@@ -120,7 +126,6 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 	}
 
 	importer.FreeScene();
-
 }
 
 void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut)

@@ -1,6 +1,7 @@
 #include "AnimationComponent.h"
 #include <ppl.h>
 #include "CGHBaseClass.h"
+#include "../Common/Source/CGHUtil.h"
 
 size_t COMAnimator::s_hashCode = typeid(COMAnimator).hash_code();
 using namespace DirectX;
@@ -36,26 +37,22 @@ void COMAnimator::Update(CGHNode* node, float delta)
 			m_nodeTreeDirty = false;
 		}
 
-		if (currAnimation)
+		m_currTime += delta * m_currState->speed;
+
+		double duration = currAnimation->mDuration;
+		double tickPerSecond = currAnimation->mTicksPerSecond;
+		double currFrame = (m_currTime * tickPerSecond);
+
+		if (currFrame > duration)
 		{
-			m_currTime += delta * m_currState->speed;
-
-			double duration = currAnimation->mDuration;
-			double tickPerSecond = currAnimation->mTicksPerSecond;
-			double currFrame = (m_currTime * tickPerSecond);
-
-			if (currFrame > duration)
-			{
-				currFrame = std::fmod(currFrame, duration);
-				m_currTime = currFrame / tickPerSecond;
-			}
-			
-			Concurrency::parallel_invoke(
-				std::bind(&COMAnimator::NodeAnimation, this, currAnimation),
-				std::bind(&COMAnimator::MeshAnimation, this, currAnimation, node),
-				std::bind(&COMAnimator::MorphAnimation, this, currAnimation, node));
-
+			currFrame = std::fmod(currFrame, duration);
+			m_currTime = currFrame / tickPerSecond;
 		}
+
+		Concurrency::parallel_invoke(
+			std::bind(&COMAnimator::NodeAnimation, this, currAnimation, currFrame),
+			std::bind(&COMAnimator::MeshAnimation, this, currAnimation, currFrame, node),
+			std::bind(&COMAnimator::MorphAnimation, this, currAnimation, currFrame, node));
 	}
 	else
 	{
@@ -70,7 +67,6 @@ void COMAnimator::SetAnimation(unsigned int animationIndex, unsigned int stateIn
 	{
 		m_states.resize(1);
 		m_states.front().targetAnimation = &m_currGroup->anims[animationIndex];
-
 		m_currState = &m_states.front();
 	}
 }
@@ -80,19 +76,35 @@ void COMAnimator::NodeTreeDirty()
 	m_nodeTreeDirty = true;
 }
 
-void COMAnimator::NodeAnimation(const aiAnimation* anim)
+void COMAnimator::NodeAnimation(const aiAnimation* anim, double currFrame)
 {
 	int currChannelNum = anim->mNumChannels;
-
-	Concurrency::parallel_for(0, currChannelNum, [anim, this](int index)
-	{
-		auto currChannel = anim->mChannels[index];
-
-		auto rigMappingIter = m_currGroup->rigMapping->find(currChannel->mNodeName.C_Str());
-		if (rigMappingIter != m_currGroup->rigMapping->end())
+	Concurrency::parallel_for(0, currChannelNum, [anim, currFrame, this](int index)
 		{
-			auto nodeIter = m_currNodeTree.find(rigMappingIter->second.c_str());
-			if (nodeIter != m_currNodeTree.end())
+			auto currChannel = anim->mChannels[index];
+			CGHNode* currNode = nullptr;
+			if (m_currGroup->rigMapping)
+			{
+				auto rigMappingIter = m_currGroup->rigMapping->find(currChannel->mNodeName.C_Str());
+				if (rigMappingIter != m_currGroup->rigMapping->end())
+				{
+					auto nodeIter = m_currNodeTree.find(rigMappingIter->second.c_str());
+					if (nodeIter != m_currNodeTree.end())
+					{
+						currNode = nodeIter->second;
+					}
+				}
+			}
+			else
+			{
+				auto nodeIter = m_currNodeTree.find(currChannel->mNodeName.C_Str());
+				if (nodeIter != m_currNodeTree.end())
+				{
+					currNode = nodeIter->second;
+				}
+			}
+
+			if (currNode)
 			{
 				unsigned int numscale = currChannel->mNumScalingKeys;
 				unsigned int numRot = currChannel->mNumRotationKeys;
@@ -106,24 +118,26 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim)
 				{
 					double prevTime = currChannel->mScalingKeys[i].mTime;
 					double nextTime = currChannel->mScalingKeys[i + 1].mTime;
-					if (prevTime < m_currTime && nextTime > m_currTime)
+					if (prevTime <= currFrame && nextTime > currFrame)
 					{
-						double spot = (m_currTime - prevTime) / (nextTime - prevTime);
+						double spot = (currFrame - prevTime) / (nextTime - prevTime);
 						xmScale = XMVectorLerp(XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mScalingKeys[i].mValue)),
 							XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mScalingKeys[i + 1].mValue)), spot);
 						break;
 					}
 				}
-				
+
 				for (int i = 0; i < numscale - 1; i++)
 				{
-					double prevTime = currChannel->mScalingKeys[i].mTime;
-					double nextTime = currChannel->mScalingKeys[i + 1].mTime;
-					if (prevTime < m_currTime && nextTime > m_currTime)
+					double prevTime = currChannel->mRotationKeys[i].mTime;
+					double nextTime = currChannel->mRotationKeys[i + 1].mTime;
+					if (prevTime <= currFrame && nextTime > currFrame)
 					{
-						double spot = (m_currTime - prevTime) / (nextTime - prevTime);
-						xmRotate = XMQuaternionSlerp(XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(&currChannel->mRotationKeys[i].mValue)),
-							XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(&currChannel->mRotationKeys[i + 1].mValue)), spot);
+						const aiQuaternion& prev = currChannel->mRotationKeys[i].mValue;
+						const aiQuaternion& next = currChannel->mRotationKeys[i + 1].mValue;
+						double spot = (currFrame - prevTime) / (nextTime - prevTime);
+						xmRotate = XMQuaternionSlerp(DirectX::XMVectorSet(prev.x, prev.y, prev.z, prev.w),
+							DirectX::XMVectorSet(next.x, next.y, next.z, next.w), spot);
 						break;
 					}
 				}
@@ -132,27 +146,31 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim)
 				{
 					double prevTime = currChannel->mPositionKeys[i].mTime;
 					double nextTime = currChannel->mPositionKeys[i + 1].mTime;
-					if (prevTime < m_currTime && nextTime > m_currTime)
+					if (prevTime <= currFrame && nextTime > currFrame)
 					{
-						double spot = (m_currTime - prevTime) / (nextTime - prevTime);
+						double spot = (currFrame - prevTime) / (nextTime - prevTime);
 						xmPos = XMVectorLerp(XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mPositionKeys[i].mValue)),
 							XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mPositionKeys[i + 1].mValue)), spot);
 						break;
 					}
 				}
 
-				auto nodeAniMat = XMMatrixAffineTransformation(xmScale, XMVectorZero(), xmRotate, xmPos);
+				auto transform = currNode->GetComponent<COMTransform>();
 
-				XMStoreFloat4x4(&nodeIter->second->m_srt, nodeAniMat);
+				if (transform)
+				{
+					transform->SetScale(xmScale);
+					transform->SetRotateQuter(xmRotate);
+					transform->SetPos(xmPos);
+				}
 			}
-		}
-	});
+		});
 }
 
-void COMAnimator::MeshAnimation(const aiAnimation* anim, CGHNode* node)
+void COMAnimator::MeshAnimation(const aiAnimation* anim, double currFrame, CGHNode* node)
 {
 }
 
-void COMAnimator::MorphAnimation(const aiAnimation* anim, CGHNode* node)
+void COMAnimator::MorphAnimation(const aiAnimation* anim, double currFrame, CGHNode* node)
 {
 }

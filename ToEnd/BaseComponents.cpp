@@ -27,10 +27,8 @@ COMTransform::COMTransform(CGHNode* node)
 
 void COMTransform::Update(CGHNode* node, float delta)
 {
-	static const float piTransform = DirectX::XM_PI/180.0f;
-	DirectX::XMFLOAT3 radian = { m_rotate.x * piTransform, m_rotate.y * piTransform, m_rotate.z * piTransform };
-	DirectX::XMMATRIX affinMat = DirectX::XMMatrixAffineTransformation(DirectX::XMLoadFloat3(&m_scale), DirectX::XMVectorZero(),
-		DirectX::XMQuaternionRotationRollPitchYaw(radian.x, radian.y, radian.z), DirectX::XMLoadFloat3(&m_pos));
+	DirectX::XMMATRIX affinMat = DirectX::XMMatrixAffineTransformation(DirectX::XMLoadFloat3(&m_scale), DirectX::XMVectorSet(0,0,0,1.0f),
+		DirectX::XMLoadFloat4(&m_rotate), DirectX::XMLoadFloat3(&m_pos));
 
 	CGHNode* parentNode = node->GetParent();
 	if (parentNode != nullptr)
@@ -47,7 +45,7 @@ void COMTransform::GUIRender_Internal(unsigned int currFrame)
 {
 	ImGui::DragFloat3("Pos", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
 	ImGui::DragFloat3("Scale", &m_scale.x, 0.1f, 0.0f, 0.0f, "%.2f");
-	ImGui::DragFloat3("Rot", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::DragFloat4("Quter", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
 }
 
 void XM_CALLCONV COMTransform::SetPos(DirectX::FXMVECTOR pos)
@@ -62,11 +60,7 @@ void XM_CALLCONV COMTransform::SetScale(DirectX::FXMVECTOR scale)
 
 void XM_CALLCONV COMTransform::SetRotateQuter(DirectX::FXMVECTOR rotate)
 {
-	CGH::QuaternionToAngularAngles(rotate, m_rotate.x, m_rotate.y, m_rotate.z);
-	
-	m_rotate.x *= 180.0f / DirectX::XM_PI;
-	m_rotate.y *= 180.0f / DirectX::XM_PI;
-	m_rotate.z *= 180.0f / DirectX::XM_PI;
+	DirectX::XMStoreFloat4(&m_rotate, rotate);
 }
 
 COMSkinnedMesh::COMSkinnedMesh(CGHNode* node)

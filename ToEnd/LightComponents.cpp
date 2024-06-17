@@ -27,7 +27,6 @@ void COMDirLight::Render(CGHNode* node, unsigned int)
 void COMDirLight::GUIRender_Internal(unsigned int currFrame)
 {
 	ImGui::CheckboxFlags("Shadow", &m_lightFlags, LIGHT_FLAG_SHADOW);
-	ImGui::DragFloat3("Dir", &m_data.dir.x, 0.01f);
 	ImGui::DragFloat3("Color", &m_data.color.x, 0.01f);
 	ImGui::DragFloat("Power", &m_data.power, 0.01f);
 }

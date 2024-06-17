@@ -39,5 +39,5 @@ private:
 	CGHNode m_dirLight2;
 
 	std::vector<CGHNode*> m_rootNodeList;
-	CGHAnimationGroup* m_aniGroup = nullptr;
+	CGHAnimationGroup m_aniGroup;
 };

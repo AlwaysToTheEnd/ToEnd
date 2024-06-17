@@ -44,9 +44,9 @@ public:
 
 private:
 	void NodeTreeDirty();
-	void NodeAnimation(const aiAnimation* anim);
-	void MeshAnimation(const aiAnimation* anim, CGHNode* node);
-	void MorphAnimation(const aiAnimation* anim, CGHNode* node);
+	void NodeAnimation(const aiAnimation* anim, double currFrame);
+	void MeshAnimation(const aiAnimation* anim, double currFrame, CGHNode* node);
+	void MorphAnimation(const aiAnimation* anim, double currFrame, CGHNode* node);
 
 private:
 	static size_t s_hashCode;

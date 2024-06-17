@@ -27,7 +27,6 @@ public:
 	void XM_CALLCONV SetRotateQuter(DirectX::FXMVECTOR rotate);
 	void SetPos(const DirectX::XMFLOAT3& pos) { m_pos = pos; }
 	void SetScale(const DirectX::XMFLOAT3& scale) { m_scale = scale; }
-	void SetRotate(const DirectX::XMFLOAT3& rotate) { m_rotate = rotate; }
 
 private:
 	virtual void GUIRender_Internal(unsigned int currFrame) override;
@@ -36,7 +35,7 @@ private:
 	static size_t s_hashCode;
 	DirectX::XMFLOAT3 m_pos = {};
 	DirectX::XMFLOAT3 m_scale = { 1.0f,1.0f,1.0f };
-	DirectX::XMFLOAT3 m_rotate = {};
+	DirectX::XMFLOAT4 m_rotate = { 0.0f,0.0f,0.0f,1.0f };
 };
 
 class COMSkinnedMesh : public Component

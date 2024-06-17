@@ -26,7 +26,6 @@ TestScene::TestScene()
 
 TestScene::~TestScene()
 {
-	delete m_aniGroup;
 	delete m_nodeTransformController;
 }
 
@@ -34,7 +33,7 @@ void TestScene::Init()
 {
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
 	DX12FontManger::s_instance.LoadFont(L"FontData/baseFont.spritefont");
-
+	
 	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
 	{
 		m_rootNode = &m_bodyNodes.front();
@@ -241,6 +240,12 @@ void TestScene::Init()
 	m_rootNodeList.push_back(m_rootNode);
 	m_rootNodeList.push_back(&m_dirLight);
 	m_rootNodeList.push_back(&m_dirLight2);
+
+	DX12GraphicResourceLoader aniLoader;
+	aniLoader.LoadAnimation("Animation/testAnikm.fbx", &m_aniGroup);
+	auto animator = m_rootNode->CreateComponent<COMAnimator>();
+	animator->SetAnimationGroup(&m_aniGroup);
+	animator->SetAnimation(0, 0);
 }
 
 void TestScene::Update(float delta)
@@ -250,14 +255,6 @@ void TestScene::Update(float delta)
 	//auto lightTrans2 = m_dirLight2.GetComponent<COMTransform>();
 	auto rootTrans = m_rootNode->GetComponent<COMTransform>();
 
-	//posY += delta * 1.0f;
-
-	static float x, y = 0;
-	//x += delta * 1.0f;
-	y += delta * 0.8f;
-
-	//lightTrans->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(x, y, 0));
-	//lightTrans2->SetRotateQuter(DirectX::XMQuaternionRotationRollPitchYaw(y, x, 0));
 
 	CGHRenderer::ExcuteMouseAction(graphic->GetCurrMouseTargetRenderID());
 	m_rootNode->Update(delta);
