@@ -79,6 +79,13 @@ void COMAnimator::NodeTreeDirty()
 void COMAnimator::NodeAnimation(const aiAnimation* anim, double currFrame)
 {
 	int currChannelNum = anim->mNumChannels;
+
+	std::vector<std::string> nodeNames;
+	for (int i = 0; i < currChannelNum; i++)
+	{
+		nodeNames.push_back(anim->mChannels[i]->mNodeName.C_Str());
+	}
+
 	Concurrency::parallel_for(0, currChannelNum, [anim, currFrame, this](int index)
 		{
 			auto currChannel = anim->mChannels[index];
@@ -86,6 +93,7 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim, double currFrame)
 			if (m_currGroup->rigMapping)
 			{
 				auto rigMappingIter = m_currGroup->rigMapping->find(currChannel->mNodeName.C_Str());
+
 				if (rigMappingIter != m_currGroup->rigMapping->end())
 				{
 					auto nodeIter = m_currNodeTree.find(rigMappingIter->second.c_str());
@@ -127,7 +135,7 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim, double currFrame)
 					}
 				}
 
-				for (int i = 0; i < numscale - 1; i++)
+				for (int i = 0; i < numRot - 1; i++)
 				{
 					double prevTime = currChannel->mRotationKeys[i].mTime;
 					double nextTime = currChannel->mRotationKeys[i + 1].mTime;
@@ -159,7 +167,7 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim, double currFrame)
 
 				if (transform)
 				{
-					transform->SetScale(xmScale);
+					//transform->SetScale(xmScale);
 					transform->SetRotateQuter(xmRotate);
 					transform->SetPos(xmPos);
 				}
@@ -173,4 +181,9 @@ void COMAnimator::MeshAnimation(const aiAnimation* anim, double currFrame, CGHNo
 
 void COMAnimator::MorphAnimation(const aiAnimation* anim, double currFrame, CGHNode* node)
 {
+}
+
+void COMAnimator::GUIRender_Internal(unsigned int currFrame)
+{
+
 }

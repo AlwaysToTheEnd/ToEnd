@@ -1113,7 +1113,7 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 
 			D3D12_VERTEX_BUFFER_VIEW vbView[3] = {};
 
-			unsigned int currUVChannel = std::min(static_cast<size_t>(3), currMesh->meshDataUVs.size());
+			unsigned int currUVChannel = min(static_cast<size_t>(3), currMesh->meshDataUVs.size());
 
 			for (int i = 0; i < currUVChannel; i++)
 			{

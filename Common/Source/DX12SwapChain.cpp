@@ -20,7 +20,6 @@ DX12SwapChain::DX12SwapChain()
 DX12SwapChain::~DX12SwapChain()
 {
 
-
 }
 
 void DX12SwapChain::CreateDXGIFactory(ID3D12Device** device)

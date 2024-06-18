@@ -45,7 +45,17 @@ void COMTransform::GUIRender_Internal(unsigned int currFrame)
 {
 	ImGui::DragFloat3("Pos", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
 	ImGui::DragFloat3("Scale", &m_scale.x, 0.1f, 0.0f, 0.0f, "%.2f");
-	ImGui::DragFloat4("Quter", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.2f");
+	ImGui::DragFloat4("Quter", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.3f");
+
+	static const float radToDig = 180.0f / DirectX::XM_PI;
+	DirectX::XMFLOAT3 rotateEuler = {};
+	CGH::QuaternionToAngularAngles(DirectX::XMLoadFloat4(&m_rotate), rotateEuler.x, rotateEuler.y, rotateEuler.z);
+
+	rotateEuler.x *= radToDig;
+	rotateEuler.y *= radToDig;
+	rotateEuler.z *= radToDig;
+
+	ImGui::Text("Rot [%.2f][%.2f][%.2f]", rotateEuler.x, rotateEuler.y, rotateEuler.z);
 }
 
 void XM_CALLCONV COMTransform::SetPos(DirectX::FXMVECTOR pos)

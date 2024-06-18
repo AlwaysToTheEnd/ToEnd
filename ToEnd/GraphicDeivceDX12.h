@@ -140,7 +140,6 @@ public:
 	void OnResize(int windowWidth, int windowHeight);
 	void LoadMeshDataFile(const char* filePath, bool triangleCw, std::vector<CGHMesh>* outMeshSet,
 		std::vector<CGHMaterial>* outMaterials = nullptr, std::vector<CGHNode>* outNode = nullptr);
-	void LoadAnimationDataFile(const char* filePath, std::vector<CGHAnimationGroup>* outAnims);
 
 	void ReservationResourceBarrierBeforeRenderStart(const CD3DX12_RESOURCE_BARRIER& barrier);
 

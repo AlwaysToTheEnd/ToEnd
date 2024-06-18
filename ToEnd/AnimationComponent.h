@@ -47,6 +47,7 @@ private:
 	void NodeAnimation(const aiAnimation* anim, double currFrame);
 	void MeshAnimation(const aiAnimation* anim, double currFrame, CGHNode* node);
 	void MorphAnimation(const aiAnimation* anim, double currFrame, CGHNode* node);
+	virtual void GUIRender_Internal(unsigned int currFrame) override;
 
 private:
 	static size_t s_hashCode;

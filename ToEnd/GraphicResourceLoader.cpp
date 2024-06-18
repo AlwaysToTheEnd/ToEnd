@@ -26,7 +26,7 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
-	int leftHandedConvert = aiProcess_ConvertToLeftHanded /*| aiProcess_GlobalScale*/;
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
 
 	if (!triangleCw)
 	{
@@ -34,8 +34,8 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 	}
 
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeComponentFlags);
-	const aiScene* scene = importer.ReadFile(filePath, aiProcess_CalcTangentSpace |
-		aiProcess_Triangulate | aiProcess_RemoveComponent | aiProcess_SortByPType | leftHandedConvert);
+	const aiScene* scene = importer.ReadFile(filePath,
+		aiProcess_Triangulate | aiProcess_RemoveComponent | leftHandedConvert);
 	std::string error = importer.GetErrorString();
 
 	assert(scene != nullptr);
@@ -63,7 +63,7 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
-	int leftHandedConvert = aiProcess_ConvertToLeftHanded | aiProcess_Triangulate;
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
 
 	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
 	std::string error = importer.GetErrorString();
@@ -81,6 +81,18 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 			for (int aniIndex = 0; aniIndex < numAnimation; aniIndex++)
 			{
 				auto currAnimation = scene->mAnimations[aniIndex];
+
+				std::vector<std::string> nodeNames;
+				for (int i = 0; i < currAnimation->mNumChannels; i++)
+				{
+					std::string nodeName = currAnimation->mChannels[i]->mNodeName.C_Str();
+					size_t pos = nodeName.find("$AssimpFbx$");
+
+					if (pos != std::string::npos)
+					{
+						currAnimation->mChannels[i]->mNodeName = nodeName.substr(0, pos-1);
+					}
+				}
 
 				ANIMATION_TYPE aniType = ANIMATION_TYPE::NONE_TYPE;
 
@@ -336,9 +348,8 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 		if (currMesh->HasFaces())
 		{
 			targetMesh.primitiveType = static_cast<aiPrimitiveType>(currMesh->mPrimitiveTypes);
-			bool isNGONEncoding = targetMesh.primitiveType & aiPrimitiveType_NGONEncodingFlag;
 
-			targetMesh.primitiveType = static_cast<aiPrimitiveType>(targetMesh.primitiveType & ~aiPrimitiveType_NGONEncodingFlag);
+			targetMesh.primitiveType = static_cast<aiPrimitiveType>(targetMesh.primitiveType);
 			switch (targetMesh.primitiveType)
 			{
 			case aiPrimitiveType_POINT:
