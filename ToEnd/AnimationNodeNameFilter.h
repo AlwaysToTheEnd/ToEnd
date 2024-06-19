@@ -120,12 +120,34 @@ inline void FiltAniNodeName(const char* nodeName, const std::vector<std::string>
 }
 
 const static std::unordered_map<std::string, std::string> s_mixamoRigMapping = {
-	{"mixamorig:Head",	"cf_J_Head" },
 	{ "mixamorig:Hips", "cf_J_Hips"},
+	{ "mixamorig:Spine", "cf_J_Spine01"},
+	{ "mixamorig:Spine1", "cf_J_Spine02"},
+	{ "mixamorig:Spine2",	"cf_J_Spine03"},
+
+	{ "mixamorig:Neck", "cf_J_Neck"},
+	{ "mixamorig:Head",	"cf_J_Head"},
+
+	//{ "mixamorig:LeftUpLeg", "cf_J_LegUp00_L"},
+	//{ "mixamorig:LeftLeg", "cf_J_LegLow01_L"},
+	//{ "mixamorig:LeftFoot", "cf_J_Foot01_L"},
+	//{ "mixamorig:LeftToeBase", "cf_J_Toes01_L"},
+
+	//{ "mixamorig:RightUpLeg", "cf_J_LegUp00_R"},
+	//{ "mixamorig:RightLeg", "cf_J_LegLow01_R"},
+	//{ "mixamorig:RightFoot", "cf_J_Foot01_R"},
+	//{ "mixamorig:RightToeBase", "cf_J_Toes01_R"},
+
+	{ "mixamorig:LeftShoulder", "cf_J_ShoulderIK_L"},
 	{ "mixamorig:LeftArm", "cf_J_ArmUp00_L"},
-	{ "mixamorig:LeftFoot", "cf_J_Foot01_L"},
 	{ "mixamorig:LeftForeArm", "cf_J_ArmLow01_L"},
 	{ "mixamorig:LeftHand",	"cf_J_Hand_L"},
+
+	{ "mixamorig:RightShoulder", "cf_J_ShoulderIK_R"},
+	{ "mixamorig:RightArm", "cf_J_ArmUp00_R"},
+	{ "mixamorig:RightForeArm", "cf_J_ArmLow01_R"},
+	{ "mixamorig:RightHand", "cf_J_Hand_R"},
+
 	{ "mixamorig:LeftHandIndex1", "cf_J_Hand_Index01_L"},
 	{ "mixamorig:LeftHandIndex2", "cf_J_Hand_Index02_L"},
 	{ "mixamorig:LeftHandIndex3", "cf_J_Hand_Index03_L"},
@@ -141,15 +163,7 @@ const static std::unordered_map<std::string, std::string> s_mixamoRigMapping = {
 	{ "mixamorig:LeftHandThumb1", "cf_J_Hand_Thumb01_L"},
 	{ "mixamorig:LeftHandThumb2", "cf_J_Hand_Thumb02_L"},
 	{ "mixamorig:LeftHandThumb3", "cf_J_Hand_Thumb03_L"},
-	{ "mixamorig:LeftLeg", "cf_J_LegLow01_L"},
-	{ "mixamorig:LeftShoulder", "cf_J_ShoulderIK_L"},
-	{ "mixamorig:LeftToeBase", "cf_J_Toes01_L"},
-	{ "mixamorig:LeftUpLeg", "cf_J_LegUp00_L"},
-	{ "mixamorig:Neck", "cf_J_Neck"},
-	{ "mixamorig:RightArm", "cf_J_ArmUp00_R"},
-	{ "mixamorig:RightFoot", "cf_J_Foot01_R"},
-	{ "mixamorig:RightForeArm", "cf_J_ArmLow01_R"},
-	{ "mixamorig:RightHand", "cf_J_Hand_R"},
+
 	{ "mixamorig:RightHandIndex1", "cf_J_Hand_Index01_R"},
 	{ "mixamorig:RightHandIndex2", "cf_J_Hand_Index02_R"},
 	{ "mixamorig:RightHandIndex3", "cf_J_Hand_Index03_R"},
@@ -164,14 +178,7 @@ const static std::unordered_map<std::string, std::string> s_mixamoRigMapping = {
 	{ "mixamorig:RightHandRing3", "cf_J_Hand_Ring03_R"},
 	{ "mixamorig:RightHandThumb1", "cf_J_Hand_Thumb01_R"},
 	{ "mixamorig:RightHandThumb2", "cf_J_Hand_Thumb02_R"},
-	{ "mixamorig:RightHandThumb3", "cf_J_Hand_Thumb03_R"},
-	{ "mixamorig:RightLeg", "cf_J_LegLow01_R"},
-	{ "mixamorig:RightShoulder", "cf_J_ShoulderIK_R"},
-	{ "mixamorig:RightToeBase", "cf_J_Toes01_R"},
-	{ "mixamorig:RightUpLeg", "cf_J_LegUp00_R"},
-	{ "mixamorig:Spine", "cf_J_Spine01"},
-	{ "mixamorig:Spine1", "cf_J_Spine02"},
-	{ "mixamorig:Spine2",	"cf_J_Spine03"}
+	{ "mixamorig:RightHandThumb3", "cf_J_Hand_Thumb03_R"}
 };
 
 //const static std::unordered_map<std::string, std::string> s_mixamoRigMapping = {

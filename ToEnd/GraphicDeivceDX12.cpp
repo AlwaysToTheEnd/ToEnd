@@ -17,7 +17,6 @@
 #include "Camera.h"
 #include "Mouse.h"
 #include "InputManager.h"
-#include "Dx12FontManager.h"
 
 
 
@@ -425,7 +424,6 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 		m_swapChain->ReSize(m_cmdList.Get(), windowWidth, windowHeight);
 		CreateDeferredTextures(windowWidth, windowHeight);
 	}
-	DX12FontManger::s_instance.ApplyRenderIDTexture();
 
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> smaaUPloadBuffers;
 	m_smaa->Resize(m_d3dDevice.Get(), m_cmdList.Get(), windowWidth, windowHeight, smaaUPloadBuffers);

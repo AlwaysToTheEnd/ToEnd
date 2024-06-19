@@ -26,7 +26,7 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
-	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded | aiProcess_CalcTangentSpace;
 
 	if (!triangleCw)
 	{
@@ -63,7 +63,7 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
-	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
+	int leftHandedConvert = 0;
 
 	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
 	std::string error = importer.GetErrorString();
@@ -82,7 +82,6 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 			{
 				auto currAnimation = scene->mAnimations[aniIndex];
 
-				std::vector<std::string> nodeNames;
 				for (int i = 0; i < currAnimation->mNumChannels; i++)
 				{
 					std::string nodeName = currAnimation->mChannels[i]->mNodeName.C_Str();
@@ -166,14 +165,14 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<C
 		nodeOut.resize(nodes.size());
 		for (size_t i = 0; i < nodes.size(); i++)
 		{
-			DirectX::XMMATRIX transMat = {};
+			DirectX::XMMATRIX transMat = DirectX::XMMATRIX(&nodes[i]->mTransformation.a1);
 			DirectX::XMVECTOR scale;
 			DirectX::XMVECTOR rotQuter;
 			DirectX::XMVECTOR pos;
 			COMTransform* transform = nodeOut[i].CreateComponent<COMTransform>();
-			aiMatrix4x4 tempMat = nodes[i]->mTransformation.Transpose();
 
-			std::memcpy(&transMat, &tempMat, sizeof(aiMatrix4x4));
+			transMat = DirectX::XMMatrixTranspose(transMat);
+
 			DirectX::XMMatrixDecompose(&scale, &rotQuter, &pos, transMat);
 			transform->SetPos(pos);
 			transform->SetScale(scale);
@@ -406,9 +405,9 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 					unsigned int currTargetBoneIndex = targetMesh.bones.size();
 					targetMesh.bones.emplace_back();
 					targetMesh.bones.back().name = currBone->mName.C_Str();
-					aiMatrix4x4 transposeMat = currBone->mOffsetMatrix.Transpose();
-					std::memcpy(&targetMesh.bones.back().offsetMatrix, &transposeMat, sizeof(aiMatrix4x4));
-					CGH::FixEpsilonMatrix(targetMesh.bones.back().offsetMatrix, 0.000001f);
+					DirectX::XMMATRIX offsetMat = DirectX::XMMATRIX(&currBone->mOffsetMatrix.a1);
+					offsetMat = DirectX::XMMatrixTranspose(offsetMat);
+					DirectX::XMStoreFloat4x4(&targetMesh.bones.back().offsetMatrix, offsetMat);
 
 					for (unsigned int k = 0; k < currBone->mNumWeights; k++)
 					{

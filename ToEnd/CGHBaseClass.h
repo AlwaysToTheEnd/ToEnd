@@ -192,31 +192,4 @@ inline T* CGHNode::GetComponent()
 	return result;
 }
 
-namespace CGH
-{
-	inline void FixEpsilonMatrix(DirectX::XMFLOAT4X4& matrix, float epsilon = 1.192092896e-7f)
-	{
-		float* currFloat = &matrix._11;
-
-		for (int j = 0; j < 16; j++)
-		{
-			if (j % 4 == j / 4)
-			{
-				if (std::abs(std::abs(currFloat[j]) - 1.0f) < epsilon)
-				{
-					currFloat[j] = 1.0f;
-				}
-			}
-			else
-			{
-				if (std::abs(currFloat[j]) < epsilon)
-				{
-					currFloat[j] = 0;
-				}
-			}
-		}
-	}
-}
-
-
 

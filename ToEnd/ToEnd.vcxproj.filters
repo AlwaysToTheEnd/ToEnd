@@ -74,12 +74,6 @@
     <ClInclude Include="DX12GraphicResourceManager.h">
       <Filter>Graphic</Filter>
     </ClInclude>
-    <ClInclude Include="DX12FontStructs.h">
-      <Filter>Graphic</Filter>
-    </ClInclude>
-    <ClInclude Include="Dx12FontManager.h">
-      <Filter>Graphic</Filter>
-    </ClInclude>
     <ClInclude Include="Component.h">
       <Filter>Component</Filter>
     </ClInclude>
@@ -164,9 +158,6 @@
       <Filter>Graphic</Filter>
     </ClCompile>
     <ClCompile Include="DX12GraphicResourceManager.cpp">
-      <Filter>Graphic</Filter>
-    </ClCompile>
-    <ClCompile Include="Dx12FontManager.cpp">
       <Filter>Graphic</Filter>
     </ClCompile>
     <ClCompile Include="CGHGraphicResource.cpp">

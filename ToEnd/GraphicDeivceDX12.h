@@ -13,7 +13,6 @@
 #include "DX12UploadBuffer.h"
 #include "CGHBaseClass.h"
 #include "PipeLineWorkSet.h"
-#include "DX12FontStructs.h"
 
 #include "../Common/Source/CGHUtil.h"
 

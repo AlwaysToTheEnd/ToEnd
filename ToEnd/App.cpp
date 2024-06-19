@@ -13,7 +13,6 @@
 #include "DX12GraphicResourceManager.h"
 #include "DX12TextureBuffer.h"
 #include "InputManager.h"
-#include "Dx12FontManager.h"
 #include "imgui.h"
 #include "Imgui/backends/imgui_impl_win32.h"
 #include "imgui_internal.h"
@@ -36,7 +35,6 @@ HRESULT App::Init()
 	
 	DX12GraphicResourceManager::s_insatance.Init();
 	DX12DefaultBufferCreator::s_instance.Init();
-	DX12FontManger::s_instance.Init();
 	
 	DX12TextureBuffer::Init();
 

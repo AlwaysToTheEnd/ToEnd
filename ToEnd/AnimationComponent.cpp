@@ -50,7 +50,7 @@ void COMAnimator::Update(CGHNode* node, float delta)
 		}
 
 		Concurrency::parallel_invoke(
-			std::bind(&COMAnimator::NodeAnimation, this, currAnimation, currFrame),
+			std::bind(&COMAnimator::NodeAnimation, this, currAnimation, 0),
 			std::bind(&COMAnimator::MeshAnimation, this, currAnimation, currFrame, node),
 			std::bind(&COMAnimator::MorphAnimation, this, currAnimation, currFrame, node));
 	}
@@ -169,7 +169,7 @@ void COMAnimator::NodeAnimation(const aiAnimation* anim, double currFrame)
 				{
 					//transform->SetScale(xmScale);
 					transform->SetRotateQuter(xmRotate);
-					transform->SetPos(xmPos);
+					//transform->SetPos(xmPos);
 				}
 			}
 		});
