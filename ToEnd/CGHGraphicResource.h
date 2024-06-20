@@ -5,6 +5,7 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
+#include <memory>
 
 #include "assimp/material.h"
 #include "assimp/mesh.h"
@@ -95,6 +96,13 @@ enum class ANIMATION_TYPE
 
 struct CGHAnimationGroup
 {
+	struct MatSet
+	{
+		DirectX::XMFLOAT4X4 offsetMat;
+		DirectX::XMFLOAT4X4 stackMat;
+	};
+
+	std::shared_ptr<std::unordered_map<std::string, MatSet>> boneOffsetMatrices;
 	std::vector<ANIMATION_TYPE> types;
 	std::vector<aiAnimation> anims;
 	const std::unordered_map<std::string, std::string>* rigMapping = nullptr;

@@ -42,6 +42,8 @@ public:
 	void SetAnimationGroup(const CGHAnimationGroup* group) { m_currGroup = group; }
 	void SetAnimation(unsigned int animationIndex, unsigned int stateIndex);
 
+	static void AnimationRigging(CGHAnimationGroup* group, const std::unordered_map<std::string, DirectX::XMFLOAT4X4>& meshBone);
+
 private:
 	void NodeTreeDirty();
 	void NodeAnimation(const aiAnimation* anim, double currFrame);

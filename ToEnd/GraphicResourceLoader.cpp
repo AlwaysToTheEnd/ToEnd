@@ -52,7 +52,6 @@ void DX12GraphicResourceLoader::LoadAllData(const std::string& filePath, int rem
 		LoadMaterialData(scene, d12Device);
 	}
 
-	LoadAnimationData(scene, meshDataOut);
 	LoadMeshData(scene, d12Device, cmd, meshDataOut, materialOut, uploadbuffersOut);
 
 	importer.FreeScene();
@@ -67,8 +66,52 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 
 	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
 	std::string error = importer.GetErrorString();
-
 	assert(scene != nullptr);
+
+	struct MatSet
+	{
+		DirectX::XMFLOAT4X4 offsetMat;
+		DirectX::XMFLOAT4X4 stackMat;
+	};
+
+	auto boneOffsetMatrices = std::make_shared<std::unordered_map<std::string, CGHAnimationGroup::MatSet>>();
+	{
+		std::vector<aiNode*> nodeStack;
+		nodeStack.push_back(scene->mRootNode);
+		while (nodeStack.size())
+		{
+			aiNode* currNode = nodeStack.back();
+			nodeStack.pop_back();
+
+			for (unsigned int i = 0; i < currNode->mNumChildren; i++)
+			{
+				nodeStack.push_back(currNode->mChildren[i]);
+			}
+
+			DirectX::XMMATRIX mat = DirectX::XMMATRIX(&currNode->mTransformation.Transpose().a1);
+			DirectX::XMMATRIX patrentMat = DirectX::XMMatrixIdentity();
+
+			if(currNode->mParent)
+			{
+				auto iter = boneOffsetMatrices->find(currNode->mParent->mName.C_Str());
+
+				if (iter != boneOffsetMatrices->end())
+				{
+					patrentMat = DirectX::XMLoadFloat4x4(&iter->second.stackMat);
+				}
+				else
+				{
+					assert(false);
+				}
+			}
+
+			mat = DirectX::XMMatrixMultiply(mat, patrentMat);
+			DirectX::XMMATRIX inverseMat = DirectX::XMMatrixInverse(nullptr, mat);
+			DirectX::XMStoreFloat4x4(&(*boneOffsetMatrices)[currNode->mName.C_Str()].stackMat, mat);
+			DirectX::XMStoreFloat4x4(&(*boneOffsetMatrices)[currNode->mName.C_Str()].offsetMat, inverseMat);
+		}
+	}
+	animationsOut->boneOffsetMatrices = boneOffsetMatrices;
 
 	if (scene->HasAnimations())
 	{
@@ -249,15 +292,6 @@ void DX12GraphicResourceLoader::LoadMaterialData(const aiScene* scene, ID3D12Dev
 				}
 			}
 		}
-	}
-}
-
-void DX12GraphicResourceLoader::LoadAnimationData(const aiScene* scene, std::vector<CGHMesh>* meshDataOut)
-{
-	for (unsigned int i = 0; i < scene->mNumAnimations; i++)
-	{
-		assert(scene->mAnimations[i]->mNumMeshChannels == 0);
-		assert(scene->mAnimations[i]->mNumMorphMeshChannels == 0);
 	}
 }
 

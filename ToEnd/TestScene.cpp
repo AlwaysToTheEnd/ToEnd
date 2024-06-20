@@ -31,6 +31,7 @@ TestScene::~TestScene()
 void TestScene::Init()
 {
 	auto dxGraphic = GraphicDeviceDX12::GetGraphic();
+	std::unordered_map<std::string, DirectX::XMFLOAT4X4> baseMeshBones;
 
 	dxGraphic->LoadMeshDataFile("MeshData/body0.fbx", true, &m_bodyMeshs, &m_bodyMats, &m_bodyNodes);
 	{
@@ -239,12 +240,13 @@ void TestScene::Init()
 	m_rootNodeList.push_back(&m_dirLight);
 	m_rootNodeList.push_back(&m_dirLight2);
 
-	//DX12GraphicResourceLoader aniLoader;
-	//aniLoader.LoadAnimation("Animation/Ninja Idle.fbx", &m_aniGroup);
-	//m_aniGroup.rigMapping = &s_mixamoRigMapping;
-	//auto animator = m_rootNode->CreateComponent<COMAnimator>();
-	//animator->SetAnimationGroup(&m_aniGroup);
-	//animator->SetAnimation(0, 0);
+	DX12GraphicResourceLoader aniLoader;
+	aniLoader.LoadAnimation("Animation/Ninja Idle.fbx", &m_aniGroup);
+	m_aniGroup.rigMapping = &s_mixamoRigMapping;
+	auto animator = m_rootNode->CreateComponent<COMAnimator>();
+	COMAnimator::AnimationRigging(&m_aniGroup, baseMeshBones);
+	animator->SetAnimationGroup(&m_aniGroup);
+	animator->SetAnimation(0, 0);
 }
 
 void TestScene::Update(float delta)

@@ -21,7 +21,6 @@ public:
 private:
 	void LoadNodeData(const aiScene* scene, std::vector<CGHNode>& nodeOut);
 	void LoadMaterialData(const aiScene* scene, ID3D12Device* d12Device);
-	void LoadAnimationData(const aiScene* scene, std::vector<CGHMesh>* meshDataOut);
 	void LoadMeshData(const aiScene* scene, ID3D12Device* d12Device, ID3D12GraphicsCommandList* cmd, std::vector<CGHMesh>* meshDataOut, 
 		std::vector<CGHMaterial>* materialOut, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>* uploadbuffersOut);
 

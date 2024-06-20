@@ -128,15 +128,15 @@ const static std::unordered_map<std::string, std::string> s_mixamoRigMapping = {
 	{ "mixamorig:Neck", "cf_J_Neck"},
 	{ "mixamorig:Head",	"cf_J_Head"},
 
-	//{ "mixamorig:LeftUpLeg", "cf_J_LegUp00_L"},
-	//{ "mixamorig:LeftLeg", "cf_J_LegLow01_L"},
-	//{ "mixamorig:LeftFoot", "cf_J_Foot01_L"},
-	//{ "mixamorig:LeftToeBase", "cf_J_Toes01_L"},
+	{ "mixamorig:LeftUpLeg", "cf_J_LegUp00_L"},
+	{ "mixamorig:LeftLeg", "cf_J_LegLow01_L"},
+	{ "mixamorig:LeftFoot", "cf_J_Foot01_L"},
+	{ "mixamorig:LeftToeBase", "cf_J_Toes01_L"},
 
-	//{ "mixamorig:RightUpLeg", "cf_J_LegUp00_R"},
-	//{ "mixamorig:RightLeg", "cf_J_LegLow01_R"},
-	//{ "mixamorig:RightFoot", "cf_J_Foot01_R"},
-	//{ "mixamorig:RightToeBase", "cf_J_Toes01_R"},
+	{ "mixamorig:RightUpLeg", "cf_J_LegUp00_R"},
+	{ "mixamorig:RightLeg", "cf_J_LegLow01_R"},
+	{ "mixamorig:RightFoot", "cf_J_Foot01_R"},
+	{ "mixamorig:RightToeBase", "cf_J_Toes01_R"},
 
 	{ "mixamorig:LeftShoulder", "cf_J_ShoulderIK_L"},
 	{ "mixamorig:LeftArm", "cf_J_ArmUp00_L"},
