@@ -38,6 +38,37 @@ void TestScene::Init()
 		m_rootNode = &m_bodyNodes.front();
 		m_rootNode->SetLayer(CGHNODE_LAYER::CGHNODE_LYAER_CHARACTER);
 
+		std::vector<CGHNode*> childNodes;
+		std::unordered_map<std::string, DirectX::XMFLOAT4X4> stackedMats;
+		m_rootNode->GetChildNodes(&childNodes);
+
+		for(auto& iter : childNodes)
+		{
+			auto transform = iter->GetComponent<COMTransform>();
+			DirectX::XMMATRIX parentMat = DirectX::XMMatrixIdentity();
+			DirectX::XMMATRIX currNodeMat = transform->GetMatrix();
+
+			if(iter->GetParent())
+			{
+				auto stackIter = stackedMats.find(iter->GetParent()->GetName());
+				if(stackIter != stackedMats.end())
+				{
+					parentMat = DirectX::XMLoadFloat4x4(&stackIter->second);
+				}
+				else
+				{
+					assert(false);
+				}
+			}
+			
+			DirectX::XMStoreFloat4x4(&stackedMats[iter->GetName()], currNodeMat * parentMat);
+		}
+
+		for (auto iter : stackedMats)
+		{
+			DirectX::XMStoreFloat4x4(&baseMeshBones[iter.first], DirectX::XMMatrixInverse(nullptr, DirectX::XMLoadFloat4x4(&iter.second)));
+		}
+
 		auto render = m_rootNode->CreateComponent<COMDX12SkinnedMeshRenderer>();
 		auto material = m_rootNode->CreateComponent<COMMaterial>();
 		auto skinnedMesh = m_rootNode->CreateComponent<COMSkinnedMesh>();

@@ -62,7 +62,7 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 	Assimp::Importer importer;
 	ID3D12Device* d12Device = GraphicDeviceDX12::GetGraphic()->GetDevice();
 
-	int leftHandedConvert = 0;
+	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
 
 	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
 	std::string error = importer.GetErrorString();
@@ -118,7 +118,11 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 		unsigned int numAnimation = scene->mNumAnimations;
 		if (animationsOut)
 		{
-			animationsOut->anims.assign(numAnimation, *(scene->mAnimations[0]));
+			for (int i = 0; i < numAnimation; i++)
+			{
+				animationsOut->anims.push_back(*(scene->mAnimations[i]));
+			}
+
 			animationsOut->types.resize(numAnimation);
 
 			for (int aniIndex = 0; aniIndex < numAnimation; aniIndex++)

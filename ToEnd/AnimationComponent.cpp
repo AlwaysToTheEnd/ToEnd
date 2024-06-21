@@ -50,7 +50,7 @@ void COMAnimator::Update(CGHNode* node, float delta)
 		}
 
 		Concurrency::parallel_invoke(
-			std::bind(&COMAnimator::NodeAnimation, this, currAnimation, 0),
+			std::bind(&COMAnimator::NodeAnimation, this, currAnimation, currFrame),
 			std::bind(&COMAnimator::MeshAnimation, this, currAnimation, currFrame, node),
 			std::bind(&COMAnimator::MorphAnimation, this, currAnimation, currFrame, node));
 	}
@@ -75,13 +75,7 @@ void COMAnimator::AnimationRigging(CGHAnimationGroup* group, const std::unordere
 {
 	assert(group->rigMapping);
 
-	struct DisplacementData
-	{
-		DirectX::XMFLOAT3 pos;
-		DirectX::XMFLOAT3 scale;
-		DirectX::XMFLOAT4 rotate;
-	};
-	static std::unordered_map<std::string, DisplacementData> displacementDatas;
+	static std::unordered_map<std::string, DirectX::XMFLOAT4X4> displacementDatas;
 
 	auto rigMapping = group->rigMapping;
 
@@ -101,30 +95,7 @@ void COMAnimator::AnimationRigging(CGHAnimationGroup* group, const std::unordere
 				DirectX::XMMATRIX baseMat = DirectX::XMLoadFloat4x4(&baseIter->second);
 				DirectX::XMMATRIX aniMat = DirectX::XMLoadFloat4x4(&aniIter->second.offsetMat);
 
-				DirectX::XMVECTOR baseScale = DirectX::XMVectorZero();
-				DirectX::XMVECTOR baseRotate = DirectX::XMVectorSet(0, 0, 0, 1);
-				DirectX::XMVECTOR basePos = DirectX::XMVectorZero();
-
-				DirectX::XMVECTOR aniScale = DirectX::XMVectorZero();
-				DirectX::XMVECTOR aniRotate = DirectX::XMVectorSet(0, 0, 0, 1);
-				DirectX::XMVECTOR aniPos = DirectX::XMVectorZero();
-
-				DirectX::XMMatrixDecompose(&baseScale, &baseRotate, &basePos, baseMat);
-				DirectX::XMMatrixDecompose(&aniScale, &aniRotate, &aniPos, aniMat);
-
-				DirectX::XMVECTOR displacementPosRatio = DirectX::XMVectorDivide(basePos, aniPos);
-				DirectX::XMVECTOR displacementScaleRatio = DirectX::XMVectorDivide(baseScale, aniScale);
-				DirectX::XMVECTOR displacementRotate = DirectX::XMQuaternionMultiply(DirectX::XMQuaternionInverse(aniRotate), baseRotate);
-
-				DirectX::XMFLOAT3 rotateValue = {};
-				CGH::QuaternionToAngularAngles(displacementRotate, rotateValue.x , rotateValue.y, rotateValue.z);
-
-				DisplacementData data = {};
-				DirectX::XMStoreFloat3(&data.pos, displacementPosRatio);
-				DirectX::XMStoreFloat3(&data.scale, displacementScaleRatio);
-				DirectX::XMStoreFloat4(&data.rotate, displacementRotate);
-
-				displacementDatas.insert({ iter.first, data });
+				DirectX::XMStoreFloat4x4(&displacementDatas[iter.first], DirectX::XMMatrixInverse(nullptr, baseMat) * aniMat);
 			}
 			else
 			{
@@ -143,34 +114,23 @@ void COMAnimator::AnimationRigging(CGHAnimationGroup* group, const std::unordere
 
 				if (displacementDataIter != displacementDatas.end())
 				{
-					const auto& displacementData = displacementDataIter->second;
+					DirectX::XMMATRIX dipalcementMat = DirectX::XMLoadFloat4x4(&displacementDataIter->second);
+					unsigned int numscale = currChannel->mNumScalingKeys;
+					unsigned int numRot = currChannel->mNumRotationKeys;
+					unsigned int numPos = currChannel->mNumPositionKeys;
 
-					for (int j = 0; j < currChannel->mNumScalingKeys; j++)
+					for (unsigned int i = 0; i < numRot; i++)
 					{
-						currChannel->mScalingKeys[j].mValue.x *= displacementData.scale.x;
-						currChannel->mScalingKeys[j].mValue.y *= displacementData.scale.y;
-						currChannel->mScalingKeys[j].mValue.z *= displacementData.scale.z;
-					}
+						auto& currRot = currChannel->mRotationKeys[i].mValue;
+						DirectX::XMVECTOR currRotVec = DirectX::XMVectorSet(currRot.x, currRot.y, currRot.z, currRot.w);
+						DirectX::XMMATRIX currRotMat = DirectX::XMMatrixRotationQuaternion(currRotVec);
+						currRotMat = DirectX::XMMatrixMultiply(dipalcementMat, currRotMat);
 
-					for (int j = 0; j < currChannel->mNumRotationKeys; j++)
-					{
-						aiQuaternion& currQuat = currChannel->mRotationKeys[j].mValue;
-						DirectX::XMVECTOR currQuatVec = DirectX::XMVectorSet(currQuat.x, currQuat.y, currQuat.z, currQuat.w);
-						DirectX::XMVECTOR displacementQuat = DirectX::XMLoadFloat4(&displacementData.rotate);
-						DirectX::XMVECTOR resultQuat = DirectX::XMQuaternionMultiply(displacementQuat, currQuatVec);
-						resultQuat = DirectX::XMQuaternionMultiply(resultQuat, DirectX::XMQuaternionInverse(displacementQuat));
-
-						currQuat.x = DirectX::XMVectorGetX(resultQuat);
-						currQuat.y = DirectX::XMVectorGetY(resultQuat);
-						currQuat.z = DirectX::XMVectorGetZ(resultQuat);
-						currQuat.w = DirectX::XMVectorGetW(resultQuat);
-					}
-
-					for (int j = 0; j < currChannel->mNumPositionKeys; j++)
-					{
-						currChannel->mPositionKeys[j].mValue.x *= displacementData.pos.x;
-						currChannel->mPositionKeys[j].mValue.y *= displacementData.pos.y;
-						currChannel->mPositionKeys[j].mValue.z *= displacementData.pos.z;
+						currRotVec = DirectX::XMQuaternionRotationMatrix(currRotMat);
+						currRot.x = DirectX::XMVectorGetX(currRotVec);
+						currRot.y = -DirectX::XMVectorGetY(currRotVec);
+						currRot.z = DirectX::XMVectorGetZ(currRotVec);
+						currRot.w = DirectX::XMVectorGetW(currRotVec);
 					}
 				}
 				else

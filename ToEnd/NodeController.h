@@ -21,6 +21,5 @@ private:
 	std::vector<CGHNode*> m_rootNodeList;
 	std::unordered_map<const CGHNode*, bool> m_nodeOpenList;
 	CGHNode* m_currSelected = nullptr;
-	DirectX::XMFLOAT3 m_rotate = {};
 };
 

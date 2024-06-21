@@ -44,17 +44,42 @@ void COMTransform::GUIRender_Internal(unsigned int currFrame)
 {
 	ImGui::DragFloat3("Pos", &m_pos.x, 0.1f, 0.0f, 0.0f, "%.2f");
 	ImGui::DragFloat3("Scale", &m_scale.x, 0.1f, 0.0f, 0.0f, "%.2f");
-	ImGui::DragFloat4("Quter", &m_rotate.x, 0.1f, 0.0f, 0.0f, "%.3f");
+	if (ImGui::InputFloat4("Quter", &m_rotate.x, "%.3f"))
+	{
+		CGH::QuaternionToAngularAngles(DirectX::XMLoadFloat4(&m_rotate), m_rotateEuler.x, m_rotateEuler.y, m_rotateEuler.z);
 
-	static const float radToDig = 180.0f / DirectX::XM_PI;
-	DirectX::XMFLOAT3 rotateEuler = {};
-	CGH::QuaternionToAngularAngles(DirectX::XMLoadFloat4(&m_rotate), rotateEuler.x, rotateEuler.y, rotateEuler.z);
+		m_rotateEuler.x = DirectX::XMConvertToDegrees(m_rotateEuler.x);
+		m_rotateEuler.y = DirectX::XMConvertToDegrees(m_rotateEuler.y);
+		m_rotateEuler.z = DirectX::XMConvertToDegrees(m_rotateEuler.z);
+	}
+	
+	if (ImGui::DragFloat3("RotEuler", &m_rotateEuler.x, 0.1f, 0.0f, 0.0f, "%.2f"))
+	{
+		DirectX::XMStoreFloat4(&m_rotate, DirectX::XMQuaternionRotationRollPitchYaw(
+			DirectX::XMConvertToRadians(m_rotateEuler.x), DirectX::XMConvertToRadians(m_rotateEuler.y), DirectX::XMConvertToRadians(m_rotateEuler.z)));
+	}
 
-	rotateEuler.x *= radToDig;
-	rotateEuler.y *= radToDig;
-	rotateEuler.z *= radToDig;
+	if (m_rotateUIDirty)
+	{
+		CGH::QuaternionToAngularAngles(DirectX::XMLoadFloat4(&m_rotate), m_rotateEuler.x, m_rotateEuler.y, m_rotateEuler.z);
 
-	ImGui::Text("Rot [%.2f][%.2f][%.2f]", rotateEuler.x, rotateEuler.y, rotateEuler.z);
+		m_rotateEuler.x = DirectX::XMConvertToDegrees(m_rotateEuler.x);
+		m_rotateEuler.y = DirectX::XMConvertToDegrees(m_rotateEuler.y);
+		m_rotateEuler.z = DirectX::XMConvertToDegrees(m_rotateEuler.z);
+
+		m_rotateUIDirty = false;
+	}
+}
+
+DirectX::FXMVECTOR XM_CALLCONV COMTransform::GetRotateQuter() const
+{
+	return DirectX::XMLoadFloat4(&m_rotate);
+}
+
+DirectX::FXMMATRIX XM_CALLCONV COMTransform::GetMatrix() const
+{
+	return DirectX::XMMatrixAffineTransformation(DirectX::XMLoadFloat3(&m_scale), DirectX::XMVectorSet(0, 0, 0, 1.0f),
+		DirectX::XMLoadFloat4(&m_rotate), DirectX::XMLoadFloat3(&m_pos));
 }
 
 void XM_CALLCONV COMTransform::SetPos(DirectX::FXMVECTOR pos)
@@ -70,7 +95,9 @@ void XM_CALLCONV COMTransform::SetScale(DirectX::FXMVECTOR scale)
 void XM_CALLCONV COMTransform::SetRotateQuter(DirectX::FXMVECTOR rotate)
 {
 	DirectX::XMStoreFloat4(&m_rotate, rotate);
+	m_rotateUIDirty = true;
 }
+
 
 COMSkinnedMesh::COMSkinnedMesh(CGHNode* node)
 {

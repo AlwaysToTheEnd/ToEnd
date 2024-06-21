@@ -21,6 +21,8 @@ public:
 
 	const DirectX::XMFLOAT3& GetPos() const { return m_pos; }
 	const DirectX::XMFLOAT3& GetScale() const { return m_scale; }
+	DirectX::FXMVECTOR XM_CALLCONV GetRotateQuter() const;
+	DirectX::FXMMATRIX XM_CALLCONV GetMatrix() const;
 
 	void XM_CALLCONV SetPos(DirectX::FXMVECTOR pos);
 	void XM_CALLCONV SetScale(DirectX::FXMVECTOR scale);
@@ -35,6 +37,8 @@ private:
 	static size_t s_hashCode;
 	DirectX::XMFLOAT3 m_pos = {};
 	DirectX::XMFLOAT3 m_scale = { 1.0f,1.0f,1.0f };
+	DirectX::XMFLOAT3 m_rotateEuler = {};
+	bool m_rotateUIDirty = false;
 	DirectX::XMFLOAT4 m_rotate = { 0.0f,0.0f,0.0f,1.0f };
 };
 
