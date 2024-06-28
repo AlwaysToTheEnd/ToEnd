@@ -64,54 +64,70 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 
 	int leftHandedConvert = aiProcess_ConvertToLeftHanded;
 
-	const aiScene* scene = importer.ReadFile(filePath, leftHandedConvert);
+	const aiScene* scene = importer.ReadFile(filePath, 0);
 	std::string error = importer.GetErrorString();
 	assert(scene != nullptr);
 
-	struct MatSet
-	{
-		DirectX::XMFLOAT4X4 offsetMat;
-		DirectX::XMFLOAT4X4 stackMat;
-	};
+	scene->mMetaData->mNumProperties;
 
-	auto boneOffsetMatrices = std::make_shared<std::unordered_map<std::string, CGHAnimationGroup::MatSet>>();
+	auto& currNodeDatas = animationsOut->nodeDatas;
 	{
 		std::vector<aiNode*> nodeStack;
+		std::vector<aiNode*> nodeList;
+		std::vector<int> nodeParentIndexList;
 		nodeStack.push_back(scene->mRootNode);
+		nodeList.push_back(scene->mRootNode);
+		nodeParentIndexList.push_back(-1);
 		while (nodeStack.size())
 		{
 			aiNode* currNode = nodeStack.back();
 			nodeStack.pop_back();
 
+			int parentIndex = nodeList.size();
+			nodeList.push_back(currNode);
+
 			for (unsigned int i = 0; i < currNode->mNumChildren; i++)
 			{
 				nodeStack.push_back(currNode->mChildren[i]);
+				nodeParentIndexList.push_back(parentIndex);
 			}
+		}
 
-			DirectX::XMMATRIX mat = DirectX::XMMATRIX(&currNode->mTransformation.Transpose().a1);
-			DirectX::XMMATRIX patrentMat = DirectX::XMMatrixIdentity();
+		std::vector<DirectX::XMMATRIX> transByParentMats;
+		transByParentMats.reserve(nodeList.size());
+		currNodeDatas.reserve(nodeList.size());
+		animationsOut->nodedataList.reserve(nodeList.size());
 
-			if(currNode->mParent)
+		for (size_t i = 0; i < nodeList.size(); i++)
+		{
+			aiNode* currNode = nodeList[i];
+			DirectX::XMMATRIX transMat = DirectX::XMMATRIX(&currNode->mTransformation.Transpose().a1);
+			DirectX::XMMATRIX stackedparentMat = DirectX::XMMatrixIdentity();
+
+			if (nodeParentIndexList[i] != -1)
 			{
-				auto iter = boneOffsetMatrices->find(currNode->mParent->mName.C_Str());
-
-				if (iter != boneOffsetMatrices->end())
-				{
-					patrentMat = DirectX::XMLoadFloat4x4(&iter->second.stackMat);
-				}
-				else
-				{
-					assert(false);
-				}
+				stackedparentMat = transByParentMats[nodeParentIndexList[i]];
 			}
 
-			mat = DirectX::XMMatrixMultiply(mat, patrentMat);
-			DirectX::XMMATRIX inverseMat = DirectX::XMMatrixInverse(nullptr, mat);
-			DirectX::XMStoreFloat4x4(&(*boneOffsetMatrices)[currNode->mName.C_Str()].stackMat, mat);
-			DirectX::XMStoreFloat4x4(&(*boneOffsetMatrices)[currNode->mName.C_Str()].offsetMat, inverseMat);
+			DirectX::XMMATRIX stackedTransMat = transMat * stackedparentMat;
+			DirectX::XMMATRIX offsetMat = DirectX::XMMatrixInverse(nullptr, stackedTransMat);
+			transByParentMats.push_back(stackedTransMat);
+
+			CGHAnimationGroup::NodeData& currNodeData = currNodeDatas[currNode->mName.C_Str()];
+			currNodeData.index = i;
+			DirectX::XMStoreFloat4x4(&currNodeData.transform, transMat);
+			DirectX::XMStoreFloat4x4(&currNodeData.offsetMatrix, offsetMat);
+			animationsOut->nodedataList.push_back(&currNodeData);
+		}
+
+		for (auto iter : nodeList)
+		{
+			if (iter->mParent)
+			{
+				currNodeDatas[iter->mName.C_Str()].parent = &currNodeDatas[iter->mParent->mName.C_Str()];
+			}
 		}
 	}
-	animationsOut->boneOffsetMatrices = boneOffsetMatrices;
 
 	if (scene->HasAnimations())
 	{
@@ -136,7 +152,7 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 
 					if (pos != std::string::npos)
 					{
-						currAnimation->mChannels[i]->mNodeName = nodeName.substr(0, pos-1);
+						currAnimation->mChannels[i]->mNodeName = nodeName.substr(0, pos - 1);
 					}
 				}
 
@@ -151,7 +167,7 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 				}
 				std::vector<aiNodeAnim*> nodeAnims;
 
-				for(int i = 0; i < currAnimation->mNumChannels; i++)
+				for (int i = 0; i < currAnimation->mNumChannels; i++)
 				{
 					nodeAnims.push_back(currAnimation->mChannels[i]);
 				}
@@ -227,6 +243,12 @@ void DX12GraphicResourceLoader::LoadNodeData(const aiScene* scene, std::vector<C
 			transform->SetRotateQuter(rotQuter);
 
 			nodeOut[i].SetName(nodes[i]->mName.C_Str());
+
+			if (std::string(nodeOut[i].GetName()).find("Shoulder") != std::string::npos)
+			{
+				std::string name = nodeOut[i].GetName();
+				int test = 0;
+			}
 
 			if (nodeParentIndexList[i] != -1)
 			{
@@ -527,14 +549,14 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 			meshDatas.resize(numVertex * MESHDATA_INDEX);
 			aiVector3D* currData = meshDatas.data();
 
-			std::memcpy(currData, currMesh->mVertices, sizeof(aiVector3D)* numVertex);
+			std::memcpy(currData, currMesh->mVertices, sizeof(aiVector3D) * numVertex);
 			currData += numVertex;
-			std::memcpy(currData, currMesh->mNormals, sizeof(aiVector3D)* numVertex);
+			std::memcpy(currData, currMesh->mNormals, sizeof(aiVector3D) * numVertex);
 			currData += numVertex;
-			std::memcpy(currData, currMesh->mTangents, sizeof(aiVector3D)* numVertex);
+			std::memcpy(currData, currMesh->mTangents, sizeof(aiVector3D) * numVertex);
 			currData += numVertex;
-			std::memcpy(currData, currMesh->mBitangents, sizeof(aiVector3D)* numVertex);
-			
+			std::memcpy(currData, currMesh->mBitangents, sizeof(aiVector3D) * numVertex);
+
 			resourceDesc.Width = sizeof(aiVector3D) * meshDatas.size();
 			if (resourceDesc.Width)
 			{
@@ -548,7 +570,7 @@ void DX12GraphicResourceLoader::LoadMeshData(const aiScene* scene, ID3D12Device*
 				subResourceData.RowPitch = resourceDesc.Width;
 				subResourceData.SlicePitch = subResourceData.RowPitch;
 				subResourceData.pData = meshDatas.data();
-				
+
 				defaultBarrier.Transition.pResource = targetMesh.meshData.Get();
 				cmd->ResourceBarrier(1, &defaultBarrier);
 				UpdateSubresources<1>(cmd, targetMesh.meshData.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);

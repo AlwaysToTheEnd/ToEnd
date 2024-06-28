@@ -58,7 +58,6 @@ void COMAnimator::Update(CGHNode* node, float delta)
 	{
 		m_currTime = 0;
 	}
-
 }
 
 void COMAnimator::SetAnimation(unsigned int animationIndex, unsigned int stateIndex)
@@ -71,76 +70,145 @@ void COMAnimator::SetAnimation(unsigned int animationIndex, unsigned int stateIn
 	}
 }
 
-void COMAnimator::AnimationRigging(CGHAnimationGroup* group, const std::unordered_map<std::string, DirectX::XMFLOAT4X4>& baseMeshBones)
-{
-	assert(group->rigMapping);
-
-	static std::unordered_map<std::string, DirectX::XMFLOAT4X4> displacementDatas;
-
-	auto rigMapping = group->rigMapping;
-
-	if (group->boneOffsetMatrices.get())
-	{
-		displacementDatas.clear();
-
-		const auto aniBones = group->boneOffsetMatrices.get();
-
-		for (auto& iter : *rigMapping)
-		{
-			auto baseIter = baseMeshBones.find(iter.second);
-			auto aniIter = aniBones->find(iter.first);
-
-			if (baseIter != baseMeshBones.end() && aniIter != aniBones->end())
-			{
-				DirectX::XMMATRIX baseMat = DirectX::XMLoadFloat4x4(&baseIter->second);
-				DirectX::XMMATRIX aniMat = DirectX::XMLoadFloat4x4(&aniIter->second.offsetMat);
-
-				DirectX::XMStoreFloat4x4(&displacementDatas[iter.first], DirectX::XMMatrixInverse(nullptr, baseMat) * aniMat);
-			}
-			else
-			{
-				assert(false);
-			}
-		}
-
-		for (auto& currAnim : group->anims)
-		{
-			unsigned int currChannelNum = currAnim.mNumChannels;
-
-			for (int i = 0; i < currChannelNum; i++)
-			{
-				auto currChannel = currAnim.mChannels[i];
-				auto displacementDataIter = displacementDatas.find(currChannel->mNodeName.C_Str());
-
-				if (displacementDataIter != displacementDatas.end())
-				{
-					DirectX::XMMATRIX dipalcementMat = DirectX::XMLoadFloat4x4(&displacementDataIter->second);
-					unsigned int numscale = currChannel->mNumScalingKeys;
-					unsigned int numRot = currChannel->mNumRotationKeys;
-					unsigned int numPos = currChannel->mNumPositionKeys;
-
-					for (unsigned int i = 0; i < numRot; i++)
-					{
-						auto& currRot = currChannel->mRotationKeys[i].mValue;
-						DirectX::XMVECTOR currRotVec = DirectX::XMVectorSet(currRot.x, currRot.y, currRot.z, currRot.w);
-						DirectX::XMMATRIX currRotMat = DirectX::XMMatrixRotationQuaternion(currRotVec);
-						currRotMat = DirectX::XMMatrixMultiply(dipalcementMat, currRotMat);
-
-						currRotVec = DirectX::XMQuaternionRotationMatrix(currRotMat);
-						currRot.x = DirectX::XMVectorGetX(currRotVec);
-						currRot.y = -DirectX::XMVectorGetY(currRotVec);
-						currRot.z = DirectX::XMVectorGetZ(currRotVec);
-						currRot.w = DirectX::XMVectorGetW(currRotVec);
-					}
-				}
-				else
-				{
-					assert(false);
-				}
-			}
-		}
-	}
-}
+//void COMAnimator::AnimationRigging(CGHAnimationGroup* group, 
+//	const std::unordered_map<std::string, CGHAnimationGroup::NodeData>& meshBone,
+//	const std::vector<CGHAnimationGroup::NodeData*>& nodeList)
+//{
+//	assert(group->rigMapping);
+//
+//	static std::unordered_map<std::string, DirectX::XMFLOAT4X4> fixOffsetMatsMap;
+//
+//	auto rigMapping = group->rigMapping;
+//
+//	if (group->nodeDatas.size())
+//	{
+//		fixOffsetMatsMap.clear();
+//
+//		const auto aniBones = group->nodeDatas;
+//
+//		for (auto& iter : *rigMapping)
+//		{
+//			auto baseIter = meshBone.find(iter.second);
+//			auto aniIter = group->nodeDatas.find(iter.first);
+//
+//			if (baseIter != meshBone.end() && aniIter != group->nodeDatas.end())
+//			{
+//				DirectX::XMMATRIX baseMat = DirectX::XMLoadFloat4x4(&baseIter->second.offsetMatrix);
+//				DirectX::XMMATRIX aniMat = DirectX::XMLoadFloat4x4(&aniIter->second.offsetMatrix);
+//
+//				DirectX::XMStoreFloat4x4(&fixOffsetMatsMap[iter.first], DirectX::XMMatrixInverse(nullptr, baseMat) * aniMat);
+//			}
+//			else
+//			{
+//				assert(false);
+//			}
+//		}
+//
+//		std::vector<aiNodeAnim*> channels;
+//		std::vector<DirectX::XMMATRIX> fixOffsetMats;
+//
+//		for (auto& currAnim : group->anims)
+//		{
+//			unsigned int currChannelNum = currAnim.mNumChannels;
+//			channels.resize(group->nodedataList.size());
+//			fixOffsetMats.resize(group->nodedataList.size());
+//			currAnim.mDuration;
+//			for (int i = 0; i < currChannelNum; i++)
+//			{
+//				auto currChannel = currAnim.mChannels[i];
+//			
+//				auto iter = group->nodeDatas.find(currChannel->mNodeName.C_Str());
+//				assert(iter != group->nodeDatas.end());
+//
+//				int index = group->nodeDatas[currChannel->mNodeName.C_Str()].index;
+//				channels[index] = currChannel;
+//
+//				auto fixoffsetIter = fixOffsetMatsMap.find(currChannel->mNodeName.C_Str());
+//				fixOffsetMats[index] = DirectX::XMLoadFloat4x4(&fixoffsetIter->second);
+//			}
+//
+//			int animationDuration = currAnim.mDuration;
+//			
+//			// M1 x M2 X M3 = M4 x b x M2 x M5, b = M4^-1 x M1 x M3 x M5^-1
+//		    // M4^-1 x M1 = fixOffsetMat, M3 = stackMats(animation),  M5^-1 = invsMat stackMats(baseMeshAim)
+//		
+//			std::vector<DirectX::XMMATRIX> stackMatsAnim;
+//			std::vector<DirectX::XMMATRIX> stackMatsBase;
+//			std::vector<DirectX::XMMATRIX> displacementMats;
+//
+//			for (int currTick = 0; currTick < animationDuration; currTick++)
+//			{
+//				stackMatsAnim.resize(group->nodedataList.size(), DirectX::XMMatrixIdentity());
+//				stackMatsBase.resize(group->nodedataList.size(), DirectX::XMMatrixIdentity());
+//				displacementMats.resize(group->nodedataList.size(), DirectX::XMMatrixIdentity());
+//
+//				for (int index = 0; index < channels.size(); index++)
+//				{
+//					auto currChannel = channels[index];
+//					auto currNode = group->nodedataList[index];
+//
+//					DirectX::XMMATRIX stackedParentMatAni = DirectX::XMMatrixIdentity();
+//					DirectX::XMMATRIX stackedParentMatBase = DirectX::XMMatrixIdentity();
+//					DirectX::XMMATRIX currAnimatMat = DirectX::XMMatrixIdentity();
+//
+//					if(currNode->parent)
+//					{
+//						stackedParentMatAni = stackMatsAnim[currNode->parent->index];
+//						stackedParentMatBase = stackMatsBase[currNode->parent->index];
+//					}
+//
+//					DirectX::XMVECTOR scale = DirectX::XMVectorSet(1.0f, 1.0f, 1.0f, 0.0f);
+//					DirectX::XMVECTOR rotate = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+//					DirectX::XMVECTOR pos = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+//
+//					for(int i = 0; i < currChannel->mNumScalingKeys -1; i++)
+//					{
+//						if (currChannel->mScalingKeys[i].mTime >= currTick && currChannel->mScalingKeys[i + 1].mTime < currTick)
+//						{
+//						    double spot = (currTick - currChannel->mScalingKeys[i].mTime) / (currChannel->mScalingKeys[i + 1].mTime - currChannel->mScalingKeys[i].mTime);
+//							 DirectX::XMVECTOR prevScale = DirectX::XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mScalingKeys[i].mValue));
+//							 DirectX::XMVECTOR nextScale = DirectX::XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mScalingKeys[i + 1].mValue));
+//							 scale = DirectX::XMVectorLerp(prevScale, nextScale, spot);
+//							break;
+//						}
+//					}
+//
+//					for (int i = 0; i < currChannel->mNumRotationKeys - 1; i++)
+//					{
+//						if (currChannel->mRotationKeys[i].mTime >= currTick && currChannel->mRotationKeys[i + 1].mTime < currTick)
+//						{
+//							double spot = (currTick - currChannel->mRotationKeys[i].mTime) / (currChannel->mRotationKeys[i + 1].mTime - currChannel->mRotationKeys[i].mTime);
+//							const aiQuaternion& prev = currChannel->mRotationKeys[i].mValue;
+//							const aiQuaternion& next = currChannel->mRotationKeys[i + 1].mValue;
+//							rotate = DirectX::XMQuaternionSlerp(DirectX::XMVectorSet(prev.x, prev.y, prev.z, prev.w),
+//								DirectX::XMVectorSet(next.x, next.y, next.z, next.w), spot);
+//							break;
+//						}
+//					}
+//
+//					for (int i = 0; i < currChannel->mNumPositionKeys - 1; i++)
+//					{
+//						if (currChannel->mPositionKeys[i].mTime >= currTick && currChannel->mPositionKeys[i + 1].mTime < currTick)
+//						{
+//							double spot = (currTick - currChannel->mPositionKeys[i].mTime) / (currChannel->mPositionKeys[i + 1].mTime - currChannel->mPositionKeys[i].mTime);
+//							pos = DirectX::XMVectorLerp(DirectX::XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mPositionKeys[i].mValue)),
+//								DirectX::XMLoadFloat3(reinterpret_cast<const XMFLOAT3*>(&currChannel->mPositionKeys[i + 1].mValue)), spot);
+//							break;
+//						}
+//					}
+//
+//					DirectX::XMMATRIX animMat = DirectX::XMMatrixAffineTransformation(scale, DirectX::XMVectorZero(), rotate, pos);
+//					DirectX::XMMATRIX displacementMat = fixOffsetMats[index] * stackedParentMatAni * DirectX::XMMatrixInverse(nullptr, stackedParentMatBase);
+//
+//					displacementMats[index] = displacementMat;
+//					stackMatsAnim[index] = animMat * stackedParentMatAni;
+//					stackMatsBase[index] = displacementMat * animMat * stackedParentMatBase;
+//				}
+//			}
+//			
+//		}
+//	}
+//}
 
 void COMAnimator::NodeTreeDirty()
 {

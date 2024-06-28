@@ -96,13 +96,16 @@ enum class ANIMATION_TYPE
 
 struct CGHAnimationGroup
 {
-	struct MatSet
+	struct NodeData
 	{
-		DirectX::XMFLOAT4X4 offsetMat;
-		DirectX::XMFLOAT4X4 stackMat;
+		int index = 0;
+		NodeData* parent = nullptr;
+		DirectX::XMFLOAT4X4 transform;
+		DirectX::XMFLOAT4X4 offsetMatrix;
 	};
 
-	std::shared_ptr<std::unordered_map<std::string, MatSet>> boneOffsetMatrices;
+	std::vector<NodeData*> nodedataList;
+	std::unordered_map<std::string, NodeData> nodeDatas;
 	std::vector<ANIMATION_TYPE> types;
 	std::vector<aiAnimation> anims;
 	const std::unordered_map<std::string, std::string>* rigMapping = nullptr;

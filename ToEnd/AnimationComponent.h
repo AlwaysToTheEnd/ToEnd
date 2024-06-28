@@ -31,6 +31,13 @@ struct CGHAnimationState
 class COMAnimator : public Component
 {
 public:
+	struct BaseBoneMatrix
+	{
+		DirectX::XMFLOAT4X4 stackedTransform;
+		DirectX::XMFLOAT4X4 parentTransformInv;
+	};
+
+public:
 	COMAnimator(CGHNode* node);
 
 	virtual void Release(CGHNode* ndoe);
@@ -42,7 +49,9 @@ public:
 	void SetAnimationGroup(const CGHAnimationGroup* group) { m_currGroup = group; }
 	void SetAnimation(unsigned int animationIndex, unsigned int stateIndex);
 
-	static void AnimationRigging(CGHAnimationGroup* group, const std::unordered_map<std::string, DirectX::XMFLOAT4X4>& meshBone);
+	//static void AnimationRigging(CGHAnimationGroup* group,
+	//	const std::unordered_map<std::string, CGHAnimationGroup::NodeData>& meshBone,
+	//	const std::vector<CGHAnimationGroup::NodeData*>& nodeList);
 
 private:
 	void NodeTreeDirty();

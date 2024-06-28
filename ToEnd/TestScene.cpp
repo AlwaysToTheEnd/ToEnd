@@ -272,10 +272,8 @@ void TestScene::Init()
 	m_rootNodeList.push_back(&m_dirLight2);
 
 	DX12GraphicResourceLoader aniLoader;
-	aniLoader.LoadAnimation("Animation/Ninja Idle.fbx", &m_aniGroup);
-	m_aniGroup.rigMapping = &s_mixamoRigMapping;
+	aniLoader.LoadAnimation("Animation/Ninja Idle2.fbx", &m_aniGroup);
 	auto animator = m_rootNode->CreateComponent<COMAnimator>();
-	COMAnimator::AnimationRigging(&m_aniGroup, baseMeshBones);
 	animator->SetAnimationGroup(&m_aniGroup);
 	animator->SetAnimation(0, 0);
 }
@@ -286,7 +284,6 @@ void TestScene::Update(float delta)
 	auto lightTrans = m_dirLight.GetComponent<COMTransform>();
 	//auto lightTrans2 = m_dirLight2.GetComponent<COMTransform>();
 	auto rootTrans = m_rootNode->GetComponent<COMTransform>();
-
 
 	CGHRenderer::ExcuteMouseAction(graphic->GetCurrMouseTargetRenderID());
 	m_rootNode->Update(delta);
