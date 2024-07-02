@@ -21,33 +21,25 @@ D3D12_CPU_DESCRIPTOR_HANDLE DX12SMAA::GetBlendRenderTarget()
 	return result;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DX12SMAA::GetColorRenderTarget()
-{
-	auto result = m_rtvHeaps->GetCPUDescriptorHandleForHeapStart();
-	result.ptr += m_rtvSize *2;
-	return result;
-}
-
-void DX12SMAA::Resize(ID3D12Device* device,
-	ID3D12GraphicsCommandList* cmd, unsigned int winX, unsigned int winY, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& upBuffers)
+void DX12SMAA::Resize(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, ID3D12Resource* colorTexture, DXGI_FORMAT colorTextureFormat,
+	unsigned int winX, unsigned int winY, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& upBuffers)
 {
 	m_textures[TEXTYPE_EDGES].Reset();
 	m_textures[TEXTYPE_BLEND].Reset();
-	m_textures[TEXTYPE_COLOR].Reset();
 	
 	if (m_srvHeaps == nullptr)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		desc.NodeMask = 0;
-		desc.NumDescriptors = TEXTYPE_COLOR + 2;
+		desc.NumDescriptors = TEXTYPE_NUM + 1;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		
 		ThrowIfFailed(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(m_srvHeaps.GetAddressOf())));
 
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		desc.NodeMask = 0;
-		desc.NumDescriptors = 3;
+		desc.NumDescriptors = 2;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		ThrowIfFailed(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(m_rtvHeaps.GetAddressOf())));
 	}
@@ -74,17 +66,14 @@ void DX12SMAA::Resize(ID3D12Device* device,
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 	D3D12_CLEAR_VALUE clearVal = {};
-	clearVal.Format = DXGI_FORMAT_R8G8_UNORM;
+	clearVal.Format = m_textureFormats[TEXTYPE_EDGES];
 
-	desc.Format = DXGI_FORMAT_R8G8_UNORM;
+	desc.Format = m_textureFormats[TEXTYPE_EDGES];
 	ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
 		D3D12_RESOURCE_STATE_RENDER_TARGET, &clearVal, IID_PPV_ARGS(m_textures[TEXTYPE_EDGES].GetAddressOf())));
 
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	clearVal.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
-		D3D12_RESOURCE_STATE_RENDER_TARGET, &clearVal, IID_PPV_ARGS(m_textures[TEXTYPE_COLOR].GetAddressOf())));
+	desc.Format = m_textureFormats[TEXTYPE_BLEND];
+	clearVal.Format = m_textureFormats[TEXTYPE_BLEND];
 
 	ThrowIfFailed(device->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
 		D3D12_RESOURCE_STATE_RENDER_TARGET, &clearVal, IID_PPV_ARGS(m_textures[TEXTYPE_BLEND].GetAddressOf())));
@@ -189,17 +178,13 @@ void DX12SMAA::Resize(ID3D12Device* device,
 		srvDesc.Texture2D.MipLevels = 1;
 		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		srvDesc.Format = colorTextureFormat;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		device->CreateShaderResourceView(m_textures[TEXTYPE_COLOR].Get(), &srvDesc, srvHeapCPU);
-
-		srvHeapCPU.ptr += srvSize;
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		device->CreateShaderResourceView(m_textures[TEXTYPE_COLOR].Get(), &srvDesc, srvHeapCPU);
+		device->CreateShaderResourceView(colorTexture, &srvDesc, srvHeapCPU);
 	}
 	
-	for (int i = 0; i < TEXTYPE_COLOR; i++)
+	for (int i = 0; i < TEXTYPE_NUM; i++)
 	{
 		srvHeapCPU.ptr += srvSize;
 		srvDesc.Format = m_textureFormats[i];

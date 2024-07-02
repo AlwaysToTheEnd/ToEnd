@@ -94,7 +94,7 @@ public:
 
 	enum DEFERRED_TEXTURE
 	{
-		DEFERRED_TEXTURE_DIFFUSE,
+		DEFERRED_TEXTURE_HDR_DIFFUSE,
 		DEFERRED_TEXTURE_NORMAL,
 		DEFERRED_TEXTURE_MRA,
 		DEFERRED_TEXTURE_EMISSIONCOLOR,
@@ -103,7 +103,7 @@ public:
 	};
 
 	DXGI_FORMAT m_deferredFormat[DEFERRED_TEXTURE_NUM] = {
-		DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R11G11B10_FLOAT,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R11G11B10_FLOAT,
 		DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R11G11B10_FLOAT,
 		DXGI_FORMAT_R16_UINT };
 
@@ -157,6 +157,7 @@ private:
 	void BuildPso();
 	void CreateDeferredTextures(int windowWidth, int windowHeight);
 	void GraphicOptionGUIRender();
+	D3D12_CPU_DESCRIPTOR_HANDLE GetSMAAResultRTV();
 
 	ID3D12CommandAllocator* GetCurrRenderBeginCommandAllocator();
 	ID3D12CommandAllocator* GetCurrRenderEndCommandAllocator();
@@ -222,11 +223,12 @@ private:
 
 	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
+	ComPtr<ID3D12DescriptorHeap>	m_diffuseTextureRTVHeap;
 
 	UINT16							m_currMouseTargetRenderID = 0;
 	ComPtr<ID3D12Resource>			m_renderIDatMouseRead;
 
-	ComPtr<ID3D12DescriptorHeap>	m_uiSRVHeap;
+	ComPtr<ID3D12DescriptorHeap>	m_uiRenderSRVHeap;
 	bool							m_isShowGraphicOption = true;
 
 	const unsigned int										m_numMaxShadowMap = 8;
@@ -237,8 +239,10 @@ private:
 	std::unique_ptr<DX12UploadBuffer<DX12DirLightData>>		m_dirLightDatas;
 	std::unique_ptr<DX12UploadBuffer<DirectX::XMMATRIX>>	m_shadowPassCB;
 	std::unordered_map<void*, ShadowMap>					m_dirLightShadowMaps;
-	ComPtr<ID3D12DescriptorHeap>							m_SRVHeap;
 
+	std::unordered_map <ID3D12Resource*, ComPtr<ID3D12DescriptorHeap>> m_lightRenderSRVHeaps;
+
+	ComPtr<ID3D12Resource>									m_smaaResult;
 	DX12SMAA*												m_smaa = nullptr;
 
 	std::vector<CD3DX12_RESOURCE_BARRIER>					m_afterRenderEndResourceBarriers;

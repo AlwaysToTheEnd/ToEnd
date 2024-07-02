@@ -271,11 +271,12 @@ void TestScene::Init()
 	m_rootNodeList.push_back(&m_dirLight);
 	m_rootNodeList.push_back(&m_dirLight2);
 
-	DX12GraphicResourceLoader aniLoader;
-	aniLoader.LoadAnimation("Animation/Ninja Idle2.fbx", &m_aniGroup);
-	auto animator = m_rootNode->CreateComponent<COMAnimator>();
-	animator->SetAnimationGroup(&m_aniGroup);
-	animator->SetAnimation(0, 0);
+	//DX12GraphicResourceLoader aniLoader;
+	//aniLoader.LoadAnimation("Animation/Ninja Idle2.fbx", &m_aniGroup);
+	//auto animator = m_rootNode->CreateComponent<COMAnimator>();
+	//animator->SetAnimationGroup(&m_aniGroup);
+	//animator->SetAnimation(0, 0);
+	//animator->SetActvie(false);
 }
 
 void TestScene::Update(float delta)

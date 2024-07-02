@@ -24,6 +24,7 @@ public:
 	void Present();
 	void ClearDS(ID3D12GraphicsCommandList* cmd);
 
+	DXGI_FORMAT GetPresentBufferFormat() { return m_presentBufferFormat; }
 	DXGI_FORMAT GetDSFormat() { return m_depthStencilFormat; }
 	DXGI_FORMAT GetDSVFormat() { return DXGI_FORMAT_D24_UNORM_S8_UINT; }
 
@@ -31,6 +32,7 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const;
 	ID3D12Resource* GetDSResource() const;
 	ID3D12Resource* GetCurrRenderTargetResource();
+	ID3D12Resource* GetRenderTragetResource(unsigned int index) { return m_renderTargets[index].Get(); }
 
 private:
 	void CreateResources(unsigned int x, unsigned int y);

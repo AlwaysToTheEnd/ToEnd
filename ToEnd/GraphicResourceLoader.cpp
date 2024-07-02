@@ -76,14 +76,13 @@ void DX12GraphicResourceLoader::LoadAnimation(const std::string& filePath, CGHAn
 		std::vector<aiNode*> nodeList;
 		std::vector<int> nodeParentIndexList;
 		nodeStack.push_back(scene->mRootNode);
-		nodeList.push_back(scene->mRootNode);
 		nodeParentIndexList.push_back(-1);
 		while (nodeStack.size())
 		{
 			aiNode* currNode = nodeStack.back();
 			nodeStack.pop_back();
 
-			int parentIndex = nodeList.size();
+			int parentIndex = nodeList.size() -1;
 			nodeList.push_back(currNode);
 
 			for (unsigned int i = 0; i < currNode->mNumChildren; i++)
