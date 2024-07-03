@@ -186,6 +186,7 @@ private:
 	void BuildShadowMapWritePipeLineWorkSet();
 	void BuildDeferredLightDirPipeLineWorkSet();
 	void BuildSMAARenderPipeLineWorkSet();
+	void BuildPostProcessingPipeLineWorkSet();
 	void BuildTextureDataDebugPipeLineWorkSet();
 
 private:

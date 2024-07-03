@@ -130,16 +130,6 @@ void GraphicDeviceDX12::BaseRender()
 		}
 	}
 
-	CD3DX12_RESOURCE_BARRIER resourceBars[DEFERRED_TEXTURE_RENDERID] = {};
-
-	for (int i = 0; i < DEFERRED_TEXTURE_RENDERID; i++)
-	{
-		resourceBars[i] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i].Get(),
-			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	}
-
-	m_cmdList->ResourceBarrier(_countof(resourceBars), resourceBars);
-
 	for (auto& currQueue : m_renderQueues)
 	{
 		currQueue.queue.clear();
@@ -161,120 +151,118 @@ void GraphicDeviceDX12::Init(HWND hWnd, int windowWidth, int windowHeight)
 	}
 #endif
 
-HRESULT hr = S_OK;
+	HRESULT hr = S_OK;
 
-hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_d3dDevice.GetAddressOf()));
+	hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_d3dDevice.GetAddressOf()));
 
-if (m_swapChain)
-{
-	delete m_swapChain;
-	m_swapChain = nullptr;
-}
-
-m_fenceCounts.resize(m_numFrameResource);
-m_passCBs.resize(m_numFrameResource);
-m_rtvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-m_srvcbvuavSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-m_dsvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-
-for (size_t i = 0; i < m_passCBs.size(); i++)
-{
-	m_passCBs[i] = std::make_unique<DX12UploadBuffer<DX12PassConstants>>(m_d3dDevice.Get(), 1, true);
-}
-
-m_swapChain = new DX12SwapChain;
-m_swapChain->CreateDXGIFactory(m_d3dDevice.GetAddressOf());
-
-{
-	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-
-	ThrowIfFailed(m_d3dDevice->CreateCommandQueue(&queueDesc,
-		IID_PPV_ARGS(m_commandQueue.GetAddressOf())));
-
-	m_cmdListAllocs.resize(m_numFrameResource * 2);
-	for (size_t i = 0; i < m_numFrameResource * 2; i++)
+	if (m_swapChain)
 	{
-		ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(m_cmdListAllocs[i].GetAddressOf())));
+		delete m_swapChain;
+		m_swapChain = nullptr;
 	}
 
-	ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-		m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_cmdList.GetAddressOf())));
+	m_fenceCounts.resize(m_numFrameResource);
+	m_passCBs.resize(m_numFrameResource);
+	m_rtvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	m_srvcbvuavSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_dsvSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+	for (size_t i = 0; i < m_passCBs.size(); i++)
+	{
+		m_passCBs[i] = std::make_unique<DX12UploadBuffer<DX12PassConstants>>(m_d3dDevice.Get(), 1, true);
+	}
+
+	m_swapChain = new DX12SwapChain;
+	m_swapChain->CreateDXGIFactory(m_d3dDevice.GetAddressOf());
+
+	{
+		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommandQueue(&queueDesc,
+			IID_PPV_ARGS(m_commandQueue.GetAddressOf())));
+
+		m_cmdListAllocs.resize(m_numFrameResource * 2);
+		for (size_t i = 0; i < m_numFrameResource * 2; i++)
+		{
+			ThrowIfFailed(m_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(m_cmdListAllocs[i].GetAddressOf())));
+		}
+
+		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+			m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_cmdList.GetAddressOf())));
+
+		ThrowIfFailed(m_cmdList->Close());
+
+		m_cmdListAllocs.front()->Reset();
+
+		ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+			m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_dataLoaderCmdList.GetAddressOf())));
+
+		ThrowIfFailed(m_dataLoaderCmdList->Close());
+
+		ThrowIfFailed(m_d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
+			IID_PPV_ARGS(m_fence.GetAddressOf())));
+	}
+
+	m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
+
+	OnResize(windowWidth, windowHeight);
+
+	ThrowIfFailed(m_cmdList->Reset(m_cmdListAllocs.front().Get(), nullptr));
+	{
+		D3D12_HEAP_PROPERTIES prop = {};
+		D3D12_RESOURCE_DESC reDesc = {};
+		D3D12_HEAP_FLAGS flags = D3D12_HEAP_FLAG_NONE;
+
+		prop.Type = D3D12_HEAP_TYPE_READBACK;
+
+		reDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		reDesc.DepthOrArraySize = 1;
+		reDesc.Height = 1;
+		reDesc.Width = sizeof(UINT16) * m_numFrameResource;
+		reDesc.Format = DXGI_FORMAT_UNKNOWN;
+		reDesc.MipLevels = 1;
+		reDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+		reDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		reDesc.SampleDesc.Count = 1;
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_renderIDatMouseRead.GetAddressOf())));
+	}
+
+	m_dirLightDatas = std::make_unique<DX12UploadBuffer<DX12DirLightData>>(m_d3dDevice.Get(), m_numMaxDirLight * m_numFrameResource, false);
+	m_shadowPassCB = std::make_unique<DX12UploadBuffer<DirectX::XMMATRIX>>(m_d3dDevice.Get(), m_numMaxShadowMap * m_numFrameResource, true);
 
 	ThrowIfFailed(m_cmdList->Close());
 
-	m_cmdListAllocs.front()->Reset();
+	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
-	ThrowIfFailed(m_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-		m_cmdListAllocs.front().Get(), nullptr, IID_PPV_ARGS(m_dataLoaderCmdList.GetAddressOf())));
+	FlushCommandQueue();
 
-	ThrowIfFailed(m_dataLoaderCmdList->Close());
+	ThrowIfFailed(m_cmdListAllocs.front()->Reset());
 
-	ThrowIfFailed(m_d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(m_fence.GetAddressOf())));
+	BuildPso();
 
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 
-}
+		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		heapDesc.NumDescriptors = 2;
+		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-m_swapChain->CreateSwapChain(hWnd, m_commandQueue.Get(), m_backBufferFormat, windowWidth, windowHeight, 2);
+		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_uiRenderSRVHeap.GetAddressOf())));
+	}
 
-OnResize(windowWidth, windowHeight);
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
 
-ThrowIfFailed(m_cmdList->Reset(m_cmdListAllocs.front().Get(), nullptr));
-{
-	D3D12_HEAP_PROPERTIES prop = {};
-	D3D12_RESOURCE_DESC reDesc = {};
-	D3D12_HEAP_FLAGS flags = D3D12_HEAP_FLAG_NONE;
-
-	prop.Type = D3D12_HEAP_TYPE_READBACK;
-
-	reDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	reDesc.DepthOrArraySize = 1;
-	reDesc.Height = 1;
-	reDesc.Width = sizeof(UINT16) * m_numFrameResource;
-	reDesc.Format = DXGI_FORMAT_UNKNOWN;
-	reDesc.MipLevels = 1;
-	reDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	reDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	reDesc.SampleDesc.Count = 1;
-
-	ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, flags, &reDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_renderIDatMouseRead.GetAddressOf())));
-}
-
-m_dirLightDatas = std::make_unique<DX12UploadBuffer<DX12DirLightData>>(m_d3dDevice.Get(), m_numMaxDirLight * m_numFrameResource, false);
-m_shadowPassCB = std::make_unique<DX12UploadBuffer<DirectX::XMMATRIX>>(m_d3dDevice.Get(), m_numMaxShadowMap * m_numFrameResource, true);
-
-ThrowIfFailed(m_cmdList->Close());
-
-ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
-m_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-
-FlushCommandQueue();
-
-ThrowIfFailed(m_cmdListAllocs.front()->Reset());
-
-BuildPso();
-
-{
-	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-
-	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	heapDesc.NumDescriptors = 2;
-	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-	ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_uiRenderSRVHeap.GetAddressOf())));
-}
-
-IMGUI_CHECKVERSION();
-ImGui::CreateContext();
-ImGuiIO& io = ImGui::GetIO(); (void)io;
-ImGui::StyleColorsDark();
-
-ImGui_ImplWin32_Init(hWnd);
-ImGui_ImplDX12_Init(m_d3dDevice.Get(), m_numFrameResource, m_backBufferFormat, m_uiRenderSRVHeap.Get(), m_uiRenderSRVHeap->GetCPUDescriptorHandleForHeapStart(),
-	m_uiRenderSRVHeap->GetGPUDescriptorHandleForHeapStart());
+	ImGui_ImplWin32_Init(hWnd);
+	ImGui_ImplDX12_Init(m_d3dDevice.Get(), m_numFrameResource, m_backBufferFormat, m_uiRenderSRVHeap.Get(), m_uiRenderSRVHeap->GetCPUDescriptorHandleForHeapStart(),
+		m_uiRenderSRVHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 void GraphicDeviceDX12::Update(float delta, const Camera* camera)
@@ -432,6 +420,16 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 
 	m_smaaResult = nullptr;
 	{
+		if (m_diffuseTextureRTVHeap == nullptr)
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC heapdesc = {};
+			heapdesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+			heapdesc.NodeMask = 0;
+			heapdesc.NumDescriptors = 1;
+			heapdesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapdesc, IID_PPV_ARGS(m_diffuseTextureRTVHeap.GetAddressOf())));
+		}
+
 		D3D12_RESOURCE_DESC texDesc = m_deferredResources[DEFERRED_TEXTURE_HDR_DIFFUSE]->GetDesc();
 		D3D12_HEAP_PROPERTIES heapProp = {};
 		D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE;
@@ -441,7 +439,8 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 		std::memcpy(clearValue.Color, &GlobalOptions::GO.GRAPHIC.BGColor, sizeof(DirectX::XMVECTORF32));
 		clearValue.Format = texDesc.Format;
 
-		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&heapProp, heapFlags, &texDesc, D3D12_RESOURCE_STATE_COMMON, &clearValue, IID_PPV_ARGS(m_smaaResult.GetAddressOf())));
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&heapProp, heapFlags, &texDesc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, IID_PPV_ARGS(m_smaaResult.GetAddressOf())));
 
 		D3D12_RENDER_TARGET_VIEW_DESC viewDesc = {};
 		viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -450,8 +449,10 @@ void GraphicDeviceDX12::OnResize(int windowWidth, int windowHeight)
 		viewDesc.Format = texDesc.Format;
 
 		auto descHeap = m_diffuseTextureRTVHeap->GetCPUDescriptorHandleForHeapStart();
-		descHeap.ptr += m_rtvSize;
 		m_d3dDevice->CreateRenderTargetView(m_smaaResult.Get(), &viewDesc, descHeap);
+
+		ReservationResourceBarrierBeforeRenderStart(CD3DX12_RESOURCE_BARRIER::Transition(m_smaaResult.Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 	}
 
 	ThrowIfFailed(m_cmdList->Close());
@@ -511,6 +512,16 @@ void GraphicDeviceDX12::RenderBegin()
 
 	m_cmdList->RSSetViewports(1, &m_screenViewport);
 	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
+
+	CD3DX12_RESOURCE_BARRIER resourceBars[DEFERRED_TEXTURE_NUM] = {};
+
+	for (int i = 0; i < DEFERRED_TEXTURE_NUM - 1; i++)
+	{
+		resourceBars[i] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i + 1].Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	}
+
+	m_cmdList->ResourceBarrier(_countof(resourceBars), resourceBars);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE renderIDTexture = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE renderDiffuseTexture = m_diffuseTextureRTVHeap->GetCPUDescriptorHandleForHeapStart();
@@ -600,6 +611,8 @@ void GraphicDeviceDX12::RenderEnd()
 		GraphicOptionGUIRender();
 		ImGui::Render();
 
+		m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetCurrRenderTargetResource(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
 		m_cmdList->OMSetRenderTargets(1, &m_swapChain->CurrRTV(), false, nullptr);
 		m_cmdList->SetDescriptorHeaps(1, m_uiRenderSRVHeap.GetAddressOf());
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_cmdList.Get());
@@ -760,6 +773,7 @@ void GraphicDeviceDX12::BuildPso()
 	BuildShadowMapWritePipeLineWorkSet();
 	BuildDeferredLightDirPipeLineWorkSet();
 	BuildSMAARenderPipeLineWorkSet();
+	BuildPostProcessingPipeLineWorkSet();
 	BuildTextureDataDebugPipeLineWorkSet();
 }
 
@@ -795,6 +809,12 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 
 		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rDesc,
 			D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, IID_PPV_ARGS(m_deferredResources[i].GetAddressOf())));
+
+		if (i != DEFERRED_TEXTURE_HDR_DIFFUSE)
+		{
+			ReservationResourceBarrierBeforeRenderStart(CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i].Get(),
+				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+		}
 	}
 
 	if (m_deferredRTVHeap == nullptr)
@@ -802,19 +822,9 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 		D3D12_DESCRIPTOR_HEAP_DESC heapdesc = {};
 		heapdesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		heapdesc.NodeMask = 0;
-		heapdesc.NumDescriptors = DEFERRED_TEXTURE_NUM - 1;
+		heapdesc.NumDescriptors = DEFERRED_TEXTURE_NUM;
 		heapdesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapdesc, IID_PPV_ARGS(m_deferredRTVHeap.GetAddressOf())));
-	}
-
-	if (m_diffuseTextureRTVHeap == nullptr)
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapdesc = {};
-		heapdesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		heapdesc.NodeMask = 0;
-		heapdesc.NumDescriptors = 2;
-		heapdesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		ThrowIfFailed(m_d3dDevice->CreateDescriptorHeap(&heapdesc, IID_PPV_ARGS(m_diffuseTextureRTVHeap.GetAddressOf())));
 	}
 
 	{
@@ -824,16 +834,12 @@ void GraphicDeviceDX12::CreateDeferredTextures(int windowWidth, int windowHeight
 		viewDesc.Texture2D.MipSlice = 0;
 		viewDesc.Texture2D.PlaneSlice = 0;
 
-		for (int i = DEFERRED_TEXTURE_NORMAL; i < DEFERRED_TEXTURE_NUM; i++)
+		for (int i = 0; i < DEFERRED_TEXTURE_NUM; i++)
 		{
 			viewDesc.Format = m_deferredFormat[i];
 			m_d3dDevice->CreateRenderTargetView(m_deferredResources[i].Get(), &viewDesc, heapCPU);
 			heapCPU.ptr += m_rtvSize;
 		}
-
-		auto diffuseHeapCPU = m_diffuseTextureRTVHeap->GetCPUDescriptorHandleForHeapStart();
-		viewDesc.Format = m_deferredFormat[DEFERRED_TEXTURE_HDR_DIFFUSE];
-		m_d3dDevice->CreateRenderTargetView(m_deferredResources[DEFERRED_TEXTURE_HDR_DIFFUSE].Get(), &viewDesc, diffuseHeapCPU);
 	}
 
 	{
@@ -1145,9 +1151,16 @@ void GraphicDeviceDX12::BuildDeferredSkinnedMeshPipeLineWorkSet()
 
 	currPSOWorkSet.baseGraphicCmdFunc = [this](ID3D12GraphicsCommandList* cmd)
 		{
-			D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = { m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart() };
-			m_cmdList->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, true, &m_swapChain->GetDSV());
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvs[DEFERRED_TEXTURE_NUM] = {};
+			D3D12_CPU_DESCRIPTOR_HANDLE heapStart = m_deferredRTVHeap->GetCPUDescriptorHandleForHeapStart();
 
+			rtvs[DEFERRED_TEXTURE_HDR_DIFFUSE] = m_swapChain->CurrRTV();
+			for (int i = DEFERRED_TEXTURE_NORMAL; i < DEFERRED_TEXTURE_NUM; i++)
+			{
+				rtvs[i].ptr = heapStart.ptr + m_rtvSize * i;
+			}
+
+			cmd->OMSetRenderTargets(DEFERRED_TEXTURE_NUM, rtvs, false, &m_swapChain->GetDSV());
 			cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
 			cmd->SetGraphicsRootConstantBufferView(ROOT_MAINPASS_CB, GetCurrMainPassCBV());
 		};
@@ -1512,18 +1525,23 @@ void GraphicDeviceDX12::BuildDeferredLightDirPipeLineWorkSet()
 				}
 			}
 
-			CD3DX12_RESOURCE_BARRIER resourceBars[DEFERRED_TEXTURE_RENDERID + 1] = {};
-
-			for (int i = 0; i < DEFERRED_TEXTURE_RENDERID; i++)
+			CD3DX12_RESOURCE_BARRIER resourceBars[DEFERRED_TEXTURE_NUM + 1] = {};
 			{
-				resourceBars[i] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i].Get(),
+				resourceBars[DEFERRED_TEXTURE_HDR_DIFFUSE] = CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetCurrRenderTargetResource(),
 					D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+				for (int i = 1; i < DEFERRED_TEXTURE_NUM; i++)
+				{
+					resourceBars[i] = CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[i].Get(),
+						D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+				}
+
+				resourceBars[DEFERRED_TEXTURE_NUM] = CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
+					D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 			}
-
-			resourceBars[DEFERRED_TEXTURE_RENDERID] = CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetDSResource(),
-				D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
-
 			cmd->ResourceBarrier(_countof(resourceBars), resourceBars);
+
 			D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_diffuseTextureRTVHeap->GetCPUDescriptorHandleForHeapStart();
 
 			cmd->OMSetRenderTargets(1, &rtv, false, nullptr);
@@ -1630,6 +1648,8 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 					XMVECTOR vecZero = XMVectorZero();
 					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 					cmd->ClearRenderTargetView(m_smaa->GetEdgeRenderTarget(), vecZero.m128_f32, 0, nullptr);
+					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_deferredResources[DEFERRED_TEXTURE_HDR_DIFFUSE].Get(),
+						D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 
 					ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
 					cmd->SetDescriptorHeaps(1, heaps);
@@ -1737,6 +1757,9 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 				{
 					XMVECTOR vecZero = XMVectorZero();
 					cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					cmd->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_smaaResult.Get(),
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
 
 					ID3D12DescriptorHeap* heaps[] = { m_smaa->GetSRVHeap() };
 					cmd->SetDescriptorHeaps(1, heaps);
@@ -1757,6 +1780,10 @@ void GraphicDeviceDX12::BuildSMAARenderPipeLineWorkSet()
 				}
 			};
 	}
+}
+
+void GraphicDeviceDX12::BuildPostProcessingPipeLineWorkSet()
+{
 }
 
 void GraphicDeviceDX12::BuildTextureDataDebugPipeLineWorkSet()

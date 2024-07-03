@@ -149,4 +149,3 @@ struct CGHMesh
 		return bones.size();
 	}
 };
-
