@@ -1,7 +1,7 @@
 #include "Component.h"
 #include "imgui.h"
 
-void Component::GUIRender(unsigned int currFrame, unsigned int uid)
+void Component::GUIRender(unsigned int currFrame, long long uid)
 {
 	ImGui::PushID(uid);
 	static const char* className = "class ";

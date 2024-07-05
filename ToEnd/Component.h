@@ -34,7 +34,7 @@ public:
 	virtual size_t GetTypeHashCode() = 0;
 	virtual unsigned int GetPriority() { return COMPONENT_CUSTOM; }
 
-	void GUIRender(unsigned int currFrame, unsigned int uid);
+	void GUIRender(unsigned int currFrame, long long uid);
 	void AddDeleteEvent(std::function<void(Component*)> func)
 	{
 		m_deleteEvent.emplace_back(func);

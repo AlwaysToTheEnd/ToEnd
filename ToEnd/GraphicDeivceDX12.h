@@ -44,6 +44,20 @@ struct DX12PassConstants
 class GraphicDeviceDX12
 {
 public:
+	struct DX12StateTracedResource
+	{
+		ComPtr<ID3D12Resource> resource;
+		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+
+		CD3DX12_RESOURCE_BARRIER GetBarrier_SetState(D3D12_RESOURCE_STATES nextState, UINT sub = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+		{
+			D3D12_RESOURCE_STATES prevState = state;
+			assert(state != nextState);
+			state = nextState;
+			return CD3DX12_RESOURCE_BARRIER::Transition(resource.Get(), prevState, nextState, sub);
+		}
+	};
+
 	struct DX12SahdowGenMesh
 	{
 		ComPtr<ID3D12Resource> vertexBuffer;
@@ -142,7 +156,7 @@ public:
 
 	void ReservationResourceBarrierBeforeRenderStart(const CD3DX12_RESOURCE_BARRIER& barrier);
 
-	ID3D12Resource* GetRenderIDTexture() { return m_deferredResources[DEFERRED_TEXTURE_RENDERID].Get(); }
+	ID3D12Resource* GetRenderIDTexture() { return m_deferredResources[DEFERRED_TEXTURE_RENDERID].resource.Get(); }
 
 private:
 	GraphicDeviceDX12();
@@ -222,7 +236,7 @@ private:
 	DX12RenderQueue										m_renderQueues[RENDERQUEUE_NUM];
 	std::unordered_map<std::string, PipeLineWorkSet>	m_meshPSOWorkSets;
 
-	ComPtr<ID3D12Resource>			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
+	DX12StateTracedResource			m_deferredResources[DEFERRED_TEXTURE_NUM] = {};
 	ComPtr<ID3D12DescriptorHeap>	m_deferredRTVHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_diffuseTextureRTVHeap;
 
@@ -243,7 +257,7 @@ private:
 
 	std::unordered_map <ID3D12Resource*, ComPtr<ID3D12DescriptorHeap>> m_lightRenderSRVHeaps;
 
-	ComPtr<ID3D12Resource>									m_smaaResult;
+	DX12StateTracedResource									m_smaaResult;
 	DX12SMAA*												m_smaa = nullptr;
 
 	std::vector<CD3DX12_RESOURCE_BARRIER>					m_afterRenderEndResourceBarriers;

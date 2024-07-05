@@ -100,7 +100,7 @@ void CGHNode::RenderGUI(unsigned int currFrame)
 	{
 		if (iter.get())
 		{
-			iter->GUIRender(currFrame, reinterpret_cast<unsigned int>(iter.get()));
+			iter->GUIRender(currFrame, reinterpret_cast<long long>(iter.get()));
 		}
 	}
 
