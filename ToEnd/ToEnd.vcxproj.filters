@@ -267,5 +267,8 @@
     <FxCompile Include="Shader\SMAAShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="Shader\PostDownScaleFX.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
